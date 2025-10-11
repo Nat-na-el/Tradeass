@@ -772,11 +772,12 @@ export default function BacktestJournal() {
               <Label>Direction</Label>
               <Select
                 value={form.direction}
-                onValueChange={(value) =>
-                  setForm({ ...form, direction: value })
-                }
+                onValueChange={(value) => {
+                  console.log("Selected direction:", value);
+                  setForm({ ...form, direction: value });
+                }}
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-white">
                   <SelectValue placeholder="Select direction" />
                 </SelectTrigger>
                 <SelectContent>
