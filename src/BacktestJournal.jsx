@@ -774,10 +774,17 @@ export default function BacktestJournal() {
                 value={form.direction}
                 onValueChange={(value) => {
                   console.log("Selected direction:", value);
-                  setForm({ ...form, direction: value });
+                  setForm((prev) => ({ ...prev, direction: value }));
                 }}
               >
-                <SelectTrigger className="text-white">
+                <SelectTrigger
+                  className={cn(
+                    "text-white",
+                    form.direction.toLowerCase() === "long" && "bg-emerald-600",
+                    form.direction.toLowerCase() === "short" && "bg-red-500",
+                    !form.direction && "bg-background"
+                  )}
+                >
                   <SelectValue placeholder="Select direction" />
                 </SelectTrigger>
                 <SelectContent>

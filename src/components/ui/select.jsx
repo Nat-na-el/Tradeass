@@ -3,10 +3,12 @@ import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "../../lib/utils";
 
+// Root components
 const Select = SelectPrimitive.Root;
 const SelectGroup = SelectPrimitive.Group;
 const SelectValue = SelectPrimitive.Value;
 
+// Trigger
 const SelectTrigger = React.forwardRef(
   ({ className, children, ...props }, ref) => (
     <SelectPrimitive.Trigger
@@ -24,6 +26,7 @@ const SelectTrigger = React.forwardRef(
 );
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 
+// Content
 const SelectContent = React.forwardRef(
   ({ className, children, position = "popper", ...props }, ref) => (
     <SelectPrimitive.Portal>
@@ -53,21 +56,26 @@ const SelectContent = React.forwardRef(
 );
 SelectContent.displayName = SelectPrimitive.Content.displayName;
 
+// Item
 const SelectItem = React.forwardRef(
   ({ className, children, value, ...props }, ref) => (
     <SelectPrimitive.Item
       ref={ref}
+      value={value}
       className={cn(
-        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm text-white opacity-100",
-        value.toLowerCase() === "long" && "bg-emerald-600 hover:bg-emerald-700",
-        value.toLowerCase() === "short" && "bg-red-500 hover:bg-red-600",
+        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm text-white transition-colors",
+        "focus:bg-gray-700 focus:outline-none",
+        value?.toLowerCase() === "long" &&
+          "data-[state=checked]:bg-emerald-600 hover:bg-emerald-600",
+        value?.toLowerCase() === "short" &&
+          "data-[state=checked]:bg-red-500 hover:bg-red-500",
         className
       )}
       {...props}
     >
       <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <Check className="h-4 w-4 text-white" />
+          <Check className="h-5 w-5 text-white bg-gray-800 rounded-full" />
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
@@ -76,6 +84,7 @@ const SelectItem = React.forwardRef(
 );
 SelectItem.displayName = SelectPrimitive.Item.displayName;
 
+// Export everything
 export {
   Select,
   SelectGroup,
