@@ -1,5 +1,8 @@
-/*    /index.html   200
-<<<<<<< HEAD
-=======
+[build]
+  publish = "build"
+  command = "npm run build"
 
->>>>>>> 6079442 (Prepare for Netlify deployment, start from dashboard)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
