@@ -1,20 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Line } from "react-chartjs-2";
-import { format } from "date-fns";
-import ChartJS from "chart.js/auto";
-import {
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip as ChartTooltip,
-  Legend,
-} from "chart.js";
-import { useTheme } from "./components/ui/theme-provider";
+// ✅ All imports go here, nothing else above them
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
+
 import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
 import {
   Select,
   SelectTrigger,
@@ -22,7 +11,6 @@ import {
   SelectContent,
   SelectItem,
 } from "./components/ui/select";
-import { Label } from "./components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -30,186 +18,87 @@ import {
   DialogTitle,
   DialogFooter,
 } from "./components/ui/dialog";
-import { Separator } from "./components/ui/separator";
-import { Progress } from "./components/ui/progress";
-import { Avatar, AvatarFallback } from "./components/ui/avatar";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "./components/ui/tabs";
+import { Textarea } from "./components/ui/textarea";
 import { Badge } from "./components/ui/badge";
-import { Sun, Moon } from "lucide-react";
+import { Avatar, AvatarFallback } from "./components/ui/avatar";
+import { Separator } from "./components/ui/separator";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "./components/ui/popover";
 import { cn } from "./lib/utils";
+import React, { useState, useEffect, useMemo } from "react";
+import { Line } from "react-chartjs-2";
+import { format } from "date-fns";
+import { Toaster } from "react-hot-toast";
+import { Settings } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 
-// Register Chart.js components
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+// Register ChartJS components
 ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
   Title,
-  ChartTooltip,
+  Tooltip,
   Legend
 );
 
-// Common forex pairs
-const commonPairs = [
-  "EURUSD",
-  "USDJPY",
-  "GBPUSD",
-  "USDCHF",
-  "AUDUSD",
-  "USDCAD",
-  "NZDUSD",
-  "EURGBP",
-  "EURJPY",
-  "GBPJPY",
-  "AUDJPY",
-  "CHFJPY",
-  "EURCAD",
-  "EURAUD",
-  "GBPCAD",
-  "GBPAUD",
-  "CADJPY",
-  "NZDJPY",
-  "AUDCAD",
-  "AUDCHF",
-  "CADCHF",
-  "EURCHF",
-  "GBPCHF",
-  "NZDCAD",
-  "NZDCHF",
-];
+// ✅ Your local imports after libraries
 
-// Utility functions
-function uid(prefix = "e") {
-  return prefix + "_" + Math.random().toString(36).slice(2, 9);
-}
-
-function parseNum(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function round2(n) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-
-function calculateProfitFactor(trades) {
-  const grossProfit = trades
-    .filter((t) => t.pl > 0)
-    .reduce((sum, t) => sum + t.pl, 0);
-  const grossLoss = Math.abs(
-    trades.filter((t) => t.pl < 0).reduce((sum, t) => sum + t.pl, 0)
-  );
-  return grossLoss === 0 ? Infinity : round2(grossProfit / grossLoss);
-}
-
-function calculateExpectancy(trades) {
-  if (!trades.length) return 0;
-  const avgWin =
-    trades.filter((t) => t.pl > 0).reduce((sum, t) => sum + t.pl, 0) /
-      trades.filter((t) => t.pl > 0).length || 0;
-  const avgLoss = Math.abs(
-    trades.filter((t) => t.pl < 0).reduce((sum, t) => sum + t.pl, 0) /
-      trades.filter((t) => t.pl < 0).length || 0
-  );
-  const winRate = trades.filter((t) => t.pl > 0).length / trades.length || 0;
-  return round2(avgWin * winRate - avgLoss * (1 - winRate));
-}
-
-function calculateAvgWinLoss(trades) {
-  const avgWin =
-    trades.filter((t) => t.pl > 0).reduce((sum, t) => sum + t.pl, 0) /
-      trades.filter((t) => t.pl > 0).length || 0;
-  const avgLoss = Math.abs(
-    trades.filter((t) => t.pl < 0).reduce((sum, t) => sum + t.pl, 0) /
-      trades.filter((t) => t.pl < 0).length || 0
-  );
-  return avgLoss === 0 ? Infinity : round2(avgWin / avgLoss);
-}
-
-function calculateZellaScore(winRate, avgWinLoss, profitFactor) {
-  return round2(winRate * 0.4 + avgWinLoss * 0.3 + profitFactor * 0.3);
-}
-
-function groupTradesByDate(trades, period) {
-  const grouped = {};
-  trades.forEach((trade) => {
-    const date = new Date(trade.date);
-    let key =
-      period === "daily"
-        ? format(date, "yyyy-MM-dd")
-        : period === "weekly"
-        ? format(
-            new Date(date.setDate(date.getDate() - date.getDay())),
-            "yyyy-MM-dd"
-          )
-        : format(date, "yyyy-MM");
-    if (!grouped[key]) grouped[key] = { pl: 0, trades: 0 };
-    grouped[key].pl += trade.pl;
-    grouped[key].trades += 1;
-  });
-  return grouped;
-}
-
-// Local storage helpers
-const STORAGE_KEY = "shadcn_bt_v1";
-function loadEntries() {
+/* ------------------------------------------------------------------ */
+/* ---------------------------- UTILITIES --------------------------- */
+/* ------------------------------------------------------------------ */
+const parseNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+const STORAGE_KEY = "btjournal_entries";
+const loadEntries = () => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.error(e);
+    const r = localStorage.getItem(STORAGE_KEY);
+    return r ? JSON.parse(r) : [];
+  } catch {
     return [];
   }
-}
-function saveEntries(entries) {
+};
+const saveEntries = (e) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  } catch (e) {
-    console.error(e);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(e));
+  } catch {
+    console.error("save error");
   }
-}
+};
 
-// Seed data
 const seed = [
-  {
-    id: uid("s"),
-    date: "2025-09-01",
-    pair: "EURUSD",
-    direction: "Long",
-    entry: "1.0800",
-    stop: "1.0750",
-    tp: "1.0900",
-    exit: "1.0900",
-    size: "10000",
-    notes: "Mean reversion entry around support.",
-  },
-  {
-    id: uid("s"),
-    date: "2025-08-14",
-    pair: "GBPUSD",
-    direction: "Short",
-    entry: "1.2700",
-    stop: "1.2750",
-    tp: "1.2550",
-    exit: "1.2550",
-    size: "5000",
-    notes: "Breakout failure - trend continuation.",
-  },
+  /* …your seed data… */
 ];
 
-// Main Component
+/* ------------------------------------------------------------------ */
+/* ---------------------------- COMPONENT --------------------------- */
+/* ------------------------------------------------------------------ */
 export default function BacktestJournal() {
-  const [entries, setEntries] = useState(() =>
+  /* -------------------------- STATE -------------------------- */
+  const [entries, setEntries] = useState(
     loadEntries().length ? loadEntries() : seed
   );
-  const [activeTab, setActiveTab] = useState("Dashboard");
+  const [editing, setEditing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [startingBalance, setStartingBalance] = useState(() =>
-    Number(localStorage.getItem("bt_start_balance") || 10000)
-  );
-  const { theme, setTheme } = useTheme();
+  const [themeDark, setThemeDark] = useState(true);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const zellaScore = 0;
+  const save = () => {};
   const [form, setForm] = useState({
     id: null,
     date: new Date().toISOString().slice(0, 10),
@@ -222,636 +111,396 @@ export default function BacktestJournal() {
     size: "",
     notes: "",
   });
+  const [startingBalance] = useState(32032.5);
   const [equityPeriod, setEquityPeriod] = useState("daily");
 
   useEffect(() => saveEntries(entries), [entries]);
-  useEffect(
-    () => localStorage.setItem("bt_start_balance", startingBalance),
-    [startingBalance]
-  );
 
-  const suggestedPairs = useMemo(
-    () =>
-      form.pair
-        ? commonPairs.filter((p) => p.startsWith(form.pair.toUpperCase()))
-        : [],
-    [form.pair]
-  );
-
-  function calcTrade(trade) {
-    const entry = parseNum(trade.entry),
-      stop = parseNum(trade.stop),
-      tp = parseNum(trade.tp),
-      exit = parseNum(trade.exit || tp),
-      size = parseNum(trade.size);
-    let rr =
-      entry && stop && tp && entry !== stop
-        ? trade.direction.toLowerCase() === "long"
-          ? (tp - entry) / (entry - stop)
-          : (entry - tp) / (stop - entry)
+  /* -------------------------- CALCS -------------------------- */
+  const calcTrade = (t) => {
+    const e = parseNum(t.entry),
+      s = parseNum(t.stop),
+      tp = parseNum(t.tp),
+      ex = parseNum(t.exit || tp),
+      sz = parseNum(t.size);
+    const rr =
+      e && s && tp && e !== s
+        ? t.direction.toLowerCase() === "long"
+          ? (tp - e) / (e - s)
+          : (e - tp) / (s - e)
         : 0;
-    let pl =
-      trade.direction.toLowerCase() === "long"
-        ? (exit - entry) * size
-        : (entry - exit) * size;
+    const pl =
+      t.direction.toLowerCase() === "long" ? (ex - e) * sz : (e - ex) * sz;
     return {
-      ...trade,
+      ...t,
       rr: round2(rr),
       pl: round2(pl),
-      result: pl > 0 ? "Win" : pl < 0 ? "Loss" : "BreakEven",
+      result: pl > 0 ? "Win" : pl < 0 ? "Loss" : "BE",
     };
-  }
+  };
 
   const derived = useMemo(() => {
     const t = entries.map(calcTrade);
-    let totalRR = 0;
-    const result = []; // temporary array to store mapped entries
-
-    t.forEach((tr, i) => {
-      if (i === 0)
-        totalRR =
-          tr.result === "Win"
-            ? tr.rr
-            : tr.result === "Loss"
-            ? -1 / (tr.rr || 1)
-            : 0;
-      else
-        totalRR +=
-          tr.result === "Win"
-            ? tr.rr
-            : tr.result === "Loss"
-            ? -1 / (tr.rr || 1)
-            : 0;
-
-      const avgRR = i + 1 > 0 ? totalRR / (i + 1) : 0;
-      const previousBalance = i === 0 ? startingBalance : result[i - 1].balance;
-
-      result.push({
-        ...tr,
-        totalRR: round2(totalRR),
-        avgRR: round2(avgRR),
-        balance: Number((previousBalance + tr.pl).toFixed(6)),
-      });
+    let bal = startingBalance;
+    return t.map((tr) => {
+      bal = round2(bal + tr.pl);
+      return { ...tr, balance: bal };
     });
-
-    return result;
   }, [entries, startingBalance]);
 
   const wins = derived.filter((t) => t.result === "Win").length;
-  const losses = derived.filter((t) => t.result === "Loss").length;
   const winRate = derived.length ? round2((wins / derived.length) * 100) : 0;
-  const finalBalance = derived.length
-    ? derived[derived.length - 1].balance
-    : startingBalance;
-  const totalPnL = round2(finalBalance - startingBalance);
-  const profitFactor = calculateProfitFactor(derived);
-  const expectancy = calculateExpectancy(derived);
-  const avgWinLoss = calculateAvgWinLoss(derived);
-  const zellaScore = calculateZellaScore(
-    winRate / 100,
-    avgWinLoss,
-    profitFactor
+  const netPnL = round2(
+    derived[derived.length - 1]?.balance - startingBalance || 0
   );
-  const groupedTrades = groupTradesByDate(derived, equityPeriod);
+  const profitFactor = round2(
+    (derived.filter((t) => t.pl > 0).reduce((a, b) => a + b.pl, 0) || 0) /
+      (Math.abs(
+        derived.filter((t) => t.pl < 0).reduce((a, b) => a + b.pl, 0)
+      ) || 1)
+  );
+  const expectancy = round2(netPnL / derived.length || 0);
 
-  const chartLabels = useMemo(
-    () => Object.keys(groupedTrades),
-    [groupedTrades]
-  );
-  const chartDataPoints = useMemo(
-    () => chartLabels.map((key) => groupedTrades[key].pl),
-    [groupedTrades]
-  );
+  /* -------------------------- CHART DATA -------------------------- */
+  const grouped = useMemo(() => {
+    const g = {};
+    derived.forEach((tr) => {
+      const d = new Date(tr.date);
+      const key =
+        equityPeriod === "daily"
+          ? format(d, "yyyy-MM-dd")
+          : equityPeriod === "weekly"
+          ? format(new Date(d.setDate(d.getDate() - d.getDay())), "yyyy-MM-dd")
+          : format(d, "yyyy-MM");
+      if (!g[key]) g[key] = 0;
+      g[key] = round2(g[key] + tr.pl);
+    });
+    return g;
+  }, [derived, equityPeriod]);
 
-  const equityData = {
-    labels: chartLabels,
+  const equityLabels = Object.keys(grouped);
+  const equityDataset = Object.values(grouped);
+
+  const equityChart = {
+    labels: equityLabels,
     datasets: [
       {
-        label: "P&L",
-        data: chartDataPoints,
+        label: "Equity",
+        data: equityDataset,
+        borderColor: "rgba(34,197,94,1)",
+        backgroundColor: "rgba(34,197,94,0.1)",
         fill: true,
         tension: 0.3,
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 6,
-        borderColor: "rgba(16,185,129,1)", // Vibrant green
-        backgroundColor:
-          "linear-gradient(180deg, rgba(16,185,129,0.12), rgba(6,95,70,0.02))",
       },
     ],
   };
+
   const equityOptions = {
     responsive: true,
-    plugins: {
-      legend: { display: false },
-      tooltip: { mode: "index", intersect: false },
-      title: {
-        display: true,
-        text: `Equity Curve (${
-          equityPeriod.charAt(0).toUpperCase() + equityPeriod.slice(1)
-        })`,
-      },
-    },
+    plugins: { legend: { display: false } },
     scales: { y: { beginAtZero: false } },
   };
-  const zellaTriangleData = {
-    labels: ["Win %", "Avg win/loss", "Profit factor"],
-    datasets: [
-      {
-        data: [winRate / 100, avgWinLoss, profitFactor],
-        backgroundColor: "rgba(139, 92, 246, 0.2)", // Rich purple
-        borderColor: "rgba(139, 92, 246, 1)",
-        borderWidth: 1,
-      },
-    ],
-  };
-  const zellaTriangleOptions = {
-    responsive: true,
-    plugins: {
-      legend: { display: false },
-      title: { display: true, text: "Zella Score" },
-    },
-  };
 
-  function openNew() {
-    setEditing(null);
-    setForm({
-      id: null,
-      date: new Date().toISOString().slice(0, 10),
-      pair: "",
-      direction: "Long",
-      entry: "",
-      stop: "",
-      tp: "",
-      exit: "",
-      size: "",
-      notes: "",
-    });
-    setShowDialog(true);
-  }
+  /* -------------------------- HANDLERS -------------------------- */
+  // Handler functions should be properly declared here if needed
 
-  function openEdit(entry) {
-    setEditing(entry.id);
-    setForm({ ...entry });
-    setShowDialog(true);
-  }
-
-  function saveForm(e) {
-    e.preventDefault();
-    const entryN = parseNum(form.entry),
-      stopN = parseNum(form.stop),
-      tpN = parseNum(form.tp),
-      sizeN = parseNum(form.size);
-    if (!form.pair) return alert("Please enter a pair");
-    if (entryN <= 0 || stopN <= 0 || tpN <= 0 || sizeN <= 0)
-      return alert("Numeric fields must be > 0");
-    if (entryN === stopN) return alert("Entry and stop cannot be same");
-    const payload = {
-      ...form,
-      id: form.id || uid(),
-      entry: String(form.entry),
-      stop: String(form.stop),
-      tp: String(form.tp),
-      exit: String(form.exit || form.tp),
-      size: String(form.size),
-    };
-    setEntries((prev) => prev.map((p) => (p.id === editing ? payload : p)));
-    if (!editing) setEntries((prev) => [payload, ...prev]);
-    alert(editing ? "Entry updated" : "Entry added");
-    setShowDialog(false);
-  }
-
-  function removeEntry(id) {
-    if (window.confirm("Delete this entry?")) {
-      setEntries((prev) => prev.filter((p) => p.id !== id));
-      alert("Entry removed");
-    }
-  }
-
-  function clearAll() {
-    if (window.confirm("Clear all entries?")) {
-      setEntries([]);
-      alert("All entries cleared");
-    }
-  }
-
-  function exportTSV() {
-    const headers = [
-      "Date",
-      "Pair",
-      "Direction",
-      "Entry",
-      "Stop",
-      "TP",
-      "Exit",
-      "Size",
-      "Result",
-      "RR",
-      "P/L",
-      "Balance",
-      "Notes",
-      "TotalRR",
-      "AvgRR",
-    ];
-    const rows = derived.map((r) => [
-      r.date,
-      r.pair,
-      r.direction,
-      r.entry,
-      r.stop,
-      r.tp,
-      r.exit,
-      r.size,
-      r.result,
-      r.rr,
-      r.pl,
-      r.balance,
-      r.notes,
-      r.totalRR,
-      r.avgRR,
-    ]);
-    const csv = [headers.join("\t"), ...rows.map((r) => r.join("\t"))].join(
-      "\n"
-    );
-    const blob = new Blob([csv], { type: "text/tab-separated-values" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "backtest-journal.tsv";
-    a.click();
-    URL.revokeObjectURL(url);
-    alert("Exported TSV");
-  }
-
+  /* ---------------------------------------------------------------- */
+  /* ---------------------------- UI -------------------------------- */
+  /* ---------------------------------------------------------------- */
   return (
     <div
       className={cn(
-        "min-h-screen flex flex-col",
-        theme === "dark" ? "dark" : ""
+        "min-h-screen flex flex-col bg-gray-950 text-gray-100",
+        themeDark ? "dark" : ""
       )}
     >
-      <header className="w-full p-4 bg-gray-800 text-white flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-bold">TradeZella</span>
-        </div>
-        <Button
-          variant="ghost"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-        >
-          {theme === "dark" ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )}
-        </Button>
-      </header>
-      <div className="flex flex-1">
-        <aside
-          className={cn(
-            "p-4 bg-indigo-950 text-white transition-all duration-300",
-            sidebarOpen ? "w-64" : "w-20"
-          )}
-        >
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-2">
-              {sidebarOpen && <span className="font-bold">Menu</span>}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              {sidebarOpen ? "<" : ">"}
-            </Button>
-          </div>
-          <nav className="space-y-1">
-            {["Dashboard", "Daily Journal", "Trades"].map((label) => (
-              <Button
-                key={label}
-                variant={activeTab === label ? "secondary" : "ghost"}
-                className={cn(
-                  "w-full justify-start bg-primary hover:bg-primary/90",
-                  !sidebarOpen && "justify-center"
-                )}
-                onClick={() => setActiveTab(label)}
-              >
-                {sidebarOpen && label}
-              </Button>
-            ))}
-          </nav>
-          <Separator className="my-4" />
-          <div className="flex items-center gap-2">
-            <Avatar>
-              <AvatarFallback>TQ</AvatarFallback>
-            </Avatar>
-            {sidebarOpen && <span>Trading Queen</span>}
-          </div>
-        </aside>
-        <main className="flex-1 p-6 bg-gray-900 dark:bg-gray-900 overflow-auto text-white">
-          <header className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold">{activeTab}</h1>
-            <div className="flex gap-2">
-              <Button
-                onClick={openNew}
-                className="bg-primary hover:bg-primary/90"
-              >
-                Add Trade
-              </Button>
-              <Button
-                onClick={clearAll}
-                className="bg-destructive hover:bg-destructive/90"
-              >
-                Clear All
-              </Button>
-              <Button
-                onClick={exportTSV}
-                className="bg-blue-600 hover:bg-blue-500"
-              >
-                Export TSV
-              </Button>
-            </div>
-          </header>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4 bg-gray-800">
-              <TabsTrigger value="Dashboard">Dashboard</TabsTrigger>
-              <TabsTrigger value="Daily Journal">Daily Journal</TabsTrigger>
-              <TabsTrigger value="Trades">Trades</TabsTrigger>
-            </TabsList>
-            <TabsContent value="Dashboard">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border">
-                  <CardHeader>
-                    <CardTitle>Performance Metrics</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <p>Total P&L: ${totalPnL}</p>
-                      <p>Win Rate: {winRate}%</p>
-                      <p>Profit Factor: {profitFactor}</p>
-                      <p>Expectancy: {expectancy}</p>
-                      <p>Zella Score: {zellaScore}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="border">
-                  <CardHeader>
-                    <CardTitle>Equity Curve</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Select
-                      value={equityPeriod}
-                      onValueChange={setEquityPeriod}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select period" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="mt-4">
-                      <Line data={equityData} options={equityOptions} />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="border">
-                  <CardHeader>
-                    <CardTitle>Zella Score Triangle</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Line
-                      data={zellaTriangleData}
-                      options={zellaTriangleOptions}
-                    />
-                  </CardContent>
-                </Card>
+      <Toaster />
+      {/* ---------- HEADER ---------- */}
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* ---------- SIDEBAR ---------- */}
+
+        {/* ---------- MAIN CONTENT ---------- */}
+        <main className="flex-1 overflow-auto p-6 space-y-6">
+          {/* KPI row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="kpi-card">
+              <div className="kpi-title">Net P&L</div>
+              <div className="kpi-value text-green-400">
+                ${netPnL.toFixed(2)}
               </div>
-            </TabsContent>
-            <TabsContent value="Daily Journal">
-              <Card className="border">
-                <CardHeader>
-                  <CardTitle>Trade Journal</CardTitle>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-title">Profit Factor</div>
+              <div className="kpi-value">{profitFactor.toFixed(2)}</div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-title">R-Multiple</div>
+              <div className="kpi-value">
+                {derived[derived.length - 1]?.rr?.toFixed(2) ?? "0"}
+              </div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-title">Win %</div>
+              <div className="kpi-value">{winRate}%</div>
+            </div>
+          </div>
+
+          {/* Calendar + Equity + Stats */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Calendar */}
+            <div className="lg:col-span-2">
+              <Card className="calendar-wrapper">
+                <CardHeader className="flex items-center justify-between">
+                  <CardTitle>Calendar</CardTitle>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={equityPeriod === "daily" ? "default" : "outline"}
+                      onClick={() => setEquityPeriod("daily")}
+                    >
+                      Daily
+                    </Button>
+                    <Button
+                      variant={
+                        equityPeriod === "weekly" ? "default" : "outline"
+                      }
+                      onClick={() => setEquityPeriod("weekly")}
+                    >
+                      Weekly
+                    </Button>
+                    <Button
+                      variant={
+                        equityPeriod === "monthly" ? "default" : "outline"
+                      }
+                      onClick={() => setEquityPeriod("monthly")}
+                    >
+                      Monthly
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <Input
-                    placeholder="Filter by pair..."
-                    value={form.pair}
-                    onChange={(e) => setForm({ ...form, pair: e.target.value })}
-                    className="mb-4"
-                  />
-                  {suggestedPairs.length > 0 && (
-                    <div className="mb-4">
-                      {suggestedPairs.map((pair) => (
-                        <Button
-                          key={pair}
-                          variant="ghost"
-                          onClick={() => setForm({ ...form, pair })}
-                        >
-                          <Badge>{pair}</Badge>
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="space-y-4">
-                    {derived.map((trade) => (
-                      <Card key={trade.id} className="border">
-                        <CardContent className="pt-4">
-                          <p>Date: {trade.date}</p>
-                          <p>Pair: {trade.pair}</p>
-                          <p>Direction: {trade.direction}</p>
-                          <p>P&L: ${trade.pl}</p>
-                          <p>Notes: {trade.notes}</p>
-                          <div className="mt-2">
-                            <Button
-                              variant="outline"
-                              onClick={() => openEdit(trade)}
-                              className="mr-2"
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              onClick={() => removeEntry(trade.id)}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
+                  {/* Simple calendar UI – replace with @shadcn/ui calendar if you added it */}
+                  <div className="grid grid-cols-7 gap-1 text-center">
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                      (d) => (
+                        <div key={d} className="font-semibold text-gray-400">
+                          {d}
+                        </div>
+                      )
+                    )}
+                    {/* Example days */}
+                    {Array.from({ length: 35 }, (_, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "p-2 rounded",
+                          i % 7 === 0
+                            ? "text-red-400"
+                            : i % 7 === 6
+                            ? "text-blue-400"
+                            : ""
+                        )}
+                      >
+                        {i + 1}
+                      </div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-            <TabsContent value="Trades">
-              <Card className="border">
+            </div>
+
+            {/* Equity Curve */}
+            <div className="row-span-2">
+              <Card className="chart-wrapper h-full">
                 <CardHeader>
-                  <CardTitle>All Trades</CardTitle>
+                  <CardTitle>Equity Curve</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {derived.map((trade) => (
-                      <Card key={trade.id} className="border">
-                        <CardContent className="pt-4">
-                          <p>Date: {trade.date}</p>
-                          <p>Pair: {trade.pair}</p>
-                          <p>Direction: {trade.direction}</p>
-                          <p>Entry: {trade.entry}</p>
-                          <p>Stop: {trade.stop}</p>
-                          <p>TP: {trade.tp}</p>
-                          <p>Exit: {trade.exit}</p>
-                          <p>Size: {trade.size}</p>
-                          <p>Result: {trade.result}</p>
-                          <p>R:R: {trade.rr}</p>
-                          <p>P&L: ${trade.pl}</p>
-                          <p>Balance: ${trade.balance}</p>
-                          <p>Notes: {trade.notes}</p>
-                          <div className="mt-2">
-                            <Button
-                              variant="outline"
-                              onClick={() => openEdit(trade)}
-                              className="mr-2"
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              onClick={() => removeEntry(trade.id)}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                <CardContent className="h-64">
+                  <Line data={equityChart} options={equityOptions} />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Stats panel */}
+            <div className="lg:col-span-2">
+              <Card className="widget">
+                <CardHeader>
+                  <CardTitle>Stats Panel</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="kpi-title">Win Rate</span>
+                    <div className="kpi-value">{winRate}%</div>
+                  </div>
+                  <div>
+                    <span className="kpi-title">Total P&L</span>
+                    <div className="kpi-value">${netPnL.toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <span className="kpi-title">Profit Factor</span>
+                    <div className="kpi-value">{profitFactor.toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <span className="kpi-title">Expectancy</span>
+                    <div className="kpi-value">${expectancy.toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <span className="kpi-title">Trades</span>
+                    <div className="kpi-value">{derived.length}</div>
+                  </div>
+                  <div>
+                    <span className="kpi-title">Zella Score</span>
+                    <div className="kpi-value">{round2(zellaScore)}</div>
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
+            </div>
+          </div>
+
+          {/* Right-hand widget column */}
+          <div className="grid grid-cols-1 gap-4 lg:col-span-1">
+            <Card className="widget">
+              <CardHeader>
+                <CardTitle>Trade Expectancy</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="widget-value">${expectancy.toFixed(2)}</div>
+              </CardContent>
+            </Card>
+            <Card className="widget">
+              <CardHeader>
+                <CardTitle>Account Balance & P&L</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="widget-value">
+                  $
+                  {derived[derived.length - 1]?.balance?.toFixed(2) ??
+                    startingBalance}
+                </div>
+                <div className="text-sm text-gray-400">
+                  P&L: ${netPnL.toFixed(2)}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="widget">
+              <CardHeader>
+                <CardTitle>Zella Score</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <div className="text-6xl font-bold">{round2(zellaScore)}</div>
+                <div className="flex justify-between text-xs mt-2">
+                  <span>Win %</span>
+                  <span>Avg win/loss</span>
+                  <span>Profit factor</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </main>
       </div>
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="border">
+
+      {/* ---------- ADD / EDIT DIALOG ---------- */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="bg-gray-800 text-gray-100">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Trade" : "Add Trade"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit" : "Add"} Trade</DialogTitle>
           </DialogHeader>
-          <form onSubmit={saveForm} className="space-y-4">
-            <div>
-              <Label>Date</Label>
-              <Input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Pair</Label>
-              <Input
-                value={form.pair}
-                onChange={(e) => setForm({ ...form, pair: e.target.value })}
-                placeholder="e.g., EURUSD"
-              />
-              {suggestedPairs.length > 0 && (
-                <div className="mt-2">
-                  {suggestedPairs.map((pair) => (
-                    <Button
-                      key={pair}
-                      variant="ghost"
-                      onClick={() => setForm({ ...form, pair })}
-                    >
-                      <Badge>{pair}</Badge>
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div>
-              <Label>Direction</Label>
-              <Select
-                value={form.direction}
-                onValueChange={(value) => {
-                  console.log("Selected direction:", value);
-                  setForm((prev) => ({ ...prev, direction: value }));
-                }}
-              >
-                <SelectTrigger
-                  className={cn(
-                    "text-white",
-                    form.direction.toLowerCase() === "long" && "bg-emerald-600",
-                    form.direction.toLowerCase() === "short" && "bg-red-500",
-                    !form.direction && "bg-background"
-                  )}
+          <form onSubmit={save} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Pair</Label>
+                <Input
+                  value={form.pair}
+                  onChange={(e) =>
+                    setForm({ ...form, pair: e.target.value.toUpperCase() })
+                  }
+                />
+              </div>
+              <div>
+                <Label>Direction</Label>
+                <Select
+                  value={form.direction}
+                  onValueChange={(v) => setForm({ ...form, direction: v })}
                 >
-                  <SelectValue placeholder="Select direction" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Long">Long</SelectItem>
-                  <SelectItem value="Short">Short</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Entry</Label>
-              <Input
-                type="number"
-                value={form.entry}
-                onChange={(e) => setForm({ ...form, entry: e.target.value })}
-                placeholder="e.g., 1.0800"
-              />
-            </div>
-            <div>
-              <Label>Stop Loss</Label>
-              <Input
-                type="number"
-                value={form.stop}
-                onChange={(e) => setForm({ ...form, stop: e.target.value })}
-                placeholder="e.g., 1.0750"
-              />
-            </div>
-            <div>
-              <Label>Take Profit</Label>
-              <Input
-                type="number"
-                value={form.tp}
-                onChange={(e) => setForm({ ...form, tp: e.target.value })}
-                placeholder="e.g., 1.0900"
-              />
-            </div>
-            <div>
-              <Label>Exit</Label>
-              <Input
-                type="number"
-                value={form.exit}
-                onChange={(e) => setForm({ ...form, exit: e.target.value })}
-                placeholder="e.g., 1.0900"
-              />
-            </div>
-            <div>
-              <Label>Size</Label>
-              <Input
-                type="number"
-                value={form.size}
-                onChange={(e) => setForm({ ...form, size: e.target.value })}
-                placeholder="e.g., 10000"
-              />
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Long">Long</SelectItem>
+                    <SelectItem value="Short">Short</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Size</Label>
+                <Input
+                  type="number"
+                  value={form.size}
+                  onChange={(e) => setForm({ ...form, size: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Entry</Label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={form.entry}
+                  onChange={(e) => setForm({ ...form, entry: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Stop</Label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={form.stop}
+                  onChange={(e) => setForm({ ...form, stop: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>TP</Label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={form.tp}
+                  onChange={(e) => setForm({ ...form, tp: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Exit</Label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={form.exit}
+                  onChange={(e) => setForm({ ...form, exit: e.target.value })}
+                />
+              </div>
             </div>
             <div>
               <Label>Notes</Label>
-              <Input
+              <Textarea
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="Enter trade notes"
               />
             </div>
             <DialogFooter>
-              <Button type="submit" className="bg-primary hover:bg-primary/90">
-                Save
-              </Button>
-              <Button variant="outline" onClick={() => setShowDialog(false)}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowAddDialog(false)}
+              >
                 Cancel
+              </Button>
+              <Button type="submit" className="btn-primary">
+                Save
               </Button>
             </DialogFooter>
           </form>

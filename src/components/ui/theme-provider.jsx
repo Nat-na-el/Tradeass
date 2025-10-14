@@ -1,14 +1,18 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 
+// Create a context for the theme
 const ThemeContext = createContext();
 
+// Theme provider component
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
+    // Load saved theme from localStorage or default to dark
     return localStorage.getItem("theme") || "dark";
   });
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(theme);
     localStorage.setItem("theme", theme);
   }, [theme]);
 
@@ -19,8 +23,7 @@ export function ThemeProvider({ children }) {
   );
 }
 
+// Hook to use theme in components
 export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) throw new Error("useTheme must be used within ThemeProvider");
-  return context;
+  return useContext(ThemeContext);
 }
