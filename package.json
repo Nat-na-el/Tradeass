@@ -48,9 +48,7 @@
     "start": "react-app-rewired start",
     "build": "react-app-rewired build",
     "test": "react-app-rewired test",
-    "eject": "react-scripts eject",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
@@ -70,17 +68,14 @@
       "last 1 safari version"
     ]
   },
-  "description": "Tradeass is a program designed to help users journal while backtesting trading strategies.  \r It provides an organized way to record trades, notes, and observations to improve trading performance over time.",
+  "description": "Tradeass is a program designed to help users journal while backtesting trading strategies.",
   "main": "config-overrides.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Nat-na-el/Tradeas.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "bugs": {
     "url": "https://github.com/Nat-na-el/Tradeas/issues"
   },
-  "homepage": "https://nat-na-el.github.io/Tradeas"
+  "license": "ISC"
 }
