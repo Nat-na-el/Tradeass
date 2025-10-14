@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",
+    "gh-pages": "^6.3.0",
     "path": "^0.12.7",
     "postcss": "^8.4.47",
     "react-app-rewired": "^2.2.1",
@@ -47,7 +48,9 @@
     "start": "react-app-rewired start",
     "build": "react-app-rewired build",
     "test": "react-app-rewired test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "eslintConfig": {
     "extends": [
@@ -71,13 +74,13 @@
   "main": "config-overrides.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Nat-na-el/Tradeass.git"
+    "url": "git+https://github.com/Nat-na-el/Tradeas.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Nat-na-el/Tradeass/issues"
+    "url": "https://github.com/Nat-na-el/Tradeas/issues"
   },
-  "homepage": "http://."
+  "homepage": "https://nat-na-el.github.io/Tradeas"
 }
