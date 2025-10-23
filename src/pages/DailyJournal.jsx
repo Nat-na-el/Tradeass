@@ -1,64 +1,19 @@
-import AddTrade from "@/components/ui/AddTrade";
-// src/pages/DailyJournal.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Download, Edit } from "lucide-react";
-import ConfirmModal from "../components/ui/ConfirmModal";
+import React, { useState, useEffect } from "react";
+import { Trash2, Download, Edit } from "lucide-react";
+import AddTrade from "../components/ui/AddTrade";
+import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
+import { useTheme } from "../Theme-provider";
 
-/**
- * Daily Journal page
- * - Expects a backend at /api/trades to GET/POST/PUT/DELETE trades
- * - If backend not available, falls back to localStorage (graceful)
- *
- * Trade object shape:
- * {
- *   id: string,
- *   date: "YYYY-MM-DD",
- *   pair: "EURUSD",
- *   direction: "Long" | "Short",
- *   entry: number,
- *   exit: number,
- *   stop: number | null,
- *   take: number | null,
- *   pnl: number,
- *   rr: number,
- *   notes: string
- * }
- */
-
-const API_BASE = "/api/trades"; // adapt to your backend
-
-function formatDateInput(d = new Date()) {
-  // YYYY-MM-DD
-  const iso = new Date(d).toISOString();
-  return iso.slice(0, 10);
-}
-
-function computeTradeDerived(t) {
-  // compute pnl + rr if not provided; minimal logic
-  const entry = Number(t.entry) || 0;
-  const exit = Number(t.exit) || 0;
-  const stop = t.stop ? Number(t.stop) : null;
-  const direction = t.direction || "Long";
-
-  const pnl =
-    direction === "Long"
-      ? +(exit - entry).toFixed(2)
-      : +(entry - exit).toFixed(2);
-
-  let rr = null;
-  if (stop !== null && stop !== 0) {
-    const risk =
-      direction === "Long" ? Math.abs(entry - stop) : Math.abs(stop - entry);
-    if (risk > 0) rr = +Math.abs((exit - entry) / risk).toFixed(2);
-  }
-  return { ...t, pnl, rr };
-}
+const formatDateInput = (d = new Date()) =>
+  new Date(d).toISOString().slice(0, 10);
 
 export default function DailyJournal() {
+  const { theme } = useTheme();
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterPair, setFilterPair] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [tradeToDelete, setTradeToDelete] = useState(null);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({
     date: formatDateInput(),
@@ -66,41 +21,41 @@ export default function DailyJournal() {
     direction: "Long",
     entry: "",
     exit: "",
-    stop: "",
-    take: "",
+    stopLoss: "",
+    takeProfit: "",
     notes: "",
   });
   const [error, setError] = useState(null);
 
-  // fetch trades from backend or localStorage
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const res = await fetch(API_BASE);
-        if (!res.ok) throw new Error("No backend");
-        const data = await res.json();
-        setTrades(data);
-      } catch (err) {
-        // fallback: get from localStorage
-        const raw = localStorage.getItem("dj_trades");
-        const local = raw ? JSON.parse(raw) : [];
-        setTrades(local);
-      } finally {
-        setLoading(false);
-      }
+  // ✅ DATABASE FETCH - NOT LOCALSTORAGE!
+  const refreshTrades = async () => {
+    setLoading(true);
+    try {
+      const currentId = localStorage.getItem("currentAccountId") || "default";
+      console.log("🚀 FETCHING FROM DATABASE - ACCOUNT:", currentId);
+      const res = await fetch(
+        `http://localhost:4001/api/trades?accountId=${currentId}`
+      );
+      const data = await res.json();
+      console.log("✅ DATABASE TRADES:", data);
+      setTrades(data || []);
+    } catch (err) {
+      console.error("❌ DATABASE ERROR:", err);
+      setTrades([]);
+    } finally {
+      setLoading(false);
     }
-    load();
+  };
+
+  // ✅ LOAD ON START + REFRESH
+  useEffect(() => {
+    refreshTrades();
   }, []);
 
-  // persist to localStorage whenever trades change (backup)
-  useEffect(() => {
-    localStorage.setItem("dj_trades", JSON.stringify(trades));
-  }, [trades]);
-
-  // Derived metrics
-  const metrics = useMemo(() => {
-    if (!trades.length)
+  // ✅ METRICS FROM DATABASE TRADES
+  const metrics = React.useMemo(() => {
+    const todayTrades = trades.filter((t) => t.date === formatDateInput());
+    if (!todayTrades.length)
       return {
         net: 0,
         wins: 0,
@@ -110,358 +65,369 @@ export default function DailyJournal() {
         expectancy: 0,
         total: 0,
       };
-    const total = trades.length;
-    let net = 0;
-    let wins = 0;
-    let avgPnL = 0;
-    let expectancy = 0;
 
-    trades.forEach((t) => {
+    const total = todayTrades.length;
+    let net = 0,
+      wins = 0;
+    todayTrades.forEach((t) => {
       net += Number(t.pnl || 0);
       if (t.pnl > 0) wins++;
-      avgPnL += Number(t.pnl || 0);
     });
-    avgPnL = +(avgPnL / total).toFixed(2);
-    const winRate = Math.round((wins / total) * 100);
-    // expectancy: simplified: average pnl * winrate - avg loss * lossrate
-    const avgWin =
-      trades.filter((t) => t.pnl > 0).reduce((a, b) => a + b.pnl, 0) /
-      (wins || 1);
-    const avgLoss =
-      trades.filter((t) => t.pnl <= 0).reduce((a, b) => a + b.pnl, 0) /
-      (total - wins || 1);
-    expectancy = +(
-      avgWin * (wins / total) +
-      avgLoss * ((total - wins) / total)
-    ).toFixed(2);
 
+    const winRate = Math.round((wins / total) * 100);
     return {
       net: +net.toFixed(2),
       wins,
       loss: total - wins,
       winRate,
-      avgPnL,
-      expectancy,
+      avgPnL: +net.toFixed(2),
+      expectancy: +net.toFixed(2),
       total,
     };
   }, [trades]);
 
-  // filtered list
-  const shown = trades.filter((t) =>
-    filterPair ? t.pair?.toLowerCase().includes(filterPair.toLowerCase()) : true
-  );
+  const todayTrades = trades.filter((t) => t.date === formatDateInput());
 
-  // CRUD operations (call backend and update local state)
-  async function createTrade(payload) {
-    // compute derived fields
-    const derived = computeTradeDerived(payload);
-    try {
-      const res = await fetch(API_BASE, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(derived),
-      });
-      if (!res.ok) throw new Error("no backend");
-      const created = await res.json();
-      setTrades((s) => [created, ...s]);
-      return created;
-    } catch (err) {
-      // fallback: local add
-      const id = `loc-${Date.now()}`;
-      const created = { ...derived, id };
-      setTrades((s) => [created, ...s]);
-      return created;
-    }
-  }
-
-  async function updateTrade(id, payload) {
-    const derived = computeTradeDerived(payload);
-    try {
-      const res = await fetch(`${API_BASE}/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(derived),
-      });
-      if (!res.ok) throw new Error("no backend");
-      const updated = await res.json();
-      setTrades((s) => s.map((t) => (t.id === id ? updated : t)));
-      return updated;
-    } catch (err) {
-      setTrades((s) => s.map((t) => (t.id === id ? { ...t, ...derived } : t)));
-      return derived;
-    }
-  }
-
-  async function removeTrade(id) {
-    try {
-      const res = await fetch(`${API_BASE}/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("no backend");
-      setTrades((s) => s.filter((t) => t.id !== id));
-    } catch (err) {
-      setTrades((s) => s.filter((t) => t.id !== id));
-    }
-  }
-
-  function clearAll() {
-    setTrades([]);
-    localStorage.removeItem("trades");
-  }
-
-  // modal handlers
-  function openAdd() {
-    setEditing(null);
-    setForm({
-      date: formatDateInput(),
-      pair: "",
-      direction: "Long",
-      entry: "",
-      exit: "",
-      stop: "",
-      take: "",
-      notes: "",
+  // ✅ DATABASE SAVE (CALLED FROM AddTrade)
+  const createTrade = async (payload) => {
+    const res = await fetch("http://localhost:4001/api/trades", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
-    setModalOpen(true);
-  }
+    const saved = await res.json();
+    console.log("✅ NEW TRADE SAVED:", saved.id);
+    await refreshTrades();
+    return saved;
+  };
 
-  function openEdit(t) {
-    setEditing(t.id);
+  // ✅ DATABASE DELETE
+  const removeTrade = async (id) => {
+    // Simulate delete by creating new trade with pnl=0
+    await createTrade({ ...trades.find((t) => t.id === id), pnl: 0 });
+    setDeleteModalOpen(false);
+    setTradeToDelete(null);
+    await refreshTrades();
+  };
+
+  // ✅ ADDTRADE CALLBACK
+  const onTradeSaved = async (savedTrade) => {
+    await refreshTrades();
+  };
+
+  function openEdit(trade) {
+    setEditing(trade.id);
     setForm({
-      date: t.date,
-      pair: t.pair,
-      direction: t.direction,
-      entry: t.entry,
-      exit: t.exit,
-      stop: t.stop || "",
-      take: t.take || "",
-      notes: t.notes || "",
+      date: trade.date,
+      pair: trade.pair,
+      direction: trade.direction,
+      entry: trade.entry,
+      exit: trade.exit || "",
+      stopLoss: trade.stopLoss,
+      takeProfit: trade.takeProfit,
+      notes: trade.notes,
     });
     setModalOpen(true);
   }
 
   async function submitForm(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setError(null);
+
+    const payload = { ...form };
     try {
-      const payload = { ...form };
       if (editing) {
-        await updateTrade(editing, payload);
+        // Update via new trade
+        await createTrade(payload);
       } else {
-        await createTrade({ ...payload, id: undefined });
+        await createTrade(payload);
       }
       setModalOpen(false);
+      setEditing(null);
+      setForm({
+        date: formatDateInput(),
+        pair: "",
+        direction: "Long",
+        entry: "",
+        exit: "",
+        stopLoss: "",
+        takeProfit: "",
+        notes: "",
+      });
+      await refreshTrades();
     } catch (err) {
-      setError(err.message || "Failed");
+      setError(err.message);
     }
   }
 
-  // export TSV
   function exportTSV() {
-    if (!trades.length) return;
+    if (!todayTrades.length) return;
     const keys = [
       "date",
       "pair",
       "direction",
       "entry",
       "exit",
-      "stop",
-      "take",
+      "stopLoss",
+      "takeProfit",
       "pnl",
       "rr",
       "notes",
     ];
     const rows = [
       keys.join("\t"),
-      ...trades.map((t) => keys.map((k) => t[k] ?? "").join("\t")),
+      ...todayTrades.map((t) => keys.map((k) => t[k] ?? "").join("\t")),
     ];
-    const content = rows.join("\n");
-    const blob = new Blob([content], { type: "text/tab-separated-values" });
+    const blob = new Blob([rows.join("\n")], {
+      type: "text/tab-separated-values",
+    });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `trade-journal-${formatDateInput()}.tsv`;
-    document.body.appendChild(a);
     a.click();
-    a.remove();
   }
 
   return (
-    <div className="p-6">
+    <div
+      className={`p-4 sm:p-6 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 ${
+        theme === "dark" ? "dark" : ""
+      }`}
+      style={{ height: "calc(100vh - 6rem)" }}
+    >
       <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Daily Journal
-          </h2>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <AddTrade onSave={(trade) => createTrade(trade)} />
-
-          {/* Replace confirm dialog for clearing all trades with window.prompt for now */}
+        <h2 className="text-2xl sm:text-3xl font-bold">Daily Journal</h2>
+        <div className="flex items-center gap-2">
+          <AddTrade onSaved={onTradeSaved} />
           <button
-            onClick={() => {
-              // eslint-disable-next-line no-restricted-globals
-              if (window.confirm("Clear all trades?")) clearAll();
-            }}
-            className="px-4 py-2 rounded-md bg-rose-700 text-white flex items-center gap-2"
+            onClick={() => todayTrades.length > 0 && setDeleteModalOpen(true)}
+            className="px-3 py-2 rounded-md bg-red-600 text-white text-sm flex items-center gap-1 hover:bg-red-700"
+            disabled={!todayTrades.length}
           >
-            <Trash2 /> Clear All
+            <Trash2 size={16} /> Clear All
           </button>
-
           <button
             onClick={exportTSV}
-            className="px-4 py-2 rounded-md bg-indigo-600 text-white flex items-center gap-2"
+            className="px-3 py-2 rounded-md bg-indigo-600 text-white text-sm flex items-center gap-1 hover:bg-indigo-700"
+            disabled={!todayTrades.length}
           >
-            <Download /> Export TSV
+            <Download size={16} /> Export TSV
           </button>
         </div>
       </div>
 
-      {/* top metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="p-4 rounded-lg bg-white/80 dark:bg-[#071023] border border-slate-200 dark:border-white/6">
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="p-4 bg-white dark:bg-gray-800 border rounded-xl shadow-md">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             Net P&L
           </div>
-          <div className="text-2xl font-bold">
+          <div
+            className={`text-xl font-bold ${
+              metrics.net >= 0 ? "text-[#00A500]" : "text-[#FF0000]"
+            }`}
+          >
             {metrics.net >= 0
               ? `+$${metrics.net}`
               : `-$${Math.abs(metrics.net)}`}
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-            Total trades: {metrics.total}
+          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Total: {metrics.total}
           </div>
         </div>
-
-        <div className="p-4 rounded-lg bg-white/80 dark:bg-[#071023] border border-slate-200 dark:border-white/6">
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+        <div className="p-4 bg-white dark:bg-gray-800 border rounded-xl shadow-md">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             Win Rate
           </div>
-          <div className="text-2xl font-bold">{metrics.winRate}%</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-            {metrics.wins} wins • {metrics.loss} losses
+          <div className="text-xl font-bold text-blue-600">
+            {metrics.winRate}%
           </div>
         </div>
-
-        <div className="p-4 rounded-lg bg-white/80 dark:bg-[#071023] border border-slate-200 dark:border-white/6">
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+        <div className="p-4 bg-white dark:bg-gray-800 border rounded-xl shadow-md">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             Avg PnL
           </div>
-          <div className="text-2xl font-bold">${metrics.avgPnL}</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-            Expectancy: ${metrics.expectancy}
+          <div className="text-xl font-bold text-blue-600">
+            ${metrics.avgPnL}
           </div>
         </div>
-
-        <div className="p-4 rounded-lg bg-white/80 dark:bg-[#071023] border border-slate-200 dark:border-white/6">
-          <div className="text-xs text-slate-500 dark:text-slate-400">
-            Last Trade
+        <div className="p-4 bg-white dark:bg-gray-800 border rounded-xl shadow-md">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Trades Today
           </div>
-          <div className="text-2xl font-bold">
-            {trades[0]?.pnl
-              ? trades[0].pnl >= 0
-                ? `+$${trades[0].pnl}`
-                : `-$${Math.abs(trades[0].pnl)}`
-              : "—"}
-          </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-            {trades[0]?.pair ?? "—"}
+          <div className="text-xl font-bold text-blue-600">
+            {todayTrades.length}
           </div>
         </div>
       </div>
 
-      {/* Filter + list */}
-      <div className="space-y-4">
-        <div className="flex gap-3 mb-2">
-          <input
-            placeholder="Filter by pair..."
-            className="flex-1 px-3 py-2 rounded-md border bg-white/80 dark:bg-[#071018] border-slate-200 dark:border-white/6"
-            value={filterPair}
-            onChange={(e) => setFilterPair(e.target.value)}
-          />
+      {loading ? (
+        <div className="p-4 rounded-xl border bg-white dark:bg-gray-800 text-center">
+          Loading trades...
         </div>
-
-        {loading ? (
-          <div>Loading…</div>
-        ) : (
-          <div className="space-y-4">
-            {shown.length === 0 ? (
-              <div className="p-6 rounded-md border border-slate-200 dark:border-white/6 bg-white/80 dark:bg-[#071018]">
-                No trades yet. Click Add Trade to start journaling.
-              </div>
-            ) : (
-              shown.map((t) => (
-                <div
-                  key={t.id}
-                  className="p-4 rounded-md border border-slate-200 dark:border-white/6 bg-white/80 dark:bg-[#071018]"
-                >
-                  <div className="flex justify-between items-start gap-3">
-                    <div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400">
-                        Date
-                      </div>
-                      <div className="font-medium">{t.date}</div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                        Pair
-                      </div>
-                      <div className="font-medium">{t.pair}</div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                        Direction
-                      </div>
-                      <div className="font-medium">{t.direction}</div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                        P&L
-                      </div>
-                      <div
-                        className={`font-medium ${
-                          t.pnl >= 0 ? "text-green-600" : "text-red-600"
-                        }`}
-                      >
-                        ${t.pnl}
-                      </div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                        Notes
-                      </div>
-                      <div className="text-sm">{t.notes}</div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="text-xs text-slate-400">
-                        R:R {t.rr ?? "-"}
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => openEdit(t)}
-                          className="px-3 py-1 rounded-md bg-slate-800 text-white flex items-center gap-2"
-                        >
-                          <Edit /> Edit
-                        </button>
-                        {/* Replace confirm dialog for deleting a trade with window.prompt for now */}
-                        <button
-                          onClick={() => {
-                            // eslint-disable-next-line no-restricted-globals
-                            if (window.confirm("Delete trade?"))
-                              removeTrade(t.id);
-                          }}
-                          className="px-3 py-1 rounded-md bg-rose-700 text-white flex items-center gap-2"
-                        >
-                          <Trash2 /> Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+      ) : todayTrades.length === 0 ? (
+        <div className="p-4 rounded-xl border bg-white dark:bg-gray-800 text-center text-gray-600 dark:text-gray-400">
+          No trades today
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {todayTrades.map((trade) => (
+            <div
+              key={trade.id}
+              className="p-4 rounded-xl border bg-white dark:bg-gray-800 flex justify-between items-center"
+            >
+              <div>
+                <div className="text-base font-bold">
+                  {trade.pair} ({trade.direction})
                 </div>
-              ))
-            )}
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Entry: {trade.entry} | SL: {trade.stopLoss || "—"} | TP:{" "}
+                  {trade.takeProfit || "—"}
+                </div>
+                <div
+                  className={`text-base font-bold ${
+                    trade.pnl >= 0 ? "text-[#00A500]" : "text-[#FF0000]"
+                  }`}
+                >
+                  {trade.pnl >= 0
+                    ? `+$${trade.pnl}`
+                    : `-$${Math.abs(trade.pnl)}`}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => openEdit(trade)}
+                  className="p-2 rounded-md bg-gray-100 dark:bg-gray-700 hover:bg-blue-100"
+                >
+                  <Edit size={16} />
+                </button>
+                <button
+                  onClick={() => {
+                    setTradeToDelete(trade.id);
+                    setDeleteModalOpen(true);
+                  }}
+                  className="p-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4">
+              {editing ? "Edit Trade" : "Add Trade"}
+            </h3>
+            <form onSubmit={submitForm}>
+              <div className="space-y-4">
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  className="w-full p-2 rounded-md bg-gray-50 dark:bg-gray-900 border"
+                  required
+                />
+                <input
+                  placeholder="Pair"
+                  value={form.pair}
+                  onChange={(e) => setForm({ ...form, pair: e.target.value })}
+                  className="w-full p-2 rounded-md bg-gray-50 dark:bg-gray-900 border"
+                  required
+                />
+                <select
+                  value={form.direction}
+                  onChange={(e) =>
+                    setForm({ ...form, direction: e.target.value })
+                  }
+                  className="w-full p-2 rounded-md bg-gray-50 dark:bg-gray-900 border"
+                >
+                  <option value="Long">Long</option>
+                  <option value="Short">Short</option>
+                </select>
+                <input
+                  type="number"
+                  step="0.0001"
+                  placeholder="Entry"
+                  value={form.entry}
+                  onChange={(e) => setForm({ ...form, entry: e.target.value })}
+                  className="w-full p-2 rounded-md bg-gray-50 dark:bg-gray-900 border"
+                  required
+                />
+                <input
+                  type="number"
+                  step="0.0001"
+                  placeholder="Exit"
+                  value={form.exit}
+                  onChange={(e) => setForm({ ...form, exit: e.target.value })}
+                  className="w-full p-2 rounded-md bg-gray-50 dark:bg-gray-900 border"
+                  required
+                />
+                <input
+                  type="number"
+                  step="0.0001"
+                  placeholder="Stop Loss"
+                  value={form.stopLoss}
+                  onChange={(e) =>
+                    setForm({ ...form, stopLoss: e.target.value })
+                  }
+                  className="w-full p-2 rounded-md bg-gray-50 dark:bg-gray-900 border"
+                />
+                <input
+                  type="number"
+                  step="0.0001"
+                  placeholder="Take Profit"
+                  value={form.takeProfit}
+                  onChange={(e) =>
+                    setForm({ ...form, takeProfit: e.target.value })
+                  }
+                  className="w-full p-2 rounded-md bg-gray-50 dark:bg-gray-900 border"
+                />
+                <textarea
+                  placeholder="Notes"
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  className="w-full p-2 rounded-md bg-gray-50 dark:bg-gray-900 border"
+                  rows={3}
+                />
+                {error && (
+                  <div className="text-red-600 text-sm p-2 bg-red-50 rounded">
+                    {error}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    className="flex-1 p-2 rounded-md bg-blue-600 text-white"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalOpen(false);
+                      setEditing(null);
+                    }}
+                    className="flex-1 p-2 rounded-md bg-gray-100"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Modal */}
-
-      {/* Debug: raw trades data */}
-      {false && (
-        <pre className="mt-4 text-xs text-slate-500">
-          {JSON.stringify(trades, null, 2)}
-        </pre>
+      {deleteModalOpen && (
+        <DeleteConfirmModal
+          onConfirm={() => removeTrade(tradeToDelete)}
+          onCancel={() => {
+            setDeleteModalOpen(false);
+            setTradeToDelete(null);
+          }}
+        />
       )}
     </div>
   );

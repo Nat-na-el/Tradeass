@@ -1,40 +1,29 @@
-// ✅ All imports go here, nothing else above them
-import { Button } from "./components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 
-import { Input } from "./components/ui/input";
-import { Label } from "./components/ui/label";
+import React, { useState, useEffect, useMemo } from "react";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "./components/ui/select";
+} from "../components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "./components/ui/dialog";
-import { Textarea } from "./components/ui/textarea";
-import { Badge } from "./components/ui/badge";
-import { Avatar, AvatarFallback } from "./components/ui/avatar";
-import { Separator } from "./components/ui/separator";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "./components/ui/popover";
-import { cn } from "./lib/utils";
-import React, { useState, useEffect, useMemo } from "react";
+} from "../components/ui/dialog";
+import { Textarea } from "../components/ui/textarea";
+import { Toaster } from "react-hot-toast";
 import { Line } from "react-chartjs-2";
 import { format } from "date-fns";
-import { Toaster } from "react-hot-toast";
-import { Settings } from "lucide-react";
-import { Sun, Moon } from "lucide-react";
-
+import { cn } from "../lib/utils";
+import { useTheme } from "../Theme-provider";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -46,7 +35,6 @@ import {
   Legend,
 } from "chart.js";
 
-// Register ChartJS components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -57,11 +45,6 @@ ChartJS.register(
   Legend
 );
 
-// ✅ Your local imports after libraries
-
-/* ------------------------------------------------------------------ */
-/* ---------------------------- UTILITIES --------------------------- */
-/* ------------------------------------------------------------------ */
 const parseNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 const STORAGE_KEY = "btjournal_entries";
@@ -81,24 +64,13 @@ const saveEntries = (e) => {
   }
 };
 
-const seed = [
-  /* …your seed data… */
-];
+const seed = [];
 
-/* ------------------------------------------------------------------ */
-/* ---------------------------- COMPONENT --------------------------- */
-/* ------------------------------------------------------------------ */
 export default function BacktestJournal() {
-  /* -------------------------- STATE -------------------------- */
-  const [entries, setEntries] = useState(
-    loadEntries().length ? loadEntries() : seed
-  );
-  const [editing, setEditing] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [themeDark, setThemeDark] = useState(true);
+  const { theme } = useTheme();
+  const [entries, setEntries] = useState(loadEntries().length ? loadEntries() : seed);
+  const [editing, setEditing] = useState(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const zellaScore = 0;
-  const save = () => {};
   const [form, setForm] = useState({
     id: null,
     date: new Date().toISOString().slice(0, 10),
@@ -116,7 +88,6 @@ export default function BacktestJournal() {
 
   useEffect(() => saveEntries(entries), [entries]);
 
-  /* -------------------------- CALCS -------------------------- */
   const calcTrade = (t) => {
     const e = parseNum(t.entry),
       s = parseNum(t.stop),
@@ -161,11 +132,10 @@ export default function BacktestJournal() {
   );
   const expectancy = round2(netPnL / derived.length || 0);
 
-  /* -------------------------- CHART DATA -------------------------- */
   const grouped = useMemo(() => {
     const g = {};
     derived.forEach((tr) => {
-      const d = new Date(tr.date);
+      const d = new Date(tr.date || new Date());
       const key =
         equityPeriod === "daily"
           ? format(d, "yyyy-MM-dd")
@@ -187,8 +157,8 @@ export default function BacktestJournal() {
       {
         label: "Equity",
         data: equityDataset,
-        borderColor: "rgba(34,197,94,1)",
-        backgroundColor: "rgba(34,197,94,0.1)",
+        borderColor: "#4B5EAA", // Deep Indigo
+        backgroundColor: "#4B5EAA33", // Indigo with transparency
         fill: true,
         tension: 0.3,
       },
@@ -201,104 +171,114 @@ export default function BacktestJournal() {
     scales: { y: { beginAtZero: false } },
   };
 
-  /* -------------------------- HANDLERS -------------------------- */
-  // Handler functions should be properly declared here if needed
+  const save = () => {
+    const newEntry = {
+      ...form,
+      id: editing || `loc-${Date.now()}`,
+    };
+    if (editing) {
+      setEntries(entries.map((e) => (e.id === editing ? newEntry : e)));
+    } else {
+      setEntries([...entries, newEntry]);
+    }
+    setShowAddDialog(false);
+    setEditing(null);
+    setForm({
+      id: null,
+      date: new Date().toISOString().slice(0, 10),
+      pair: "",
+      direction: "Long",
+      entry: "",
+      stop: "",
+      tp: "",
+      exit: "",
+      size: "",
+      notes: "",
+    });
+  };
 
-  /* ---------------------------------------------------------------- */
-  /* ---------------------------- UI -------------------------------- */
-  /* ---------------------------------------------------------------- */
   return (
     <div
       className={cn(
-        "min-h-screen flex flex-col bg-gray-950 text-gray-100",
-        themeDark ? "dark" : ""
+        "min-h-screen flex flex-col bg-white dark:bg-slate-900 text-gray-700 dark:text-gray-100",
+        theme === "dark" ? "dark" : ""
       )}
     >
       <Toaster />
-      {/* ---------- HEADER ---------- */}
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* ---------- SIDEBAR ---------- */}
-
-        {/* ---------- MAIN CONTENT ---------- */}
+      <div className="flex flex-1 overflow-hidden pt-20">
         <main className="flex-1 overflow-auto p-6 space-y-6">
-          {/* KPI row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="kpi-card">
-              <div className="kpi-title">Net P&L</div>
-              <div className="kpi-value text-green-400">
+            <div className="p-4 rounded-lg bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20 shadow-lg">
+              <div className="text-sm text-gray-700 dark:text-gray-100">Net P&L</div>
+              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
                 ${netPnL.toFixed(2)}
               </div>
             </div>
-            <div className="kpi-card">
-              <div className="kpi-title">Profit Factor</div>
-              <div className="kpi-value">{profitFactor.toFixed(2)}</div>
+            <div className="p-4 rounded-lg bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20 shadow-lg">
+              <div className="text-sm text-gray-700 dark:text-gray-100">Profit Factor</div>
+              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                {profitFactor.toFixed(2)}
+              </div>
             </div>
-            <div className="kpi-card">
-              <div className="kpi-title">R-Multiple</div>
-              <div className="kpi-value">
+            <div className="p-4 rounded-lg bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20 shadow-lg">
+              <div className="text-sm text-gray-700 dark:text-gray-100">R-Multiple</div>
+              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
                 {derived[derived.length - 1]?.rr?.toFixed(2) ?? "0"}
               </div>
             </div>
-            <div className="kpi-card">
-              <div className="kpi-title">Win %</div>
-              <div className="kpi-value">{winRate}%</div>
+            <div className="p-4 rounded-lg bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20 shadow-lg">
+              <div className="text-sm text-gray-700 dark:text-gray-100">Win %</div>
+              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                {winRate}%
+              </div>
             </div>
           </div>
-
-          {/* Calendar + Equity + Stats */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Calendar */}
             <div className="lg:col-span-2">
-              <Card className="calendar-wrapper">
+              <Card className="p-4 bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20 rounded-xl shadow-lg">
                 <CardHeader className="flex items-center justify-between">
-                  <CardTitle>Calendar</CardTitle>
+                  <CardTitle className="text-gray-700 dark:text-gray-100">Calendar</CardTitle>
                   <div className="flex gap-2">
                     <Button
                       variant={equityPeriod === "daily" ? "default" : "outline"}
                       onClick={() => setEquityPeriod("daily")}
+                      className="bg-gray-100 dark:bg-indigo-700 text-gray-700 dark:text-gray-100"
                     >
                       Daily
                     </Button>
                     <Button
-                      variant={
-                        equityPeriod === "weekly" ? "default" : "outline"
-                      }
+                      variant={equityPeriod === "weekly" ? "default" : "outline"}
                       onClick={() => setEquityPeriod("weekly")}
+                      className="bg-gray-100 dark:bg-indigo-700 text-gray-700 dark:text-gray-100"
                     >
                       Weekly
                     </Button>
                     <Button
-                      variant={
-                        equityPeriod === "monthly" ? "default" : "outline"
-                      }
+                      variant={equityPeriod === "monthly" ? "default" : "outline"}
                       onClick={() => setEquityPeriod("monthly")}
+                      className="bg-gray-100 dark:bg-indigo-700 text-gray-700 dark:text-gray-100"
                     >
                       Monthly
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {/* Simple calendar UI – replace with @shadcn/ui calendar if you added it */}
                   <div className="grid grid-cols-7 gap-1 text-center">
-                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                      (d) => (
-                        <div key={d} className="font-semibold text-gray-400">
-                          {d}
-                        </div>
-                      )
-                    )}
-                    {/* Example days */}
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                      <div key={d} className="text-sm text-gray-700 dark:text-gray-100 font-semibold">
+                        {d}
+                      </div>
+                    ))}
                     {Array.from({ length: 35 }, (_, i) => (
                       <div
                         key={i}
                         className={cn(
-                          "p-2 rounded",
+                          "p-2 rounded-lg border border-gray-200 dark:border-gray-400/20",
                           i % 7 === 0
-                            ? "text-red-400"
+                            ? "text-red-600 dark:text-red-400"
                             : i % 7 === 6
-                            ? "text-blue-400"
-                            : ""
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-700 dark:text-gray-100"
                         )}
                       >
                         {i + 1}
@@ -308,87 +288,79 @@ export default function BacktestJournal() {
                 </CardContent>
               </Card>
             </div>
-
-            {/* Equity Curve */}
             <div className="row-span-2">
-              <Card className="chart-wrapper h-full">
+              <Card className="p-4 h-[720px] bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20 rounded-xl shadow-lg">
                 <CardHeader>
-                  <CardTitle>Equity Curve</CardTitle>
+                  <CardTitle className="text-gray-700 dark:text-gray-100">Equity Curve</CardTitle>
                 </CardHeader>
                 <CardContent className="h-64">
                   <Line data={equityChart} options={equityOptions} />
                 </CardContent>
               </Card>
             </div>
-
-            {/* Stats panel */}
             <div className="lg:col-span-2">
-              <Card className="widget">
+              <Card className="p-4 h-[720px] bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20 rounded-xl shadow-lg">
                 <CardHeader>
-                  <CardTitle>Stats Panel</CardTitle>
+                  <CardTitle className="text-gray-700 dark:text-gray-100">Stats Panel</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-4">
                   <div>
-                    <span className="kpi-title">Win Rate</span>
-                    <div className="kpi-value">{winRate}%</div>
+                    <span className="text-sm text-gray-700 dark:text-gray-100">Win Rate</span>
+                    <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{winRate}%</div>
                   </div>
                   <div>
-                    <span className="kpi-title">Total P&L</span>
-                    <div className="kpi-value">${netPnL.toFixed(2)}</div>
+                    <span className="text-sm text-gray-700 dark:text-gray-100">Total P&L</span>
+                    <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">${netPnL.toFixed(2)}</div>
                   </div>
                   <div>
-                    <span className="kpi-title">Profit Factor</span>
-                    <div className="kpi-value">{profitFactor.toFixed(2)}</div>
+                    <span className="text-sm text-gray-700 dark:text-gray-100">Profit Factor</span>
+                    <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{profitFactor.toFixed(2)}</div>
                   </div>
                   <div>
-                    <span className="kpi-title">Expectancy</span>
-                    <div className="kpi-value">${expectancy.toFixed(2)}</div>
+                    <span className="text-sm text-gray-700 dark:text-gray-100">Expectancy</span>
+                    <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">${expectancy.toFixed(2)}</div>
                   </div>
                   <div>
-                    <span className="kpi-title">Trades</span>
-                    <div className="kpi-value">{derived.length}</div>
+                    <span className="text-sm text-gray-700 dark:text-gray-100">Trades</span>
+                    <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{derived.length}</div>
                   </div>
                   <div>
-                    <span className="kpi-title">Zella Score</span>
-                    <div className="kpi-value">{round2(zellaScore)}</div>
+                    <span className="text-sm text-gray-700 dark:text-gray-100">Zella Score</span>
+                    <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{round2(0)}</div>
                   </div>
                 </CardContent>
               </Card>
             </div>
           </div>
-
-          {/* Right-hand widget column */}
           <div className="grid grid-cols-1 gap-4 lg:col-span-1">
-            <Card className="widget">
+            <Card className="p-4 bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20 rounded-xl shadow-lg">
               <CardHeader>
-                <CardTitle>Trade Expectancy</CardTitle>
+                <CardTitle className="text-gray-700 dark:text-gray-100">Trade Expectancy</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="widget-value">${expectancy.toFixed(2)}</div>
+                <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">${expectancy.toFixed(2)}</div>
               </CardContent>
             </Card>
-            <Card className="widget">
+            <Card className="p-4 bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20 rounded-xl shadow-lg">
               <CardHeader>
-                <CardTitle>Account Balance & P&L</CardTitle>
+                <CardTitle className="text-gray-700 dark:text-gray-100">Account Balance & P&L</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="widget-value">
-                  $
-                  {derived[derived.length - 1]?.balance?.toFixed(2) ??
-                    startingBalance}
+                <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
+                  ${derived[derived.length - 1]?.balance?.toFixed(2) ?? startingBalance}
                 </div>
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-gray-700 dark:text-gray-100">
                   P&L: ${netPnL.toFixed(2)}
                 </div>
               </CardContent>
             </Card>
-            <Card className="widget">
+            <Card className="p-4 bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20 rounded-xl shadow-lg">
               <CardHeader>
-                <CardTitle>Zella Score</CardTitle>
+                <CardTitle className="text-gray-700 dark:text-gray-100">Zella Score</CardTitle>
               </CardHeader>
               <CardContent className="text-center">
-                <div className="text-6xl font-bold">{round2(zellaScore)}</div>
-                <div className="flex justify-between text-xs mt-2">
+                <div className="text-6xl font-bold text-indigo-600 dark:text-indigo-400">{round2(0)}</div>
+                <div className="flex justify-between text-xs mt-2 text-gray-700 dark:text-gray-100">
                   <span>Win %</span>
                   <span>Avg win/loss</span>
                   <span>Profit factor</span>
@@ -398,108 +370,118 @@ export default function BacktestJournal() {
           </div>
         </main>
       </div>
-
-      {/* ---------- ADD / EDIT DIALOG ---------- */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="bg-gray-800 text-gray-100">
+        <DialogContent className="bg-white dark:bg-indigo-600 text-gray-700 dark:text-gray-100 border border-gray-200 dark:border-gray-400/20 rounded-2xl shadow-2xl">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit" : "Add"} Trade</DialogTitle>
+            <DialogTitle className="text-gray-700 dark:text-gray-100">{editing ? "Edit" : "Add"} Trade</DialogTitle>
           </DialogHeader>
-          <form onSubmit={save} className="space-y-4">
+          <form onSubmit={(e) => { e.preventDefault(); save(); }} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Date</Label>
+                <Label className="text-gray-700 dark:text-gray-100">Date</Label>
                 <Input
                   type="date"
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  className="bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20"
                 />
               </div>
               <div>
-                <Label>Pair</Label>
+                <Label className="text-gray-700 dark:text-gray-100">Pair</Label>
                 <Input
                   value={form.pair}
                   onChange={(e) =>
                     setForm({ ...form, pair: e.target.value.toUpperCase() })
                   }
+                  className="bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20"
                 />
               </div>
               <div>
-                <Label>Direction</Label>
+                <Label className="text-gray-700 dark:text-gray-100">Direction</Label>
                 <Select
                   value={form.direction}
                   onValueChange={(v) => setForm({ ...form, direction: v })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20">
                     <SelectItem value="Long">Long</SelectItem>
                     <SelectItem value="Short">Short</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Size</Label>
+                <Label className="text-gray-700 dark:text-gray-100">Size</Label>
                 <Input
                   type="number"
                   value={form.size}
                   onChange={(e) => setForm({ ...form, size: e.target.value })}
+                  className="bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20"
                 />
               </div>
               <div>
-                <Label>Entry</Label>
+                <Label className="text-gray-700 dark:text-gray-100">Entry</Label>
                 <Input
                   type="number"
                   step="0.0001"
                   value={form.entry}
                   onChange={(e) => setForm({ ...form, entry: e.target.value })}
+                  className="bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20"
                 />
               </div>
               <div>
-                <Label>Stop</Label>
+                <Label className="text-gray-700 dark:text-gray-100">Stop</Label>
                 <Input
                   type="number"
                   step="0.0001"
                   value={form.stop}
                   onChange={(e) => setForm({ ...form, stop: e.target.value })}
+                  className="bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20"
                 />
               </div>
               <div>
-                <Label>TP</Label>
+                <Label className="text-gray-700 dark:text-gray-100">TP</Label>
                 <Input
                   type="number"
                   step="0.0001"
                   value={form.tp}
                   onChange={(e) => setForm({ ...form, tp: e.target.value })}
+                  className="bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20"
                 />
               </div>
               <div>
-                <Label>Exit</Label>
+                <Label className="text-gray-700 dark:text-gray-100">Exit</Label>
                 <Input
                   type="number"
                   step="0.0001"
                   value={form.exit}
                   onChange={(e) => setForm({ ...form, exit: e.target.value })}
+                  className="bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20"
                 />
               </div>
             </div>
             <div>
-              <Label>Notes</Label>
+              <Label className="text-gray-700 dark:text-gray-100">Notes</Label>
               <Textarea
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                className="bg-white dark:bg-indigo-600 border border-gray-200 dark:border-gray-400/20"
               />
             </div>
             <DialogFooter>
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 onClick={() => setShowAddDialog(false)}
+                className="border border-gray-200 dark:border-gray-400/20 text-gray-700 dark:text-gray-100 bg-white dark:bg-transparent"
               >
                 Cancel
               </Button>
-              <Button type="submit" className="btn-primary">
+              <Button
+                type="submit"
+                className="bg-indigo-600 dark:bg-indigo-400 text-white"
+              >
                 Save
               </Button>
             </DialogFooter>

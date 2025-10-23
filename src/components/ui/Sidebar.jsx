@@ -1,117 +1,192 @@
-// src/components/ui/Sidebar.jsx
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
-  Home,
-  BookOpen,
-  BarChart2,
-  FileText,
-  PlayCircle,
-  Award,
-  Users,
-  Settings,
   Menu,
   X,
+  Home,
+  BookOpen,
+  Activity,
+  FileText,
+  BarChart3,
+  Trophy,
+  Users,
+  Settings,
+  Calculator,
+  UserPlus,
+  Settings2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import { Button } from "./button";
-import { Avatar, AvatarFallback } from "./avatar";
-import { Separator } from "./separator";
-import { cn } from "../../lib/utils";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useTheme } from "../../Theme-provider";
 
-const navItems = [
-  { icon: Home, label: "Dashboard", path: "/" },
-  { icon: BookOpen, label: "Daily Journal", path: "/journal" },
-  { icon: BarChart2, label: "Trades", path: "/trades" },
-  { icon: FileText, label: "Notebook", path: "/notebook" },
-  { icon: PlayCircle, label: "Reports", path: "/reports" },
-  { icon: Award, label: "Challenges", path: "/challenges" },
-  { icon: Users, label: "Mentor Mode", path: "/mentor" },
-  { icon: Settings, label: "Settings", path: "/settings" },
-];
-
-export default function Sidebar({ open = true, setOpen = () => {} }) {
+export default function Sidebar({
+  open,
+  setOpen,
+  accounts,
+  currentAccount,
+  onSwitchAccount,
+  onCreateAccount,
+  onShowManage,
+}) {
+  const { theme } = useTheme();
   const navigate = useNavigate();
-  const location = useLocation();
+  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
+
+  const toggleSidebar = () => {
+    setOpen((prev) => !prev);
+    setIsAccountDropdownOpen(false);
+  };
+
+  const toggleAccountDropdown = () => {
+    if (open) {
+      setIsAccountDropdownOpen(!isAccountDropdownOpen);
+    }
+  };
+
+  const navItems = [
+    { to: "/", icon: Home, label: "Dashboard" },
+    { to: "/journal", icon: BookOpen, label: "Daily Journal" },
+    { to: "/trades", icon: Activity, label: "Trades" },
+    { to: "/notebook", icon: FileText, label: "Notebook" },
+    { to: "/reports", icon: BarChart3, label: "Reports" },
+    { to: "/challenges", icon: Trophy, label: "Challenges" },
+    { to: "/mentor", icon: Users, label: "Mentor Mode" },
+    { to: "/settings", icon: Settings, label: "Settings" },
+    { to: "/backtest", icon: Calculator, label: "Backtest" },
+  ];
 
   return (
-    <aside
-      className={cn(
-        "fixed top-[1rem] left-[4.5rem] z-40 flex flex-col backdrop-blur-xl shadow-2xl border transition-all duration-500 ease-in-out",
-        "bg-white/90 dark:bg-[#0f1724]/95 border-slate-200 dark:border-white/10",
-        open ? "w-44" : "w-14"
-      )}
+    <div
+      className={`fixed left-8 top-20 h-[calc(100vh-2.5rem)] bg-gray-900 dark:bg-gray-800 border-r border-gray-800 shadow-2xl transition-all duration-300 z-[1000] ${
+        open ? "w-48" : "w-16"
+      } ${theme === "dark" ? "dark" : ""}`}
       style={{
-        borderRadius: "1.25rem",
-        height: "calc(100vh - 5rem)",
-        marginTop: "3.3rem",
-        transition: "all 0.4s ease-in-out",
+        minWidth: open ? "12rem" : "4rem",
+        boxShadow: "4px 0 10px rgba(0, 0, 0, 0.3)",
       }}
     >
-      {/* Toggle Button */}
-      <div className="p-3 flex items-center justify-center">
-        <button
-          onClick={() => setOpen((s) => !s)}
-          className="p-2 rounded-md hover:bg-slate-100 dark:hover:bg-white/10 transition"
-        >
-          {open ? (
-            <X className="h-4 w-4 text-slate-500 dark:text-slate-300" />
-          ) : (
-            <Menu className="h-4 w-4 text-slate-500 dark:text-slate-300" />
-          )}
-        </button>
-      </div>
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-end p-3 pt-2">
+          <button
+            onClick={toggleSidebar}
+            className="p-2 rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 transition-all duration-300 flex items-center justify-center"
+          >
+            {open ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 mt-3 space-y-[2px] px-3 overflow-y-auto">
-        {navItems.map((it) => {
-          const active = location.pathname === it.path;
-          return (
-            <div
-              key={it.label}
-              onClick={() => navigate(it.path)}
-              className={cn(
-                "flex items-center w-full cursor-pointer rounded-lg transition-all duration-200 select-none",
-                active
-                  ? "bg-indigo-100 dark:bg-white/10 text-indigo-600 dark:text-indigo-400"
-                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10",
-                !open ? "justify-center p-2" : "gap-3 px-3 py-2"
-              )}
-            >
-              <div className="flex items-center justify-center w-6 h-6">
-                <it.icon
-                  className={cn(
-                    "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-200",
-                    active
-                      ? "text-indigo-600 dark:text-indigo-400"
-                      : "text-slate-500 dark:text-slate-300"
+        {/* ✅ PERFECT ACCOUNT SECTION - SMALLER FONT */}
+        <div className="p-3 border-b border-gray-700">
+          {/* CURRENT ACCOUNT DISPLAY */}
+          <div
+            className={`flex items-center gap-2 p-2 rounded cursor-pointer ${
+              open ? "justify-between" : "justify-center"
+            }`}
+            onClick={toggleAccountDropdown}
+          >
+            <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-bold">
+                {currentAccount?.name?.charAt(0) || "A"}
+              </span>
+            </div>
+            {open && (
+              <>
+                <div className="min-w-0 flex-1">
+                  {/* ✅ SMALLER FONT - text-xs */}
+                  <div className="text-xs font-medium text-gray-200">
+                    {currentAccount?.name || "Account"}
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  {isAccountDropdownOpen ? (
+                    <ChevronUp size={14} className="text-gray-400" />
+                  ) : (
+                    <ChevronDown size={14} className="text-gray-400" />
                   )}
-                />
-              </div>
-              {open && (
-                <span
-                  className={cn(
-                    "text-[13px] leading-[1.2] tracking-wide font-medium whitespace-nowrap transition-colors duration-200",
-                    active
-                      ? "text-indigo-600 dark:text-indigo-400"
-                      : "text-slate-700 dark:text-slate-300"
-                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* ✅ ACCOUNT DROPDOWN - SMALLER FONT */}
+          {open && isAccountDropdownOpen && (
+            <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+              {/* ALL ACCOUNTS - SELECTED HIGHLIGHT */}
+              {accounts.map((account) => (
+                <button
+                  key={account.id}
+                  onClick={() => {
+                    onSwitchAccount(account.id);
+                    setIsAccountDropdownOpen(false);
+                  }}
+                  className={`w-full text-left p-2 rounded text-xs font-normal ${
+                    currentAccount?.id === account.id
+                      ? "bg-gray-700 text-white border-l-2 border-gray-300"
+                      : "text-gray-400 hover:bg-gray-700 hover:text-white"
+                  }`}
                 >
-                  {it.label}
+                  {account.name}
+                </button>
+              ))}
+
+              {/* ✅ BUTTONS - NORMAL GRAY */}
+              <div className="pt-2 border-t border-gray-600 space-y-1">
+                <button
+                  onClick={() => {
+                    onCreateAccount();
+                    setIsAccountDropdownOpen(false);
+                  }}
+                  className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
+                >
+                  + New Account
+                </button>
+                <button
+                  onClick={() => {
+                    onShowManage();
+                    setIsAccountDropdownOpen(false);
+                  }}
+                  className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
+                >
+                  Manage Accounts
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* NAVIGATION ITEMS */}
+        <nav className="flex-1 flex flex-col gap-1 p-3 overflow-y-auto">
+          {navItems.map((item, index) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `flex items-center gap-3 p-2 rounded-lg text-sm transition-all duration-300 ${
+                  isActive
+                    ? "bg-gray-700 text-white shadow-inner"
+                    : "text-gray-400 hover:bg-gray-700 hover:text-white"
+                } ${
+                  open ? "justify-start pl-3" : "justify-center items-center"
+                }`.trim()
+              }
+              style={{
+                marginBottom: index < navItems.length - 1 ? "2px" : "0",
+                minHeight: "48px",
+              }}
+            >
+              <item.icon
+                size={open ? 20 : 24}
+                className={`flex-shrink-0 ${open ? "mr-3" : "mx-auto"}`}
+              />
+              {open && (
+                <span className="whitespace-nowrap overflow-hidden text-ellipsis font-medium">
+                  {item.label}
                 </span>
               )}
-            </div>
-          );
-        })}
-      </nav>
-
-      <Separator className="opacity-20 dark:opacity-10" />
-
-      {/* User Info */}
-      <div className="p-3">
-        <div className="flex items-center gap-2">
-          {open && <div className="text-[11px] leading-tight"></div>}
-        </div>
+            </NavLink>
+          ))}
+        </nav>
       </div>
-    </aside>
+    </div>
   );
 }

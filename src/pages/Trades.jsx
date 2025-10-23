@@ -1,152 +1,261 @@
-// src/pages/Trades.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { format, parseISO } from "date-fns";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTheme } from "../Theme-provider";
+import { Trash2, Eye } from "lucide-react";
 
 export default function Trades() {
+  const { theme } = useTheme();
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchParams] = useSearchParams();
-  const filterDate = searchParams.get("date") || null;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const selectedDate = searchParams.get("date");
+  const [selectedTrade, setSelectedTrade] = useState(null);
+
+  // ✅ DATABASE FETCH + ACCOUNT FILTER
+  const refreshTrades = async () => {
+    setLoading(true);
+    try {
+      const currentId = localStorage.getItem("currentAccountId") || "default";
+      console.log("🚀 TRADES FETCHING FROM DB - ACCOUNT:", currentId);
+      const res = await fetch(
+        `http://localhost:4001/api/trades?accountId=${currentId}`
+      );
+      const data = await res.json();
+      console.log("✅ TRADES LOADED:", data);
+      setTrades(data || []);
+    } catch (err) {
+      console.error("❌ TRADES ERROR:", err);
+      setTrades([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadTrades() {
-      try {
-        const res = await fetch("http://localhost:4001/api/trades");
-        if (!res.ok) throw new Error("Backend unreachable");
-        const data = await res.json();
-
-        if (!cancelled) {
-          setTrades(data);
-          localStorage.setItem("dj_trades", JSON.stringify(data));
-          setLoading(false);
-        }
-      } catch (err) {
-        console.warn("⚠️ Using localStorage fallback:", err);
-        const local = JSON.parse(localStorage.getItem("dj_trades") || "[]");
-        if (!cancelled) {
-          setTrades(local);
-          setLoading(false);
-        }
-      }
-    }
-
-    loadTrades();
-
-    // optional auto-sync every 30s
-    const interval = setInterval(loadTrades, 30000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
+    refreshTrades();
   }, []);
 
-  const grouped = useMemo(() => {
-    return trades.reduce((acc, trade) => {
-      const d =
-        trade.date?.slice(0, 10) || new Date().toISOString().slice(0, 10);
-      if (!acc[d]) acc[d] = [];
-      acc[d].push(trade);
+  const filteredTrades = useMemo(() => {
+    if (!selectedDate) return trades;
+    return trades.filter((t) => t.date?.startsWith(selectedDate));
+  }, [trades, selectedDate]);
+
+  const tradesByDate = useMemo(() => {
+    return filteredTrades.reduce((acc, trade) => {
+      const dateKey = trade.date?.slice(0, 10) || "unknown";
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(trade);
       return acc;
     }, {});
-  }, [trades]);
+  }, [filteredTrades]);
 
-  const dates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
-  const shownDates = filterDate ? [filterDate] : dates;
+  const deleteTrade = async (id) => {
+    const shouldDelete = window.confirm("Delete this trade?");
+    if (!shouldDelete) return;
+
+    try {
+      const currentId = localStorage.getItem("currentAccountId") || "default";
+      await fetch(
+        `http://localhost:4001/api/trades/${id}?accountId=${currentId}`,
+        {
+          method: "DELETE",
+        }
+      );
+      await refreshTrades();
+    } catch (err) {
+      console.error("Delete error:", err);
+    }
+  };
+
+  const viewTrade = (trade) => {
+    setSelectedTrade(trade);
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 text-center">
+        <div
+          className={`text-gray-600 dark:text-gray-400 ${
+            theme === "dark" ? "dark" : ""
+          }`}
+        >
+          Loading trades...
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
-        Trades Journal
-      </h2>
+    <div
+      className={`p-4 sm:p-6 bg-white dark:bg-gray-900 ${
+        theme === "dark" ? "dark" : ""
+      }`}
+    >
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+          Trades
+        </h2>
+        <Button
+          onClick={() => navigate("/trades/new")}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          Add Trade
+        </Button>
+      </div>
 
-      {loading ? (
-        <div>Loading…</div>
+      {/* DAY FILTER */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+          Filter by Date:
+        </label>
+        <select
+          value={selectedDate || ""}
+          onChange={(e) =>
+            setSearchParams(e.target.value ? { date: e.target.value } : {})
+          }
+          className="w-full max-w-md p-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200"
+        >
+          <option value="">All Days</option>
+          {[...new Set(trades.map((t) => t.date?.slice(0, 10)))]
+            .sort((a, b) => new Date(b) - new Date(a))
+            .map((date) => (
+              <option key={date} value={date}>
+                {format(parseISO(date), "MMM dd, yyyy")}
+              </option>
+            ))}
+        </select>
+      </div>
+
+      {/* TRADES BY DAY */}
+      {Object.entries(tradesByDate).length === 0 ? (
+        <Card className="p-6 text-center text-gray-500 dark:text-gray-400">
+          No trades found
+        </Card>
       ) : (
-        <>
-          <div className="space-y-6">
-            {shownDates.length === 0 ? (
-              <div className="p-6 border rounded-md bg-white/80 dark:bg-[#0f1724]">
-                No trades yet.
-              </div>
-            ) : (
-              shownDates.map((date) => {
-                const dayTrades = grouped[date] || [];
-                const profit = dayTrades
-                  .reduce((a, b) => a + Number(b.pnl || 0), 0)
-                  .toFixed(2);
-                const winRate = Math.round(
-                  (dayTrades.filter((t) => Number(t.pnl || 0) > 0).length /
-                    (dayTrades.length || 1)) *
-                    100
-                );
-                return (
-                  <div
-                    key={date}
-                    className="border rounded-lg p-4 bg-white/90 dark:bg-[#0f1724]"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">
-                          {date}
-                        </div>
-                        <div className="text-lg font-semibold">
-                          {dayTrades.length} trades • {winRate}% WR • ${profit}
-                        </div>
+        Object.entries(tradesByDate).map(([date, dayTrades]) => (
+          <div key={date} className="mb-6">
+            <h3 className="text-lg font-semibold mb-3 border-b pb-2 text-gray-800 dark:text-gray-100">
+              {format(parseISO(date), "EEEE, MMMM dd, yyyy")} (
+              {dayTrades.length} trades)
+            </h3>
+            <div className="space-y-3">
+              {dayTrades.map((trade) => (
+                <Card key={trade.id} className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-800 dark:text-gray-100">
+                        {trade.pair || trade.strategy || "N/A"}
                       </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      {dayTrades.map((t) => (
-                        <div
-                          key={t.id}
-                          className="p-3 rounded-md border border-slate-200 dark:border-white/10 flex justify-between items-start bg-white dark:bg-[#071018]"
-                        >
-                          <div>
-                            <div className="text-sm text-slate-500 dark:text-slate-400">
-                              {t.pair} • {t.direction}
-                            </div>
-                            <div className="font-semibold">
-                              Entry: {t.entry} → Exit: {t.exit ?? "—"}
-                            </div>
-                            <div className="text-sm mt-1">
-                              Risk: ${t.risk ?? "—"} • Reward: $
-                              {t.reward ?? "—"} • R:R {t.rr ?? "—"}
-                            </div>
-                            {t.notes && (
-                              <div className="flex gap-2 flex-wrap mt-2">
-                                {t.notes.split(",").map((n, i) => (
-                                  <span
-                                    key={i}
-                                    className="px-2 py-1 rounded-md bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs"
-                                  >
-                                    {n.trim()}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                          <div
-                            className={`font-bold ${
-                              t.pnl >= 0 ? "text-green-500" : "text-red-500"
-                            }`}
-                          >
-                            {t.pnl >= 0
-                              ? `+$${Number(t.pnl).toFixed(2)}`
-                              : `-$${Math.abs(Number(t.pnl)).toFixed(2)}`}
-                          </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Time:{" "}
+                        {trade.date
+                          ? format(parseISO(trade.date), "HH:mm")
+                          : "N/A"}{" "}
+                        | Direction: {trade.direction || "N/A"} | RR:{" "}
+                        {trade.rr || 0}
+                      </div>
+                      <div
+                        className={`text-sm font-medium ${
+                          trade.pnl >= 0
+                            ? "text-green-600 dark:text-green-400"
+                            : "text-red-600 dark:text-red-400"
+                        }`}
+                      >
+                        PnL: ${trade.pnl?.toFixed(2) || 0}
+                      </div>
+                      {trade.notes && (
+                        <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                          📝 {trade.notes.substring(0, 50)}
+                          {trade.notes.length > 50 ? "..." : ""}
                         </div>
-                      ))}
+                      )}
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => viewTrade(trade)}
+                      >
+                        <Eye size={16} className="mr-1" /> View
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => deleteTrade(trade.id)}
+                      >
+                        <Trash2 size={16} />
+                      </Button>
                     </div>
                   </div>
-                );
-              })
-            )}
+                </Card>
+              ))}
+            </div>
           </div>
-        </>
+        ))
+      )}
+
+      {/* TRADE DETAILS MODAL */}
+      {selectedTrade && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] p-4">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+                Trade Details
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedTrade(null)}
+              >
+                ✕
+              </Button>
+            </div>
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <strong>Pair:</strong> {selectedTrade.pair}
+                </div>
+                <div>
+                  <strong>Direction:</strong> {selectedTrade.direction}
+                </div>
+                <div>
+                  <strong>Entry:</strong> ${selectedTrade.entry}
+                </div>
+                <div>
+                  <strong>Exit:</strong> ${selectedTrade.exit}
+                </div>
+                <div>
+                  <strong>Stop Loss:</strong> ${selectedTrade.stopLoss || "N/A"}
+                </div>
+                <div>
+                  <strong>Take Profit:</strong> $
+                  {selectedTrade.takeProfit || "N/A"}
+                </div>
+                <div>
+                  <strong>Risk/Reward:</strong> {selectedTrade.rr || 0}
+                </div>
+                <div>
+                  <strong>PnL:</strong> ${selectedTrade.pnl?.toFixed(2)}
+                </div>
+              </div>
+              {selectedTrade.notes && (
+                <div>
+                  <strong>Notes:</strong>
+                  <p className="mt-1 p-3 bg-gray-50 dark:bg-gray-700 rounded whitespace-pre-wrap">
+                    {selectedTrade.notes}
+                  </p>
+                </div>
+              )}
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Date: {format(parseISO(selectedTrade.date), "PPPp")}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

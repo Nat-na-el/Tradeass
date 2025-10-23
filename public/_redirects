@@ -6,3 +6,43 @@
   from = "/*"
   to = "/index.html"
   status = 200
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadTrades() {
+    try {
+      const res = await fetch("http://localhost:4001/api/trades");
+      if (!res.ok) throw new Error("Backend unreachable");
+      const data = await res.json();
+
+      if (!cancelled) {
+        if (data && data.length > 0) {
+          setTrades(data);
+          localStorage.setItem("dj_trades", JSON.stringify(data));
+        } else {
+          // ⛔ If backend returns empty, keep old localStorage
+          const cached = JSON.parse(localStorage.getItem("dj_trades") || "[]");
+          setTrades(cached);
+        }
+        setLoading(false);
+      }
+    } catch (err) {
+      console.warn("⚠️ Using localStorage fallback:", err);
+      const local = JSON.parse(localStorage.getItem("dj_trades") || "[]");
+      if (!cancelled) {
+        setTrades(local);
+        setLoading(false);
+      }
+    }
+  }
+
+  loadTrades();
+
+  // Optional: auto-sync every 30s
+  const interval = setInterval(loadTrades, 30000);
+
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
+}, []);

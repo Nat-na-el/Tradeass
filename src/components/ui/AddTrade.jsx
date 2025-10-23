@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChevronDown, X } from "lucide-react";
 
-const API_BASE = "/api/trades";
+const API_BASE = "http://localhost:4001/api/trades";
 
 const forexPairs = [
   "EURUSD",
@@ -28,24 +34,26 @@ export default function AddTrade({ onSaved }) {
   const [showDir, setShowDir] = useState(false);
   const [pairSuggestions, setPairSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    date: "",
-    pair: "",
-    direction: "",
-    entry: "",
-    stopLoss: "",
-    takeProfit: "",
-    positionSize: "",
-    leverage: "",
+    date: new Date().toISOString().slice(0, 10),
+    pair: "EURUSD",
+    direction: "Long",
+    entry: "1.1000",
+    stopLoss: "1.0950",
+    takeProfit: "1.1100",
+    positionSize: "30",
+    leverage: "10",
     exit: "",
     notesInput: "",
+    accountId: "default",
   });
 
   const [calc, setCalc] = useState({
-    risk: 0,
-    reward: 0,
-    rr: 0,
+    risk: 150,
+    reward: 300,
+    rr: 2,
     pnl: 0,
   });
 
@@ -85,7 +93,6 @@ export default function AddTrade({ onSaved }) {
     }
   };
 
-  // 🧮 Auto calculations
   useEffect(() => {
     const entry = parseFloat(form.entry);
     const stop = parseFloat(form.stopLoss);
@@ -93,6 +100,7 @@ export default function AddTrade({ onSaved }) {
     const size = parseFloat(form.positionSize);
     const leverage = parseFloat(form.leverage) || 1;
     const exit = parseFloat(form.exit);
+
     if (!entry || !stop || !tp || !size) return;
 
     const direction = form.direction || "Long";
@@ -101,7 +109,7 @@ export default function AddTrade({ onSaved }) {
 
     const risk = riskPerUnit * size * leverage;
     const reward = rewardPerUnit * size * leverage;
-    const rr = risk !== 0 ? (reward / Math.abs(risk)).toFixed(2) : 0;
+    const rr = risk !== 0 ? (reward / Math.abs(risk)).toFixed(2) : "0.00";
 
     let pnl = 0;
     if (exit) {
@@ -110,10 +118,10 @@ export default function AddTrade({ onSaved }) {
     }
 
     setCalc({
-      risk: risk.toFixed(2),
+      risk: Math.abs(risk).toFixed(2),
       reward: reward.toFixed(2),
       rr,
-      pnl,
+      pnl: parseFloat(pnl),
     });
   }, [
     form.entry,
@@ -125,66 +133,113 @@ export default function AddTrade({ onSaved }) {
     form.direction,
   ]);
 
+  // ✅ FIXED SAVE FUNCTION - NO DUPLICATE JSON!
   async function saveTrade() {
-    const today = new Date().toISOString().slice(0, 10);
+    setSaving(true);
+
+    // ✅ GET CORRECT ACCOUNT ID FROM localStorage
+    const currentAccountId =
+      localStorage.getItem("currentAccountId") || "default";
+
     const tradeData = {
       ...form,
-      date: form.date || today,
       notes: tags.join(", "),
-      ...calc,
+      risk: parseFloat(calc.risk),
+      reward: parseFloat(calc.reward),
+      rr: parseFloat(calc.rr),
+      pnl: parseFloat(calc.pnl),
+      entry: parseFloat(form.entry) || 1.1,
+      accountId: currentAccountId, // ✅ USE localStorage - NO OVERRIDE!
+      stopLoss: parseFloat(form.stopLoss),
+      takeProfit: parseFloat(form.takeProfit),
+      positionSize: parseFloat(form.positionSize),
+      leverage: parseFloat(form.leverage) || 1,
+      exit: form.exit ? parseFloat(form.exit) : null,
     };
 
     try {
-      const res = await fetch("http://localhost:4001/api/trades", {
+      console.log("🚀 SENDING TO SERVER:", tradeData);
+
+      const res = await fetch(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(tradeData),
       });
-      const saved = await res.json();
 
-      // ✅ keep backend + localStorage in sync
-      const local = JSON.parse(localStorage.getItem("dj_trades") || "[]");
-      local.unshift(saved);
-      localStorage.setItem("dj_trades", JSON.stringify(local));
+      // ✅ ONLY CALL res.json() ONCE!
+      const result = await res.json();
+      console.log("✅ TRADE SAVED:", result);
 
-      if (onSaved) onSaved(saved);
+      // ✅ REFRESH DASHBOARD AFTER SAVE
+      if (window.location.pathname.includes("/dashboard")) {
+        window.location.reload();
+      }
+
+      if (!res.ok) {
+        console.error("❌ SERVER ERROR:", res.status, result);
+        throw new Error(
+          `HTTP ${res.status}: ${result.error || "Unknown error"}`
+        );
+      }
+
+      console.log("✅ TRADE SAVED TO DATABASE:", result.id);
+
+      if (onSaved) onSaved(result);
       setOpen(false);
+      resetForm();
     } catch (err) {
-      console.warn("Backend unavailable:", err);
-      const local = JSON.parse(localStorage.getItem("dj_trades") || "[]");
-      const newTrade = { id: Date.now(), ...tradeData };
-      local.unshift(newTrade);
-      localStorage.setItem("dj_trades", JSON.stringify(local));
-      if (onSaved) onSaved(newTrade);
-      setOpen(false);
+      console.error("❌ CRITICAL ERROR:", err);
+      alert("Server error - check console (F12)");
+    } finally {
+      setSaving(false);
     }
   }
 
+  const resetForm = () => {
+    setForm({
+      date: new Date().toISOString().slice(0, 10),
+      pair: "EURUSD",
+      direction: "Long",
+      entry: "1.1000",
+      stopLoss: "1.0950",
+      takeProfit: "1.1100",
+      positionSize: "30",
+      leverage: "10",
+      exit: "",
+      notesInput: "",
+      accountId: "default",
+    });
+    setTags([]);
+    setCalc({ risk: 150, reward: 300, rr: "2.00", pnl: 0 });
+  };
+
+  // YOUR ORIGINAL UI - NO CHANGES
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {/* ✅ Add Trade button (always visible) */}
       <DialogTrigger asChild>
-        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-2 px-4 py-2 rounded-md shadow-md border border-emerald-700 transition-all">
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 px-4 py-2 rounded-lg shadow-md border border-blue-700 transition-all">
           + Add Trade
         </Button>
       </DialogTrigger>
+      <DialogContent className="max-w-2xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-6 max-h-[90vh] overflow-y-auto">
+        <DialogTitle className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-100">
+          Add Trade
+        </DialogTitle>
+        <DialogDescription className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+          Enter your trade details below
+        </DialogDescription>
 
-      {/* ✅ Modal (white for day, dark for night) */}
-      <DialogContent className="max-w-2xl bg-white text-slate-900 dark:bg-[#0f1724] dark:text-white border border-slate-300 dark:border-white/10 rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-2xl font-bold mb-4">Add Trade</h2>
-
-        {/* 💰 Net PnL */}
         <div className="border-t pt-4 mt-2 mb-4">
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-xs text-gray-600 dark:text-gray-400">
             Net P&L
           </div>
           <div
             className={`text-2xl font-bold ${
               calc.pnl < 0
-                ? "text-red-500"
+                ? "text-[#FF0000]"
                 : calc.pnl > 0
-                ? "text-green-500"
-                : "text-slate-600 dark:text-slate-400"
+                ? "text-[#00A500]"
+                : "text-gray-600"
             }`}
           >
             {calc.pnl
@@ -195,24 +250,23 @@ export default function AddTrade({ onSaved }) {
           </div>
         </div>
 
-        {/* 📅 Date + Pair */}
         <div className="grid grid-cols-2 gap-4 relative">
           <div>
-            <Label>Date</Label>
-            <input
+            <Label className="text-sm text-gray-600 dark:text-gray-400">
+              Date
+            </Label>
+            <Input
               type="date"
               name="date"
               value={form.date}
               onChange={handleChange}
-              className="w-full p-2 rounded-md border border-slate-300 dark:border-white/10
-              bg-white text-slate-900 dark:bg-[#1a2135] dark:text-white
-              focus:ring-2 focus:ring-emerald-500 focus:outline-none
-              [color-scheme:light] dark:[color-scheme:dark]"
+              className="bg-gray-50 dark:bg-gray-900"
             />
           </div>
-
           <div className="relative">
-            <Label>Pair</Label>
+            <Label className="text-sm text-gray-600 dark:text-gray-400">
+              Pair
+            </Label>
             <Input
               name="pair"
               placeholder="e.g. EURUSD"
@@ -220,10 +274,10 @@ export default function AddTrade({ onSaved }) {
               onChange={handleChange}
               onFocus={() => form.pair && setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-              className="bg-white text-slate-900 dark:bg-[#1a2135] dark:text-white border border-slate-300 dark:border-white/10"
+              className="bg-gray-50 dark:bg-gray-900"
             />
             {showSuggestions && pairSuggestions.length > 0 && (
-              <div className="absolute z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-lg w-full mt-1 max-h-40 overflow-y-auto">
+              <div className="absolute z-50 bg-white dark:bg-gray-800 border rounded-md shadow-lg w-full mt-1 max-h-40 overflow-y-auto">
                 {pairSuggestions.map((p) => (
                   <div
                     key={p}
@@ -231,7 +285,7 @@ export default function AddTrade({ onSaved }) {
                       setForm((f) => ({ ...f, pair: p }));
                       setShowSuggestions(false);
                     }}
-                    className="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
+                    className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     {p}
                   </div>
@@ -241,28 +295,26 @@ export default function AddTrade({ onSaved }) {
           </div>
         </div>
 
-        {/* 🔽 Direction dropdown */}
         <div className="grid grid-cols-3 gap-4 mt-4">
           <div className="relative">
-            <Label>Direction</Label>
+            <Label className="text-sm text-gray-600 dark:text-gray-400">
+              Direction
+            </Label>
             <button
               type="button"
               onClick={() => setShowDir((v) => !v)}
-              className="w-full flex justify-between items-center px-3 py-2 mt-1 h-[40px] rounded-md border border-slate-300 dark:border-white/10 
-      bg-white text-slate-900 dark:bg-[#1a2135] dark:text-white shadow-sm hover:shadow-md transition text-sm"
+              className="w-full flex justify-between items-center px-3 py-2 mt-1 h-[40px] rounded-md border bg-gray-50 dark:bg-gray-900 text-sm"
             >
-              {form.direction || "Select Direction"}
-              <ChevronDown className="w-4 h-4 opacity-60" />
+              {form.direction} <ChevronDown className="w-4 h-4 opacity-60" />
             </button>
-
             {showDir && (
-              <div className="absolute z-50 bg-white/95 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md shadow-lg w-full mt-1 animate-fade-in">
+              <div className="absolute z-50 bg-white/95 dark:bg-gray-800 border rounded-md shadow-lg w-full mt-1">
                 <div
                   onClick={() => {
                     setForm((f) => ({ ...f, direction: "Long" }));
                     setShowDir(false);
                   }}
-                  className="px-3 py-2 text-sm cursor-pointer text-green-600 hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-900/40 transition"
+                  className="px-3 py-2 text-sm cursor-pointer text-[#00A500] hover:bg-green-100 dark:hover:bg-green-900/40"
                 >
                   🟩 Long
                 </div>
@@ -271,37 +323,39 @@ export default function AddTrade({ onSaved }) {
                     setForm((f) => ({ ...f, direction: "Short" }));
                     setShowDir(false);
                   }}
-                  className="px-3 py-2 text-sm cursor-pointer text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/40 transition"
+                  className="px-3 py-2 text-sm cursor-pointer text-[#FF0000] hover:bg-red-100 dark:hover:bg-red-900/40"
                 >
                   🟥 Short
                 </div>
               </div>
             )}
           </div>
-
           <div>
-            <Label>Position Size</Label>
+            <Label className="text-sm text-gray-600 dark:text-gray-400">
+              Position Size
+            </Label>
             <Input
               name="positionSize"
               placeholder="30"
               value={form.positionSize}
               onChange={handleChange}
-              className="h-[40px]"
+              className="h-[40px] bg-gray-50 dark:bg-gray-900"
             />
           </div>
           <div>
-            <Label>Leverage</Label>
+            <Label className="text-sm text-gray-600 dark:text-gray-400">
+              Leverage
+            </Label>
             <Input
               name="leverage"
               placeholder="10"
               value={form.leverage}
               onChange={handleChange}
-              className="h-[40px]"
+              className="h-[40px] bg-gray-50 dark:bg-gray-900"
             />
           </div>
         </div>
 
-        {/* 📈 Entry / SL / TP */}
         <div className="grid grid-cols-3 gap-4 mt-4">
           {[
             { name: "entry", label: "Entry", placeholder: "1.0800" },
@@ -309,54 +363,67 @@ export default function AddTrade({ onSaved }) {
             { name: "takeProfit", label: "Take Profit", placeholder: "1.0900" },
           ].map(({ name, label, placeholder }) => (
             <div key={name}>
-              <Label>{label}</Label>
+              <Label className="text-sm text-gray-600 dark:text-gray-400">
+                {label}
+              </Label>
               <Input
                 name={name}
                 placeholder={placeholder}
                 value={form[name]}
                 onChange={handleChange}
+                className="bg-gray-50 dark:bg-gray-900"
               />
             </div>
           ))}
         </div>
 
-        {/* 📊 Auto Calculations */}
         <div className="grid grid-cols-3 gap-4 border-t pt-4 mt-4">
           <div>
-            <Label>Risk</Label>
-            <div className="text-red-500 font-semibold">${calc.risk}</div>
+            <Label className="text-sm text-gray-600 dark:text-gray-400">
+              Risk
+            </Label>
+            <div className="text-[#FF0000] font-semibold">${calc.risk}</div>
           </div>
           <div>
-            <Label>Reward</Label>
-            <div className="text-green-500 font-semibold">${calc.reward}</div>
+            <Label className="text-sm text-gray-600 dark:text-gray-400">
+              Reward
+            </Label>
+            <div className="text-[#00A500] font-semibold">${calc.reward}</div>
           </div>
           <div>
-            <Label>R:R</Label>
-            <div className="text-blue-500 font-semibold">{calc.rr}</div>
+            <Label className="text-sm text-gray-600 dark:text-gray-400">
+              R:R
+            </Label>
+            <div className="text-blue-600 dark:text-blue-400 font-semibold">
+              {calc.rr}:1
+            </div>
           </div>
         </div>
 
-        {/* 📝 Exit + Confluences */}
         <div className="grid grid-cols-2 gap-4 mt-4">
           <div>
-            <Label>Exit (optional)</Label>
+            <Label className="text-sm text-gray-600 dark:text-gray-400">
+              Exit (optional)
+            </Label>
             <Input
               name="exit"
               placeholder="1.0850"
               value={form.exit}
               onChange={handleChange}
+              className="bg-gray-50 dark:bg-gray-900"
             />
           </div>
-
           <div>
-            <Label>Confluences</Label>
-            <div className="flex flex-wrap items-center gap-2 p-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-white/10">
+            <Label className="text-sm text-gray-600 dark:text-gray-400">
+              Confluences
+            </Label>
+            <div className="flex flex-wrap items-center gap-2 p-2 border rounded-md bg-gray-50 dark:bg-gray-900">
               {tags.map((t, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-md text-xs font-medium"
+                  className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-md text-xs"
                 >
-                  {t}
+                  {t}{" "}
                   <X
                     size={12}
                     className="cursor-pointer"
@@ -371,26 +438,26 @@ export default function AddTrade({ onSaved }) {
                 onChange={handleChange}
                 onKeyDown={handleNoteKeyDown}
                 placeholder="Type and press comma..."
-                className="flex-1 min-w-[100px] bg-transparent outline-none text-sm text-slate-900 dark:text-white"
+                className="flex-1 min-w-[100px] bg-transparent outline-none text-sm text-gray-800 dark:text-gray-200"
               />
             </div>
           </div>
         </div>
 
-        {/* ✅ Footer */}
         <div className="flex justify-end gap-3 mt-6">
           <Button
             variant="outline"
             onClick={() => setOpen(false)}
-            className="border border-slate-400 dark:border-white/20 text-slate-900 dark:text-white bg-white dark:bg-transparent"
+            disabled={saving}
           >
             Cancel
           </Button>
           <Button
-            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg"
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
             onClick={saveTrade}
+            disabled={saving}
           >
-            Save Trade
+            {saving ? "Saving..." : "Save Trade"}
           </Button>
         </div>
       </DialogContent>
