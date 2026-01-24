@@ -116,7 +116,10 @@ const handleLogout = async () => {
               </>
             )}
           </div>
-
+<Button variant="ghost" onClick={handleLogout} className="w-full justify-start">
+  <LogOut className="h-4 w-4 mr-2" />
+  Logout
+</Button>
           {/* ✅ ACCOUNT DROPDOWN - SMALLER FONT */}
           {open && isAccountDropdownOpen && (
             <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
