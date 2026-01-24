@@ -44,7 +44,15 @@ function FloatingWidgets({ currentAccount }) {
     localStorage.getItem(`${currentId}_journals`) || "[]",
   );
   const notes = JSON.parse(localStorage.getItem(`${currentId}_notes`) || "[]");
+const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    setIsLoggedIn(!!user);
+    if (user) localStorage.setItem('currentAccountId', user.uid);
+  });
+  return unsubscribe;
+}, []);
   const totalTrades = trades.length;
   const totalJournals = journals.length;
   const totalNotes = notes.length;
