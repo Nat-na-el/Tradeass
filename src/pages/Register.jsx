@@ -16,23 +16,51 @@ export default function Register() {
   // Register with email + password
   const handleEmailRegister = async (e) => {
     e.preventDefault();
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       localStorage.setItem('currentAccountId', userCredential.user.uid);
+      createUserAccount(userCredential.user.uid, email); // Auto-create separate data
       navigate('/');
     } catch (err) {
       setError(err.message);
     }
   };
 
-  // Register with Google (same as login, but for new users)
+  // Register with Google
   const handleGoogleRegister = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       localStorage.setItem('currentAccountId', result.user.uid);
+      createUserAccount(result.user.uid, result.user.email); // Auto-create separate data
       navigate('/');
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  // Auto-create local account entry for new user (separate trades/notes)
+  const createUserAccount = (uid, email) => {
+    const accounts = JSON.parse(localStorage.getItem('accounts') || '[]');
+    if (!accounts.find(a => a.id === uid)) {
+      const newAccount = {
+        id: uid,
+        name: email.split('@')[0], // e.g., "abebech" from email
+        startingBalance: 10000,
+        totalPnL: 0,
+        createdAt: new Date().toISOString(),
+      };
+      accounts.unshift(newAccount);
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+
+      // Create empty data for this user (separate from others)
+      localStorage.setItem(`${uid}_trades`, JSON.stringify([]));
+      localStorage.setItem(`${uid}_notes`, JSON.stringify([]));
+      localStorage.setItem(`${uid}_journals`, JSON.stringify([]));
+      localStorage.setItem(`dashboard_${uid}`, JSON.stringify({}));
     }
   };
 
@@ -41,9 +69,7 @@ export default function Register() {
       <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-xl p-8">
         <h1 className="text-3xl font-bold text-center mb-8">Create Tradeass Account</h1>
 
-        {error && (
-          <p className="text-red-500 text-center mb-6">{error}</p>
-        )}
+        {error && <p className="text-red-500 text-center mb-6">{error}</p>}
 
         <form onSubmit={handleEmailRegister} className="space-y-5">
           <div>
@@ -74,7 +100,7 @@ export default function Register() {
           </div>
 
           <Button type="submit" className="w-full bg-green-600 hover:bg-green-700 mt-2">
-            Create Account with Email
+            Create Account
           </Button>
         </form>
 
