@@ -6,6 +6,9 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
+import { Navigate } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './firebase'; // Adjust path
 import { ThemeProvider, useTheme } from "./Theme-provider";
 import { Button } from "./components/ui/button";
 import Sidebar from "./components/ui/Sidebar";
