@@ -586,7 +586,6 @@ export default function App() {
                     minHeight: "calc(100vh - 4.5rem)",
                   }}
                 >
-                
                   <Routes>
                     {/* Login page is always accessible */}
                     <Route path="/login" element={<Login />} />
@@ -602,6 +601,7 @@ export default function App() {
                         )
                       }
                     />
+                    <Route path="/register" element={<Register />} />
                     <Route
                       path="/journal"
                       element={
