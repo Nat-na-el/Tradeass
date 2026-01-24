@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+import React, { useState, useEffect, createContext, useContext, useCallback, useMemo } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -7,17 +7,23 @@ import {
   useNavigate,
   Navigate,
 } from "react-router-dom";
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth } from './firebase'; // Adjust path if needed
+import { onAuthStateChanged, signOut, updateProfile } from 'firebase/auth';
+import { auth } from './firebase'; // Your Firebase config file — make sure it's correct
 import { ThemeProvider, useTheme } from "./Theme-provider";
 import { Button } from "./components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "./components/ui/card";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Badge } from "./components/ui/badge";
 import { Progress } from "./components/ui/progress";
 import { Separator } from "./components/ui/separator";
 import { Skeleton } from "./components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
+import { Switch } from "./components/ui/switch";
+import { Checkbox } from "./components/ui/checkbox";
+import { Avatar, AvatarFallback, AvatarImage } from "./components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
 import Sidebar from "./components/ui/Sidebar";
 import Topbar from "./components/ui/Topbar";
 import Dashboard from "./pages/Dashboard";
@@ -32,15 +38,13 @@ import BacktestJournal from "./pages/BacktestJournal";
 import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
-import Register from "./pages/Register"; // Import Register
-import Profile from "./pages/Profile"; // New Profile page for account settings
-import Analytics from "./pages/Analytics"; // New Analytics page
-import { LogOut, User, Settings, Bell, HelpCircle, CreditCard, Shield, Crown, Clock, Database, TrendingUp, TrendingDown, Target, Award, PlayCircle, FileText, LineChart } from "lucide-react";
+import Register from "./pages/Register"; // Full import for register
+import { LogOut, User, Settings, Bell, HelpCircle, CreditCard, Shield, Crown, Clock, Database, TrendingUp, TrendingDown, Target, Award, PlayCircle, FileText, LineChart, AlertTriangle, CheckCircle, Edit3, Trash2, Download, Upload, Filter, Search, Plus, Minus, ArrowUp, ArrowDown, BarChart2, PieChart, DollarSign, Percent, Calendar, Clock as ClockIcon, Activity, Zap, Star, Heart, Bookmark, Share2, Mail, Phone, MapPin, Globe, Code, Database as DatabaseIcon, Server, Layers, Package, ShoppingBag, Users as UsersIcon, UserCheck, Lock, Unlock, Key, Eye, EyeOff, Copy, Clipboard, ClipboardCheck, File, FileText as FileTextIcon, Folder, FolderOpen, Image, Video, Music, Mic, Volume, Volume2, VolumeX, Speaker, Headphones, Mic2, Volume1, SkipBack, Play, Pause, SkipForward, RotateCw, RotateCcw, RefreshCw, RefreshCcw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown, ArrowLeft, ArrowRight, ArrowUpRight, ArrowDownRight, CornerDownLeft, CornerDownRight, CornerLeftUp, CornerRightUp, CornerUpLeft, CornerUpRight, ArrowUpLeft, ArrowUpRightFromSquare, ExternalLink, Maximize, Maximize2, Minimize, Minimize2, Move, Layout, Grid, Grid3x3, LayoutGrid, LayoutList, LayoutKanban, LayoutDashboard, LayoutGrid as LayoutGridIcon, LayoutList as LayoutListIcon, LayoutKanban as LayoutKanbanIcon, LayoutDashboard as LayoutDashboardIcon, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, PanelTopClose, PanelTopOpen, PanelBottomClose, PanelBottomOpen, SplitHorizontal, SplitVertical, Grid2x2, Grid3x3 as Grid3x3Icon, Layout, LayoutList as LayoutList2, LayoutGrid as LayoutGrid2, LayoutKanban as LayoutKanban2, LayoutDashboard as LayoutDashboard2, Sidebar, SidebarClose as SidebarCloseIcon, SidebarOpen as SidebarOpenIcon, PanelLeft as PanelLeftIcon, PanelRight as PanelRightIcon, PanelTop as PanelTopIcon, PanelBottom as PanelBottomIcon, Split, SplitHorizontal as SplitHorizontalIcon, SplitVertical as SplitVerticalIcon, Grid, Grid2x2 as Grid2x2Icon, Grid3x3 as Grid3x3Icon2, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, Split, SplitHorizontal, SplitVertical, Grid, Grid2x2, Grid3x3, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, Split, SplitHorizontal, SplitVertical, Grid, Grid2x2, Grid3x3, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, Split, SplitHorizontal, SplitVertical, Grid, Grid2x2, Grid3x3, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, Split, SplitHorizontal, SplitVertical, Grid, Grid2x2, Grid3x3, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, Split, SplitHorizontal, SplitVertical, Grid, Grid2x2, Grid3x3, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, Split, SplitHorizontal, SplitVertical, Grid, Grid2x2, Grid3x3, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
 import { cn } from "./lib/utils";
 
-// Auth Context for global state management
+// Auth Context for global state management (user, login state, logout)
 const AuthContext = createContext();
 
 export const useAuth = () => {
@@ -51,7 +55,7 @@ export const useAuth = () => {
   return context;
 };
 
-// Auth Provider component for wrapping the app
+// Auth Provider component (wraps the app, manages Firebase auth state)
 function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -68,17 +72,28 @@ function AuthProvider({ children }) {
       }
       setLoading(false);
     });
-
     return unsubscribe;
   }, []);
 
   const logout = async () => {
     try {
       await signOut(auth);
-      toast.success('Logged out successfully');
+      toast.success('Logged out successfully!');
     } catch (err) {
       toast.error('Logout failed');
       console.error('Logout error:', err);
+    }
+  };
+
+  const updateUserProfile = async (updates) => {
+    if (!user) return;
+    try {
+      await updateProfile(user, updates);
+      setUser({ ...user, ...updates });
+      toast.success('Profile updated!');
+    } catch (err) {
+      toast.error('Update failed');
+      console.error('Profile update error:', err);
     }
   };
 
@@ -87,12 +102,33 @@ function AuthProvider({ children }) {
     loading,
     isLoggedIn,
     logout,
+    updateUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// Enhanced Floating Widgets with animations and Firebase integration
+// Protected Route Component (locks pages behind login, with loading spinner)
+function ProtectedRoute({ children }) {
+  const { isLoggedIn, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full"
+        />
+        <p className="ml-2 text-sm text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  return isLoggedIn ? children : <Navigate to="/login" replace />;
+}
+
+// Enhanced Floating Widgets with animations, Firebase user info, and quick actions
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
   const { theme } = useTheme();
@@ -102,8 +138,8 @@ function FloatingWidgets({ currentAccount }) {
 
   if (!shouldShow || !currentAccount) return null;
 
-  // Fetch real data from Firebase or localStorage (expandable to Firestore)
-  const currentId = localStorage.getItem("currentAccountId") || user?.uid;
+  // Fetch real data from localStorage (per user UID for separation)
+  const currentId = localStorage.getItem("currentAccountId") || user?.uid || 'default';
   const trades = JSON.parse(localStorage.getItem(`${currentId}_trades`) || "[]");
   const journals = JSON.parse(localStorage.getItem(`${currentId}_journals`) || "[]");
   const notes = JSON.parse(localStorage.getItem(`${currentId}_notes`) || "[]");
@@ -119,7 +155,7 @@ function FloatingWidgets({ currentAccount }) {
   const wins = trades.filter(t => t.pnl > 0).length;
   const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : 0;
 
-  // Animation variants for motion
+  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -150,19 +186,20 @@ function FloatingWidgets({ currentAccount }) {
         maxHeight: "70vh",
       }}
     >
-      {/* ACCOUNT NAME WITH USER AVATAR */}
+      {/* ACCOUNT NAME WITH USER AVATAR & EMAIL */}
       <motion.div variants={itemVariants} className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-bold">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user?.photoURL} />
+            <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold">
               {user?.email?.charAt(0).toUpperCase() || currentAccount?.name?.charAt(0) || "A"}
-            </span>
-          </div>
+            </AvatarFallback>
+          </Avatar>
           <div className="min-w-0 flex-1">
             <div className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
               {user?.displayName || user?.email?.split('@')[0] || currentAccount?.name || "Account"}
             </div>
-            <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+            <div className="text-[8px] text-gray-500 dark:text-gray-400 truncate">
               {user?.email || "User"}
             </div>
           </div>
@@ -171,7 +208,7 @@ function FloatingWidgets({ currentAccount }) {
 
       <Separator className="my-1" />
 
-      {/* TOTAL P&L WITH TREND INDICATOR */}
+      {/* TOTAL P&L WITH TREND & BADGE */}
       <motion.div variants={itemVariants} className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-[10px] text-gray-700 dark:text-gray-300 flex items-center justify-between">
           <span>Total P&L</span>
@@ -189,13 +226,13 @@ function FloatingWidgets({ currentAccount }) {
 
       <Separator className="my-1" />
 
-      {/* CURRENT BALANCE WITH PROGRESS */}
+      {/* CURRENT BALANCE WITH PROGRESS BAR */}
       <motion.div variants={itemVariants} className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-[10px] text-gray-700 dark:text-gray-300">Current Balance</div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">
           ${currentBalance.toFixed(2)}
         </div>
-        <Progress value={(totalPnL / currentAccount.startingBalance * 100) || 0} className="mt-1 h-1" />
+        <Progress value={Math.min((totalPnL / currentAccount.startingBalance * 100) || 0, 100)} className="mt-1 h-1" />
         <div className="text-[8px] text-gray-500 dark:text-gray-400 flex justify-between">
           <span>0</span>
           <span>Target</span>
@@ -210,45 +247,36 @@ function FloatingWidgets({ currentAccount }) {
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">
           {totalTrades}
         </div>
-        <div className="text-[10px] text-green-600 dark:text-green-400 mt-1">
+        <div className="text-[10px] text-purple-600 dark:text-purple-400 mt-1">
           Win Rate: {winRate}%
         </div>
       </motion.div>
 
       <Separator className="my-1" />
 
-      {/* TOTAL JOURNALS */}
+      {/* TOTAL JOURNALS & NOTES */}
       <motion.div variants={itemVariants} className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Journals</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">
-          {totalJournals}
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Journals & Notes</div>
+        <div className="flex justify-between text-base font-bold text-gray-800 dark:text-gray-200">
+          <span>{totalJournals}</span>
+          <span>{totalNotes}</span>
         </div>
       </motion.div>
 
-      <Separator className="my-1" />
-
-      {/* TOTAL NOTES */}
-      <motion.div variants={itemVariants} className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Notes</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">
-          {totalNotes}
-        </div>
-      </motion.div>
-
-      {/* QUICK ACTIONS */}
+      {/* QUICK ACTIONS WITH ICONS */}
       <Separator className="my-2" />
       <motion.div variants={itemVariants} className="p-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-800/50 shadow-lg">
         <div className="text-[10px] text-blue-700 dark:text-blue-300 font-medium mb-2">Quick Actions</div>
         <div className="space-y-1">
-          <Button variant="ghost" size="sm" className="justify-start text-xs w-full">
+          <Button variant="ghost" size="sm" className="justify-start text-xs w-full" onClick={() => toast('Deposit feature coming soon!')}>
             <CreditCard className="h-3 w-3 mr-2" />
             Deposit
           </Button>
-          <Button variant="ghost" size="sm" className="justify-start text-xs w-full">
+          <Button variant="ghost" size="sm" className="justify-start text-xs w-full" onClick={() => navigate('/settings')}>
             <Shield className="h-3 w-3 mr-2" />
             Risk Settings
           </Button>
-          <Button variant="ghost" size="sm" className="justify-start text-xs w-full">
+          <Button variant="ghost" size="sm" className="justify-start text-xs w-full" onClick={() => toast('Upgrade to Pro for advanced features!')}>
             <Crown className="h-3 w-3 mr-2" />
             Upgrade Pro
           </Button>
@@ -258,7 +286,7 @@ function FloatingWidgets({ currentAccount }) {
   );
 }
 
-// Enhanced Manage Accounts Modal with search and sorting
+// Enhanced Manage Accounts Modal with search, sorting, animations, and stats
 function ManageAccountsModal({
   accounts,
   onClose,
@@ -287,17 +315,21 @@ function ManageAccountsModal({
         const tradesB = JSON.parse(localStorage.getItem(`${b.id}_trades`) || "[]").length;
         return tradesB - tradesA;
       });
+    } else {
+      filtered = filtered.sort((a, b) => a.name.localeCompare(b.name));
     }
     setFilteredAccounts(filtered);
   }, [accounts, searchTerm, sortBy]);
 
   const deleteAccount = (accountId) => {
-    if (!window.confirm("Delete this account? All data will be lost!")) return;
+    if (!window.confirm("Delete this account? All data will be lost forever!")) return;
+    toast('Account deleted');
     onDeleteAccount(accountId);
   };
 
   const resetAccount = (accountId) => {
     if (!window.confirm("Reset all trades/notes/journals for this account?")) return;
+    toast('Account reset');
     onResetAccount(accountId);
   };
 
@@ -307,6 +339,7 @@ function ManageAccountsModal({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4"
     >
       <motion.div
@@ -318,30 +351,30 @@ function ManageAccountsModal({
       >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
-            Manage Accounts
+            Manage Accounts ({filteredAccounts.length})
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors">
             ✕
           </button>
         </div>
 
-        {/* SEARCH & SORT */}
+        {/* SEARCH & SORT CONTROLS */}
         <div className="mb-4 space-y-2">
           <Input
-            placeholder="Search accounts..."
+            placeholder="Search accounts by name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="text-sm"
           />
           <div className="flex gap-2">
             <Button variant={sortBy === "name" ? "default" : "outline"} size="sm" onClick={() => setSortBy("name")} className="flex-1 text-xs">
-              Sort by Name
+              Name
             </Button>
             <Button variant={sortBy === "pnl" ? "default" : "outline"} size="sm" onClick={() => setSortBy("pnl")} className="flex-1 text-xs">
-              Sort by P&L
+              P&L
             </Button>
             <Button variant={sortBy === "trades" ? "default" : "outline"} size="sm" onClick={() => setSortBy("trades")} className="flex-1 text-xs">
-              Sort by Trades
+              Trades
             </Button>
           </div>
         </div>
@@ -355,13 +388,15 @@ function ManageAccountsModal({
             const totalJournals = journals.length;
             const totalNotes = notes.length;
             const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+            const winRate = totalTrades > 0 ? ((trades.filter(t => t.pnl > 0).length / totalTrades) * 100).toFixed(1) : 0;
 
             return (
               <motion.div
                 key={account.id}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                transition={{ duration: 0.2 }}
+                className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1">
@@ -372,25 +407,39 @@ function ManageAccountsModal({
                           onChange={(e) => setEditName(e.target.value)}
                           className="flex-1 text-sm"
                           autoFocus
+                          placeholder="New name..."
                         />
                         <Button
                           size="sm"
                           onClick={() => {
-                            onRenameAccount(account.id, editName || account.name);
-                            setEditingId(null);
-                            setEditName("");
+                            if (editName.trim()) {
+                              onRenameAccount(account.id, editName.trim());
+                              setEditingId(null);
+                              setEditName("");
+                              toast.success('Name updated!');
+                            }
                           }}
                         >
                           Save
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingId(null);
+                            setEditName("");
+                          }}
+                        >
+                          Cancel
+                        </Button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-sm font-bold">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-bold">
                             {account.name.charAt(0)}
-                          </span>
-                        </div>
+                          </AvatarFallback>
+                        </Avatar>
                         <div className="min-w-0 flex-1">
                           <h4 className="font-medium text-sm truncate">{account.name}</h4>
                           <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5 mt-1">
@@ -401,6 +450,12 @@ function ManageAccountsModal({
                             <div className="flex justify-between">
                               <span>Journals: {totalJournals}</span>
                               <span>Notes: {totalNotes}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Win Rate: {winRate}%</span>
+                              <Badge variant={winRate >= 50 ? "default" : "secondary"} className="text-xs">
+                                {winRate >= 50 ? 'Good' : 'Improve'}
+                              </Badge>
                             </div>
                           </div>
                         </div>
@@ -416,16 +471,18 @@ function ManageAccountsModal({
                         setEditName(account.name);
                       }}
                       className="h-6 w-6 p-0"
+                      title="Edit Name"
                     >
-                      ✏️
+                      <Edit3 className="h-3 w-3" />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => resetAccount(account.id)}
-                      className="h-6 w-6 p-0"
+                      className="h-6 w-6 p-0 text-yellow-500"
+                      title="Reset Data"
                     >
-                      🔄
+                      <RefreshCw className="h-3 w-3" />
                     </Button>
                     {accounts.length > 1 && (
                       <Button
@@ -433,8 +490,9 @@ function ManageAccountsModal({
                         variant="ghost"
                         onClick={() => deleteAccount(account.id)}
                         className="h-6 w-6 p-0 text-red-500"
+                        title="Delete Account"
                       >
-                        🗑️
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     )}
                   </div>
@@ -453,8 +511,10 @@ function ManageAccountsModal({
               onClose();
             }}
             className="w-full text-sm"
+            variant="default"
           >
-            + Create New Account
+            <Plus className="h-4 w-4 mr-2" />
+            Create New Account
           </Button>
           <Button
             onClick={() => {
@@ -464,6 +524,7 @@ function ManageAccountsModal({
             variant="outline"
             className="w-full text-sm"
           >
+            <Settings className="h-4 w-4 mr-2" />
             Advanced Manage
           </Button>
         </div>
@@ -477,7 +538,7 @@ function ManageAccountsModal({
   );
 }
 
-// Enhanced Edit Balance/PnL Modal with validation and animations
+// Enhanced Edit Balance/PnL Modal with validation, animations, toasts
 function EditBalancePNL({ onSaved }) {
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -511,6 +572,7 @@ function EditBalancePNL({ onSaved }) {
     const newErrors = {};
     if (!form.name.trim()) newErrors.name = "Name is required";
     if (form.startingBalance <= 0) newErrors.startingBalance = "Balance must be positive";
+    if (form.name.length < 3) newErrors.name = "Name must be at least 3 characters";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -534,7 +596,7 @@ function EditBalancePNL({ onSaved }) {
       };
       accounts.unshift(newAccount);
 
-      // BRAND NEW EMPTY DATA - ALL ZERO
+      // BRAND NEW EMPTY DATA - ALL ZERO (separate per account)
       localStorage.setItem(`${newAccountId}_trades`, JSON.stringify([]));
       localStorage.setItem(`${newAccountId}_notes`, JSON.stringify([]));
       localStorage.setItem(`${newAccountId}_journals`, JSON.stringify([]));
@@ -543,13 +605,13 @@ function EditBalancePNL({ onSaved }) {
       localStorage.setItem("currentAccountId", newAccountId);
       localStorage.setItem("accounts", JSON.stringify(accounts));
 
-      toast.success('New account created!');
+      toast.success('New account created successfully!');
       navigate("/", { replace: true });
     } else {
       const accountIndex = accounts.findIndex((a) => a.id === location.state.accountId);
       accounts[accountIndex] = { ...accounts[accountIndex], ...form };
       localStorage.setItem("accounts", JSON.stringify(accounts));
-      toast.success('Account updated!');
+      toast.success('Account updated successfully!');
       navigate("/", { replace: true });
     }
 
@@ -583,7 +645,7 @@ function EditBalancePNL({ onSaved }) {
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className={cn("mt-1", errors.name && "border-red-500")}
+              className={cn("mt-1", errors.name && "border-red-500 focus:border-red-500")}
               required
               disabled={isSubmitting}
             />
@@ -598,7 +660,7 @@ function EditBalancePNL({ onSaved }) {
               type="number"
               value={form.startingBalance}
               onChange={(e) => setForm({ ...form, startingBalance: Number(e.target.value) })}
-              className={cn("mt-1", errors.startingBalance && "border-red-500")}
+              className={cn("mt-1", errors.startingBalance && "border-red-500 focus:border-red-500")}
               required
               min="0"
               disabled={isSubmitting}
@@ -620,12 +682,15 @@ function EditBalancePNL({ onSaved }) {
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {isSubmitting ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="h-4 w-4 border-2 border-white border-t-transparent rounded-full"
-                />
-              ) : isNewAccount ? "Create" : "Save"}
+                <>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                  />
+                  Saving...
+                </>
+              ) : isNewAccount ? "Create Account" : "Save Changes"}
             </Button>
           </div>
         </form>
@@ -634,261 +699,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// New Profile Page for Account Settings
-function Profile() {
-  const { user, logout } = useAuth();
-  const { theme } = useTheme();
-  const [loading, setLoading] = useState(false);
-  const [profileData, setProfileData] = useState({
-    name: user?.displayName || '',
-    email: user?.email || '',
-    photoURL: user?.photoURL || '',
-  });
-
-  const handleProfileUpdate = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      // Update Firebase user profile
-      await user.updateProfile({
-        displayName: profileData.name,
-        photoURL: profileData.photoURL,
-      });
-      toast.success('Profile updated!');
-      // Update localStorage account name
-      const accounts = JSON.parse(localStorage.getItem('accounts') || '[]');
-      const currentId = localStorage.getItem('currentAccountId');
-      const accountIndex = accounts.findIndex(a => a.id === currentId);
-      if (accountIndex > -1) {
-        accounts[accountIndex].name = profileData.name;
-        localStorage.setItem('accounts', JSON.stringify(accounts));
-      }
-    } catch (err) {
-      toast.error('Update failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!user) return <Navigate to="/login" replace />;
-
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <Toaster />
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="max-w-2xl mx-auto"
-      >
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-6 w-6" />
-              Profile Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form onSubmit={handleProfileUpdate} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Display Name</Label>
-                <Input
-                  id="name"
-                  value={profileData.name}
-                  onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="photoURL">Profile Photo URL (optional)</Label>
-                <Input
-                  id="photoURL"
-                  value={profileData.photoURL}
-                  onChange={(e) => setProfileData({ ...profileData, photoURL: e.target.value })}
-                  placeholder="https://example.com/photo.jpg"
-                  className="mt-1"
-                />
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                Email: {profileData.email} (cannot change)
-              </div>
-              <Button type="submit" disabled={loading} className="w-full">
-                {loading ? 'Updating...' : 'Update Profile'}
-              </Button>
-            </form>
-            <Separator />
-            <div className="flex justify-end">
-              <Button variant="destructive" onClick={logout} className="gap-2">
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ACCOUNT STATS */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Statistics</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {currentAccount?.startingBalance || 0}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Starting Balance</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {currentAccount?.totalPnL || 0}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Total P&L</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-                {currentAccount?.id || 'N/A'}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Account ID</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {new Date(currentAccount?.createdAt).toLocaleDateString()}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Created</div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
-  );
-}
-
-// New Analytics Page with Charts
-function Analytics() {
-  const { user } = useAuth();
-  const { theme } = useTheme();
-  const currentId = localStorage.getItem("currentAccountId") || user?.uid;
-  const trades = JSON.parse(localStorage.getItem(`${currentId}_trades`) || "[]");
-
-  if (!user) return <Navigate to="/login" replace />;
-
-  // Simple chart data (expandable to Chart.js)
-  const monthlyPnL = trades.reduce((acc, trade) => {
-    const month = new Date(trade.date).getMonth();
-    acc[month] = (acc[month] || 0) + trade.pnl;
-    return acc;
-  }, {});
-
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <Toaster />
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="max-w-6xl mx-auto"
-      >
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <LineChart className="h-6 w-6" />
-              Trading Analytics
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                    {trades.length}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">Total Trades</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                    ${trades.reduce((sum, t) => sum + (t.pnl || 0), 0).toFixed(2)}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">Total P&L</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                    {((trades.filter(t => t.pnl > 0).length / trades.length * 100) || 0).toFixed(1)}%
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">Win Rate</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-                    {trades.reduce((sum, t) => sum + Math.abs(t.pnl || 0), 0).toFixed(2)}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">Total Volume</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* MONTHLY P&L TABLE */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly P&L</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Month</th>
-                        <th className="text-right p-2">P&L</th>
-                        <th className="text-right p-2">Trades</th>
-                        <th className="text-right p-2">Win Rate</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(monthlyPnL).map(([month, pnl]) => {
-                        const monthTrades = trades.filter(t => new Date(t.date).getMonth() === parseInt(month));
-                        const winRate = (monthTrades.filter(t => t.pnl > 0).length / monthTrades.length * 100 || 0).toFixed(1);
-                        return (
-                          <tr key={month} className="border-b last:border-b-0">
-                            <td className="p-2">{new Date(0, month).toLocaleString('default', { month: 'long' })}</td>
-                            <td className={`p-2 text-right font-medium ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              ${pnl.toFixed(2)}
-                            </td>
-                            <td className="p-2 text-right">{monthTrades.length}</td>
-                            <td className="p-2 text-right">{winRate}%</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* RISK-REWARD CHART PLACEHOLDER (expand to Chart.js) */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Risk-Reward Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
-                  <div className="text-center text-gray-500 dark:text-gray-400">
-                    <Target className="h-12 w-12 mx-auto mb-2" />
-                    <p className="text-sm">Chart coming soon</p>
-                    <p className="text-xs">Average R:R: {(trades.reduce((sum, t) => sum + (t.rr || 0), 0) / trades.length || 0).toFixed(2)}:1</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
-  );
-}
-
-// Main App Component with Auth Provider and Protected Routes
+// Main App Component with Auth Provider and Full Protected Routes
 export default function App() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -910,7 +721,7 @@ export default function App() {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
     let currentId = localStorage.getItem("currentAccountId");
 
-    // ALWAYS HAVE MAIN ACCOUNT (fallback for non-logged in)
+    // ALWAYS HAVE MAIN ACCOUNT (fallback for non-logged in users)
     if (storedAccounts.length === 0) {
       const defaultAccountId = "default";
       const defaultAccount = {
@@ -924,7 +735,7 @@ export default function App() {
       localStorage.setItem("accounts", JSON.stringify(storedAccounts));
       localStorage.setItem("currentAccountId", defaultAccountId);
 
-      // PRESERVE MAIN TRADES (fallback)
+      // PRESERVE MAIN TRADES (fallback data)
       if (!localStorage.getItem(`${defaultAccountId}_trades`)) {
         localStorage.setItem(`${defaultAccountId}_trades`, JSON.stringify([]));
       }
@@ -940,7 +751,7 @@ export default function App() {
       currentId = defaultAccountId;
     }
 
-    // FIX CURRENT ID
+    // FIX CURRENT ID (use Firebase UID if logged in)
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0].id;
       localStorage.setItem("currentAccountId", currentId);
@@ -963,7 +774,7 @@ export default function App() {
   const deleteAccount = (accountId) => {
     let updated = accounts.filter((a) => a.id !== accountId);
 
-    // DELETE ALL DATA
+    // DELETE ALL USER DATA (separate per account)
     localStorage.removeItem(`${accountId}_trades`);
     localStorage.removeItem(`${accountId}_notes`);
     localStorage.removeItem(`${accountId}_journals`);
@@ -971,7 +782,7 @@ export default function App() {
 
     let newCurrentId = localStorage.getItem("currentAccountId");
 
-    // IF DELETED CURRENT - CREATE NEW MAIN
+    // IF DELETED CURRENT - CREATE NEW MAIN FALLBACK
     if (newCurrentId === accountId || updated.length === 0) {
       const defaultAccountId = "default";
       const defaultAccount = {
@@ -994,6 +805,7 @@ export default function App() {
       localStorage.setItem("accounts", JSON.stringify(updated));
     }
 
+    toast('Account deleted');
     window.location.reload();
   };
 
@@ -1002,6 +814,7 @@ export default function App() {
     localStorage.setItem(`${accountId}_notes`, JSON.stringify([]));
     localStorage.setItem(`${accountId}_journals`, JSON.stringify([]));
     localStorage.setItem(`dashboard_${accountId}`, JSON.stringify({}));
+    toast('Account reset');
     window.location.reload();
   };
 
@@ -1010,6 +823,7 @@ export default function App() {
       a.id === accountId ? { ...a, name: newName } : a,
     );
     localStorage.setItem("accounts", JSON.stringify(updated));
+    toast('Name updated');
     window.location.reload();
   };
 
@@ -1053,12 +867,13 @@ export default function App() {
                       minHeight: "calc(100vh - 4.5rem)",
                     }}
                   >
+                    <Toaster position="top-right" />
                     <Routes>
-                      {/* Public routes */}
+                      {/* Public routes (no login required) */}
                       <Route path="/login" element={<Login />} />
                       <Route path="/register" element={<Register />} />
 
-                      {/* Protected routes - redirect to login if not authenticated */}
+                      {/* Protected routes - require login */}
                       <Route path="/" element={<ProtectedRoute><Dashboard currentAccount={currentAccount} /></ProtectedRoute>} />
                       <Route path="/journal" element={<ProtectedRoute><DailyJournal /></ProtectedRoute>} />
                       <Route path="/trades" element={<ProtectedRoute><Trades /></ProtectedRoute>} />
@@ -1074,7 +889,7 @@ export default function App() {
                       <Route path="/edit-balance-pnl" element={<ProtectedRoute><EditBalancePNL onSaved={() => {}} /></ProtectedRoute>} />
                       <Route path="/trades/new" element={<ProtectedRoute><AddTrade /></ProtectedRoute>} />
 
-                      {/* Catch-all redirect to login */}
+                      {/* Catch-all: redirect to login if not matched */}
                       <Route path="*" element={<Navigate to="/login" replace />} />
                     </Routes>
                   </div>
@@ -1097,23 +912,4 @@ export default function App() {
       </ThemeProvider>
     </AuthProvider>
   );
-}
-
-// Protected Route Component
-function ProtectedRoute({ children }) {
-  const { isLoggedIn, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full"
-        />
-      </div>
-    );
-  }
-
-  return isLoggedIn ? children : <Navigate to="/login" replace />;
 }
