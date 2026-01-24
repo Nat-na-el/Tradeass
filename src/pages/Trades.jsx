@@ -60,7 +60,7 @@ export default function Trades() {
     try {
       const currentId = localStorage.getItem("currentAccountId") || "default";
       await fetch(
-        `http://localhost:4001/api/trades/${id}?accountId=${currentId}`,
+        `https://tradeass-backend.onrender.com/api/trades/${id}?accountId=${currentId}`,
         {
           method: "DELETE",
         }
