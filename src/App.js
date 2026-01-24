@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext, useCallback, useMemo } from "react";
+import React, { useState, useEffect, createContext, useContext, useCallback, useMemo, useRef } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -7,7 +7,7 @@ import {
   useNavigate,
   Navigate,
 } from "react-router-dom";
-import { onAuthStateChanged, signOut, updateProfile } from 'firebase/auth';
+import { onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail, sendEmailVerification } from 'firebase/auth';
 import { auth } from './firebase'; // Your Firebase config file — make sure it's correct
 import { ThemeProvider, useTheme } from "./Theme-provider";
 import { Button } from "./components/ui/button";
@@ -24,6 +24,10 @@ import { Checkbox } from "./components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "./components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
+import { Alert, AlertDescription } from "./components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./components/ui/tooltip";
+import { ScrollArea } from "./components/ui/scroll-area";
 import Sidebar from "./components/ui/Sidebar";
 import Topbar from "./components/ui/Topbar";
 import Dashboard from "./pages/Dashboard";
@@ -38,8 +42,7 @@ import BacktestJournal from "./pages/BacktestJournal";
 import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
-import Register from "./pages/Register"; // Full import for register
-import { LogOut, User, Settings, Bell, HelpCircle, CreditCard, Shield, Crown, Clock, Database, TrendingUp, TrendingDown, Target, Award, PlayCircle, FileText, LineChart, AlertTriangle, CheckCircle, Edit3, Trash2, Download, Upload, Filter, Search, Plus, Minus, ArrowUp, ArrowDown, BarChart2, PieChart, DollarSign, Percent, Calendar, Clock as ClockIcon, Activity, Zap, Star, Heart, Bookmark, Share2, Mail, Phone, MapPin, Globe, Code, Database as DatabaseIcon, Server, Layers, Package, ShoppingBag, Users as UsersIcon, UserCheck, Lock, Unlock, Key, Eye, EyeOff, Copy, Clipboard, ClipboardCheck, File, FileText as FileTextIcon, Folder, FolderOpen, Image, Video, Music, Mic, Volume, Volume2, VolumeX, Speaker, Headphones, Mic2, Volume1, SkipBack, Play, Pause, SkipForward, RotateCw, RotateCcw, RefreshCw, RefreshCcw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown, ArrowLeft, ArrowRight, ArrowUpRight, ArrowDownRight, CornerDownLeft, CornerDownRight, CornerLeftUp, CornerRightUp, CornerUpLeft, CornerUpRight, ArrowUpLeft, ArrowUpRightFromSquare, ExternalLink, Maximize, Maximize2, Minimize, Minimize2, Move, Layout, Grid, Grid3x3, LayoutGrid, LayoutList, LayoutKanban, LayoutDashboard, LayoutGrid as LayoutGridIcon, LayoutList as LayoutListIcon, LayoutKanban as LayoutKanbanIcon, LayoutDashboard as LayoutDashboardIcon, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, PanelTopClose, PanelTopOpen, PanelBottomClose, PanelBottomOpen, SplitHorizontal, SplitVertical, Grid2x2, Grid3x3 as Grid3x3Icon, Layout, LayoutList as LayoutList2, LayoutGrid as LayoutGrid2, LayoutKanban as LayoutKanban2, LayoutDashboard as LayoutDashboard2, Sidebar, SidebarClose as SidebarCloseIcon, SidebarOpen as SidebarOpenIcon, PanelLeft as PanelLeftIcon, PanelRight as PanelRightIcon, PanelTop as PanelTopIcon, PanelBottom as PanelBottomIcon, Split, SplitHorizontal as SplitHorizontalIcon, SplitVertical as SplitVerticalIcon, Grid, Grid2x2 as Grid2x2Icon, Grid3x3 as Grid3x3Icon2, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, Split, SplitHorizontal, SplitVertical, Grid, Grid2x2, Grid3x3, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, Split, SplitHorizontal, SplitVertical, Grid, Grid2x2, Grid3x3, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, Split, SplitHorizontal, SplitVertical, Grid, Grid2x2, Grid3x3, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, Split, SplitHorizontal, SplitVertical, Grid, Grid2x2, Grid3x3, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, Split, SplitHorizontal, SplitVertical, Grid, Grid2x2, Grid3x3, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight, PanelTop, PanelBottom, Split, SplitHorizontal, SplitVertical, Grid, Grid2x2, Grid3x3, Layout, LayoutList, LayoutGrid, LayoutKanban, LayoutDashboard, Sidebar, SidebarClose, SidebarOpen, PanelLeft, PanelRight } from "lucide-react";
+import Register from "./pages/Register";
 import { motion, AnimatePresence } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
 import { cn } from "./lib/utils";
