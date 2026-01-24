@@ -9,7 +9,7 @@ const firebaseConfig = {
   projectId: "trade-journal-app-v2",
   storageBucket: "trade-journal-app-v2.firebasestorage.app",
   messagingSenderId: "317575736751",
-  appId: "1:317575736751:web:b60d1b862a56d73f88535a",
+  appId: "1:317575736751:web:b60d1b862a56d73f88535a"
 };
 
 // Initialize Firebase
