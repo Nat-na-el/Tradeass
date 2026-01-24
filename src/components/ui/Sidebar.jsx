@@ -37,7 +37,15 @@ export default function Sidebar({
     setOpen((prev) => !prev);
     setIsAccountDropdownOpen(false);
   };
-
+const handleLogout = async () => {
+  try {
+    await signOut(auth);
+    localStorage.removeItem('currentAccountId');
+    window.location.href = '/login';
+  } catch (err) {
+    console.error('Logout error:', err);
+  }
+};
   const toggleAccountDropdown = () => {
     if (open) {
       setIsAccountDropdownOpen(!isAccountDropdownOpen);
