@@ -21,6 +21,7 @@ import SettingsPage from "./pages/SettingsPage";
 import BacktestJournal from "./pages/BacktestJournal";
 import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
+import Login from "./pages/Login";
 
 // ✅ PERFECT FLOATING - REAL DATA ONLY
 function FloatingWidgets({ currentAccount }) {
@@ -34,10 +35,10 @@ function FloatingWidgets({ currentAccount }) {
   // ✅ GET REAL SAVED DATA
   const currentId = localStorage.getItem("currentAccountId");
   const trades = JSON.parse(
-    localStorage.getItem(`${currentId}_trades`) || "[]"
+    localStorage.getItem(`${currentId}_trades`) || "[]",
   );
   const journals = JSON.parse(
-    localStorage.getItem(`${currentId}_journals`) || "[]"
+    localStorage.getItem(`${currentId}_journals`) || "[]",
   );
   const notes = JSON.parse(localStorage.getItem(`${currentId}_notes`) || "[]");
 
@@ -170,20 +171,20 @@ function ManageAccountsModal({
         <div className="space-y-3 mb-4">
           {accounts.map((account) => {
             const trades = JSON.parse(
-              localStorage.getItem(`${account.id}_trades`) || "[]"
+              localStorage.getItem(`${account.id}_trades`) || "[]",
             );
             const journals = JSON.parse(
-              localStorage.getItem(`${account.id}_journals`) || "[]"
+              localStorage.getItem(`${account.id}_journals`) || "[]",
             );
             const notes = JSON.parse(
-              localStorage.getItem(`${account.id}_notes`) || "[]"
+              localStorage.getItem(`${account.id}_notes`) || "[]",
             );
             const totalTrades = trades.length;
             const totalJournals = journals.length;
             const totalNotes = notes.length;
             const totalPnL = trades.reduce(
               (sum, trade) => sum + (trade.pnl || 0),
-              0
+              0,
             );
 
             return (
@@ -206,7 +207,7 @@ function ManageAccountsModal({
                           onClick={() => {
                             onRenameAccount(
                               account.id,
-                              editName || account.name
+                              editName || account.name,
                             );
                             setEditingId(null);
                             setEditName("");
@@ -342,7 +343,7 @@ function EditBalancePNL({ onSaved }) {
       navigate("/", { replace: true });
     } else {
       const accountIndex = accounts.findIndex(
-        (a) => a.id === location.state.accountId
+        (a) => a.id === location.state.accountId,
       );
       accounts[accountIndex] = { ...accounts[accountIndex], ...form };
       localStorage.setItem("accounts", JSON.stringify(accounts));
@@ -426,6 +427,12 @@ export default function App() {
   useEffect(() => {
     initializeAccounts();
   }, []);
+  useEffect(() => {
+    const currentId = localStorage.getItem("currentAccountId");
+    if (!currentId && window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
+  }, []);
 
   const initializeAccounts = () => {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
@@ -455,13 +462,13 @@ export default function App() {
       if (!localStorage.getItem(`${defaultAccountId}_journals`)) {
         localStorage.setItem(
           `${defaultAccountId}_journals`,
-          JSON.stringify([])
+          JSON.stringify([]),
         );
       }
       if (!localStorage.getItem(`dashboard_${defaultAccountId}`)) {
         localStorage.setItem(
           `dashboard_${defaultAccountId}`,
-          JSON.stringify({})
+          JSON.stringify({}),
         );
       }
       currentId = defaultAccountId;
@@ -534,7 +541,7 @@ export default function App() {
 
   const renameAccount = (accountId, newName) => {
     const updated = accounts.map((a) =>
-      a.id === accountId ? { ...a, name: newName } : a
+      a.id === accountId ? { ...a, name: newName } : a,
     );
     localStorage.setItem("accounts", JSON.stringify(updated));
     window.location.reload();
@@ -579,23 +586,114 @@ export default function App() {
                     minHeight: "calc(100vh - 4.5rem)",
                   }}
                 >
+                
                   <Routes>
+                    {/* Login page is always accessible */}
+                    <Route path="/login" element={<Login />} />
+
+                    {/* Protected routes – only show if logged in */}
                     <Route
                       path="/"
-                      element={<Dashboard currentAccount={currentAccount} />}
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <Dashboard currentAccount={currentAccount} />
+                        ) : (
+                          <Login />
+                        )
+                      }
                     />
-                    <Route path="/journal" element={<DailyJournal />} />
-                    <Route path="/trades" element={<Trades />} />
-                    <Route path="/notebook" element={<Notebook />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="/challenges" element={<Challenges />} />
-                    <Route path="/mentor" element={<MentorMode />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/backtest" element={<BacktestJournal />} />
+                    <Route
+                      path="/journal"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <DailyJournal />
+                        ) : (
+                          <Login />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/trades"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <Trades />
+                        ) : (
+                          <Login />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/notebook"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <Notebook />
+                        ) : (
+                          <Login />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/reports"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <Reports />
+                        ) : (
+                          <Login />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/challenges"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <Challenges />
+                        ) : (
+                          <Login />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/mentor"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <MentorMode />
+                        ) : (
+                          <Login />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/settings"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <SettingsPage />
+                        ) : (
+                          <Login />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/backtest"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <BacktestJournal />
+                        ) : (
+                          <Login />
+                        )
+                      }
+                    />
                     <Route
                       path="/quantitative-analysis"
-                      element={<QuantitativeAnalysis />}
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <QuantitativeAnalysis />
+                        ) : (
+                          <Login />
+                        )
+                      }
                     />
+
+                    {/* These two can stay public or also protect – your choice */}
                     <Route
                       path="/edit-balance-pnl"
                       element={<EditBalancePNL onSaved={() => {}} />}
