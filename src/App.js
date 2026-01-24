@@ -602,6 +602,7 @@ export default function App() {
                         )
                       }
                     />
+                          <Route path="/register" element={<Register />} />
                     <Route
                       path="/journal"
                       element={
@@ -700,6 +701,7 @@ export default function App() {
                     />
                     <Route path="/trades/new" element={<AddTrade />} />
                   </Routes>
+                        
                 </div>
               </main>
             </div>
