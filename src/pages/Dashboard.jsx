@@ -27,7 +27,7 @@ export default function Dashboard({ currentAccount }) {
       const currentId = localStorage.getItem("currentAccountId") || "default";
       console.log("🚀 DASHBOARD FETCHING FROM DB - ACCOUNT:", currentId);
       const res = await fetch(
-        `http://localhost:4001/api/trades?accountId=${currentId}`
+  `https://tradeass-backend.onrender.com/api/trades?accountId=${currentId}`
       );
       const data = await res.json();
       console.log("✅ DASHBOARD TRADES:", data);
