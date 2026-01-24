@@ -18,7 +18,8 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useTheme } from "../../Theme-provider";
-
+import { signOut } from 'firebase/auth';
+import { auth } from '../../firebase'; // Adjust path if needed
 export default function Sidebar({
   open,
   setOpen,
