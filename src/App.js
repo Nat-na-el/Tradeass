@@ -1,14 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
+  useLocation,
+  useNavigate,
 } from "react-router-dom";
-import { ThemeProvider } from "./Theme-provider";
+import { ThemeProvider, useTheme } from "./Theme-provider";
+import { Button } from "./components/ui/button";
 import Sidebar from "./components/ui/Sidebar";
 import Topbar from "./components/ui/Topbar";
-import PrivateRoute from "./PrivateRoute";
-
 import Dashboard from "./pages/Dashboard";
 import DailyJournal from "./pages/DailyJournal";
 import Trades from "./pages/Trades";
@@ -18,24 +19,27 @@ import Challenges from "./pages/Challenges";
 import MentorMode from "./pages/MentorMode";
 import SettingsPage from "./pages/SettingsPage";
 import BacktestJournal from "./pages/BacktestJournal";
+import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
-import AddTrade from "./components/ui/AddTrade";
 
 // ✅ PERFECT FLOATING - REAL DATA ONLY
-import { useLocation } from "react-router-dom";
-import { useTheme } from "./Theme-provider";
-
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
   const { theme } = useTheme();
 
   const shouldShow = location.pathname === "/" && currentAccount;
+
   if (!shouldShow || !currentAccount) return null;
 
+  // ✅ GET REAL SAVED DATA
   const currentId = localStorage.getItem("currentAccountId");
-  const trades = JSON.parse(localStorage.getItem(`${currentId}_trades`) || "[]");
-  const journals = JSON.parse(localStorage.getItem(`${currentId}_journals`) || "[]");
+  const trades = JSON.parse(
+    localStorage.getItem(`${currentId}_trades`) || "[]",
+  );
+  const journals = JSON.parse(
+    localStorage.getItem(`${currentId}_journals`) || "[]",
+  );
   const notes = JSON.parse(localStorage.getItem(`${currentId}_notes`) || "[]");
 
   const totalTrades = trades.length;
@@ -64,15 +68,23 @@ function FloatingWidgets({ currentAccount }) {
 
       {/* TOTAL P&L */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Total P&L</div>
-        <div className={`text-base font-bold ${totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">
+          Total P&L
+        </div>
+        <div
+          className={`text-base font-bold ${
+            totalPnL >= 0 ? "text-green-600" : "text-red-600"
+          }`}
+        >
           ${totalPnL.toFixed(2)}
         </div>
       </div>
 
       {/* CURRENT BALANCE */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Current</div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">
+          Current
+        </div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">
           ${currentBalance.toFixed(2)}
         </div>
@@ -80,154 +92,36 @@ function FloatingWidgets({ currentAccount }) {
 
       {/* TOTAL TRADES */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Trades</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totalTrades}</div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">
+          Trades
+        </div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">
+          {totalTrades}
+        </div>
       </div>
 
       {/* TOTAL JOURNALS */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Journals</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totalJournals}</div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">
+          Journals
+        </div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">
+          {totalJournals}
+        </div>
       </div>
 
       {/* TOTAL NOTES */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Notes</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totalNotes}</div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">
+          Notes
+        </div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">
+          {totalNotes}
+        </div>
       </div>
     </div>
   );
 }
-
-// ✅ MAIN APP
-export default function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [currentAccount, setCurrentAccount] = useState(null);
-
-  return (
-    <ThemeProvider>
-      <Router>
-        <div className="flex h-screen overflow-hidden">
-          {/* SIDEBAR */}
-          <Sidebar
-            open={sidebarOpen}
-            setOpen={setSidebarOpen}
-            currentAccount={currentAccount}
-            onSwitchAccount={(id) => setCurrentAccount({ id })} // simple for demo
-            onCreateAccount={() => {}}
-            onShowManage={() => {}}
-            accounts={[]} // populate from localStorage or Firebase
-          />
-
-          <div className="flex-1 flex flex-col">
-            {/* TOPBAR */}
-            <Topbar />
-
-            {/* ROUTES */}
-            <Routes>
-              {/* Public */}
-              <Route path="/login" element={<Login />} />
-
-              {/* Private Routes */}
-              <Route
-                path="/dashboard"
-                element={
-                  <PrivateRoute>
-                    <Dashboard />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/daily-journal"
-                element={
-                  <PrivateRoute>
-                    <DailyJournal />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/trades"
-                element={
-                  <PrivateRoute>
-                    <Trades />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/notebook"
-                element={
-                  <PrivateRoute>
-                    <Notebook />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/reports"
-                element={
-                  <PrivateRoute>
-                    <Reports />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/challenges"
-                element={
-                  <PrivateRoute>
-                    <Challenges />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/mentor-mode"
-                element={
-                  <PrivateRoute>
-                    <MentorMode />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <PrivateRoute>
-                    <SettingsPage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/backtest-journal"
-                element={
-                  <PrivateRoute>
-                    <BacktestJournal />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/quantitative-analysis"
-                element={
-                  <PrivateRoute>
-                    <QuantitativeAnalysis />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/add-trade"
-                element={
-                  <PrivateRoute>
-                    <AddTrade />
-                  </PrivateRoute>
-                }
-              />
-            </Routes>
-
-            {/* FLOATING WIDGETS */}
-            <FloatingWidgets currentAccount={currentAccount} />
-          </div>
-        </div>
-      </Router>
-    </ThemeProvider>
-  );
-}
-
 
 // ✅ PERFECT MANAGE MODAL
 function ManageAccountsModal({
@@ -524,7 +418,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
- {
+export default function App() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
   const [accounts, setAccounts] = useState([]);
