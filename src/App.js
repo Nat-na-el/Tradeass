@@ -518,21 +518,15 @@ function EditBalancePNL({ onSaved }) {
 }
 
 // Main App Component
-export default function App() {
+function AppContent() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [showManageModal, setShowManageModal] = useState(false);
+  const { isLoggedIn, loading } = useAuth();
 
   useEffect(() => {
     initializeAccounts();
-  }, []);
-
-  useEffect(() => {
-    const currentId = localStorage.getItem("currentAccountId");
-    if (!currentId && window.location.pathname !== "/login") {
-      window.location.href = "/login";
-    }
   }, []);
 
   const initializeAccounts = () => {
@@ -648,6 +642,19 @@ export default function App() {
     window.location.reload();
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full mr-2"
+        />
+        <p className="text-sm text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <ThemeProvider>
       <Router>
@@ -656,154 +663,75 @@ export default function App() {
             <Topbar />
           </div>
           <div className="flex flex-1 pt-12">
-            <Sidebar
-              open={open}
-              setOpen={setOpen}
-              accounts={accounts}
-              currentAccount={currentAccount}
-              onSwitchAccount={switchAccount}
-              onCreateAccount={createAccount}
-              onShowManage={() => setShowManageModal(true)}
-            />
-            <div
-              className="flex-1 min-w-0 transition-all duration-300"
-              style={{
-                marginLeft: open ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
-                maxWidth: open
-                  ? "calc(100vw - 12rem - 8px)"
-                  : "calc(100vw - 6rem - 8px)",
-              }}
-            >
-              <main
-                className="overflow-y-auto overflow-x-hidden relative"
-                style={{
-                  height: "calc(100vh - 3rem)",
-                  paddingTop: "1.5rem",
-                }}
-              >
+            {isLoggedIn ? (
+              <>
+                <Sidebar
+                  open={open}
+                  setOpen={setOpen}
+                  accounts={accounts}
+                  currentAccount={currentAccount}
+                  onSwitchAccount={switchAccount}
+                  onCreateAccount={createAccount}
+                  onShowManage={() => setShowManageModal(true)}
+                />
                 <div
-                  className="bg-transparent border-none p-3 sm:p-3 mx-1 sm:mx-2 mb-0"
+                  className="flex-1 min-w-0 transition-all duration-300"
                   style={{
-                    minHeight: "calc(100vh - 4.5rem)",
+                    marginLeft: open ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
+                    maxWidth: open
+                      ? "calc(100vw - 12rem - 8px)"
+                      : "calc(100vw - 6rem - 8px)",
                   }}
                 >
-                  <Routes>
-                    {/* Login page is always accessible */}
-                    <Route path="/login" element={<Login />} />
-
-                    {/* Protected routes – only show if logged in */}
-                    <Route
-                      path="/"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Dashboard currentAccount={currentAccount} />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/journal"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <DailyJournal />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/trades"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Trades />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/notebook"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Notebook />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/reports"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Reports />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/challenges"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Challenges />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/mentor"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <MentorMode />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/settings"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <SettingsPage />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/backtest"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <BacktestJournal />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/quantitative-analysis"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <QuantitativeAnalysis />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-
-                    {/* These two can stay public or also protect – your choice */}
-                    <Route
-                      path="/edit-balance-pnl"
-                      element={<EditBalancePNL onSaved={() => {}} />}
-                    />
-                    <Route path="/trades/new" element={<AddTrade />} />
-                  </Routes>
+                  <main
+                    className="overflow-y-auto overflow-x-hidden relative"
+                    style={{
+                      height: "calc(100vh - 3rem)",
+                      paddingTop: "1.5rem",
+                    }}
+                  >
+                    <div
+                      className="bg-transparent border-none p-3 sm:p-3 mx-1 sm:mx-2 mb-0"
+                      style={{
+                        minHeight: "calc(100vh - 4.5rem)",
+                      }}
+                    >
+                      <Routes>
+                        <Route
+                          path="/"
+                          element={
+                            <Dashboard currentAccount={currentAccount} />
+                          }
+                        />
+                        <Route path="/journal" element={<DailyJournal />} />
+                        <Route path="/trades" element={<Trades />} />
+                        <Route path="/notebook" element={<Notebook />} />
+                        <Route path="/reports" element={<Reports />} />
+                        <Route path="/challenges" element={<Challenges />} />
+                        <Route path="/mentor" element={<MentorMode />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/backtest" element={<BacktestJournal />} />
+                        <Route
+                          path="/quantitative-analysis"
+                          element={<QuantitativeAnalysis />}
+                        />
+                        <Route
+                          path="/edit-balance-pnl"
+                          element={<EditBalancePNL onSaved={() => {}} />}
+                        />
+                        <Route path="/trades/new" element={<AddTrade />} />
+                      </Routes>
+                    </div>
+                  </main>
                 </div>
-              </main>
-            </div>
-            <FloatingWidgets currentAccount={currentAccount} />
+                <FloatingWidgets currentAccount={currentAccount} />
+              </>
+            ) : (
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="*" element={<Login />} />
+              </Routes>
+            )}
             {showManageModal && (
               <ManageAccountsModal
                 accounts={accounts}
@@ -818,5 +746,14 @@ export default function App() {
         </div>
       </Router>
     </ThemeProvider>
+  );
+}
+
+// Wrap AppContent with AuthProvider
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
