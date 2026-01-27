@@ -5,7 +5,6 @@ import {
   Route,
   useLocation,
   useNavigate,
-  Navigate,
 } from "react-router-dom";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase"; // Adjust path to your Firebase config
@@ -103,30 +102,6 @@ function ProtectedRoute({ children }) {
   }
 
   return isLoggedIn ? children : null;
-}
-
-// Public Route Component (only accessible when NOT logged in)
-function PublicRoute({ children }) {
-  const { isLoggedIn, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full mr-2"
-        />
-        <p className="text-sm text-gray-500">Loading...</p>
-      </div>
-    );
-  }
-
-  if (isLoggedIn) {
-    return <Navigate to="/" replace />;
-  }
-
-  return children;
 }
 
 // ✅ PERFECT FLOATING - REAL DATA ONLY (Updated with UID prefix for private data)
@@ -548,7 +523,7 @@ function AppContent() {
   const [currentAccount, setCurrentAccount] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [showManageModal, setShowManageModal] = useState(false);
-  const { loading } = useAuth();
+  const { isLoggedIn, loading } = useAuth();
 
   useEffect(() => {
     initializeAccounts();
@@ -680,121 +655,102 @@ function AppContent() {
     );
   }
 
+  // If not logged in, show only login page
+  if (!isLoggedIn) {
+    return (
+      <ThemeProvider>
+        <Router>
+          <div className="min-h-screen bg-white dark:bg-gray-900">
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="*" element={<Login />} />
+            </Routes>
+          </div>
+        </Router>
+      </ThemeProvider>
+    );
+  }
+
+  // If logged in, show the full app
   return (
     <ThemeProvider>
       <Router>
-        <Routes>
-          {/* Public route - only accessible when NOT logged in */}
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            }
-          />
-
-          {/* Protected routes - only accessible when logged in */}
-          <Route
-            path="/*"
-            element={
-              <ProtectedRoute>
-                <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-                  <div className="fixed top-0 left-0 right-0 h-12 z-50">
-                    <Topbar />
-                  </div>
-                  <div className="flex flex-1 pt-12">
-                    <Sidebar
-                      open={open}
-                      setOpen={setOpen}
-                      accounts={accounts}
-                      currentAccount={currentAccount}
-                      onSwitchAccount={switchAccount}
-                      onCreateAccount={createAccount}
-                      onShowManage={() => setShowManageModal(true)}
+        <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
+          <div className="fixed top-0 left-0 right-0 h-12 z-50">
+            <Topbar />
+          </div>
+          <div className="flex flex-1 pt-12">
+            <Sidebar
+              open={open}
+              setOpen={setOpen}
+              accounts={accounts}
+              currentAccount={currentAccount}
+              onSwitchAccount={switchAccount}
+              onCreateAccount={createAccount}
+              onShowManage={() => setShowManageModal(true)}
+            />
+            <div
+              className="flex-1 min-w-0 transition-all duration-300"
+              style={{
+                marginLeft: open ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
+                maxWidth: open
+                  ? "calc(100vw - 12rem - 8px)"
+                  : "calc(100vw - 6rem - 8px)",
+              }}
+            >
+              <main
+                className="overflow-y-auto overflow-x-hidden relative"
+                style={{
+                  height: "calc(100vh - 3rem)",
+                  paddingTop: "1.5rem",
+                }}
+              >
+                <div
+                  className="bg-transparent border-none p-3 sm:p-3 mx-1 sm:mx-2 mb-0"
+                  style={{
+                    minHeight: "calc(100vh - 4.5rem)",
+                  }}
+                >
+                  <Routes>
+                    <Route
+                      path="/"
+                      element={<Dashboard currentAccount={currentAccount} />}
                     />
-                    <div
-                      className="flex-1 min-w-0 transition-all duration-300"
-                      style={{
-                        marginLeft: open
-                          ? "calc(12rem + 8px)"
-                          : "calc(6rem + 8px)",
-                        maxWidth: open
-                          ? "calc(100vw - 12rem - 8px)"
-                          : "calc(100vw - 6rem - 8px)",
-                      }}
-                    >
-                      <main
-                        className="overflow-y-auto overflow-x-hidden relative"
-                        style={{
-                          height: "calc(100vh - 3rem)",
-                          paddingTop: "1.5rem",
-                        }}
-                      >
-                        <div
-                          className="bg-transparent border-none p-3 sm:p-3 mx-1 sm:mx-2 mb-0"
-                          style={{
-                            minHeight: "calc(100vh - 4.5rem)",
-                          }}
-                        >
-                          <Routes>
-                            <Route
-                              path="/"
-                              element={
-                                <Dashboard currentAccount={currentAccount} />
-                              }
-                            />
-                            <Route path="/journal" element={<DailyJournal />} />
-                            <Route path="/trades" element={<Trades />} />
-                            <Route path="/notebook" element={<Notebook />} />
-                            <Route path="/reports" element={<Reports />} />
-                            <Route
-                              path="/challenges"
-                              element={<Challenges />}
-                            />
-                            <Route path="/mentor" element={<MentorMode />} />
-                            <Route
-                              path="/settings"
-                              element={<SettingsPage />}
-                            />
-                            <Route
-                              path="/backtest"
-                              element={<BacktestJournal />}
-                            />
-                            <Route
-                              path="/quantitative-analysis"
-                              element={<QuantitativeAnalysis />}
-                            />
-                            <Route
-                              path="/edit-balance-pnl"
-                              element={<EditBalancePNL onSaved={() => {}} />}
-                            />
-                            <Route path="/trades/new" element={<AddTrade />} />
-                            <Route
-                              path="*"
-                              element={<Navigate to="/" replace />}
-                            />
-                          </Routes>
-                        </div>
-                      </main>
-                    </div>
-                    <FloatingWidgets currentAccount={currentAccount} />
-                    {showManageModal && (
-                      <ManageAccountsModal
-                        accounts={accounts}
-                        onClose={() => setShowManageModal(false)}
-                        onDeleteAccount={deleteAccount}
-                        onResetAccount={resetAccount}
-                        onRenameAccount={renameAccount}
-                        onCreateAccount={createAccount}
-                      />
-                    )}
-                  </div>
+                    <Route path="/journal" element={<DailyJournal />} />
+                    <Route path="/trades" element={<Trades />} />
+                    <Route path="/notebook" element={<Notebook />} />
+                    <Route path="/reports" element={<Reports />} />
+                    <Route path="/challenges" element={<Challenges />} />
+                    <Route path="/mentor" element={<MentorMode />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/backtest" element={<BacktestJournal />} />
+                    <Route
+                      path="/quantitative-analysis"
+                      element={<QuantitativeAnalysis />}
+                    />
+                    <Route
+                      path="/edit-balance-pnl"
+                      element={<EditBalancePNL onSaved={() => {}} />}
+                    />
+                    <Route path="/trades/new" element={<AddTrade />} />
+                    <Route path="/login" element={<Login />} />
+                  </Routes>
                 </div>
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
+              </main>
+            </div>
+            <FloatingWidgets currentAccount={currentAccount} />
+            {showManageModal && (
+              <ManageAccountsModal
+                accounts={accounts}
+                onClose={() => setShowManageModal(false)}
+                onDeleteAccount={deleteAccount}
+                onResetAccount={resetAccount}
+                onRenameAccount={renameAccount}
+                onCreateAccount={createAccount}
+              />
+            )}
+          </div>
+        </div>
       </Router>
     </ThemeProvider>
   );
