@@ -1,6 +1,13 @@
+const navItems = [
+  { to: "/home", label: "Home", icon: Home },
+  { to: "/trades", label: "Trades", icon: BookOpen },
+  { to: "/activity", label: "Activity", icon: Activity },
+  { to: "/analytics", label: "Analytics", icon: Analytics },
+  { to: "/settings", label: "Settings", icon: Settings },
+];
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import {
   Menu,
@@ -16,6 +23,16 @@ import {
   Calculator,
   UserPlus,
   Settings2,
+  TrendingUp,
+  CreditCard,
+  Shield,
+  Crown,
+  Edit3,
+  RefreshCw,
+  Trash2,
+  Plus,
+  Profile,
+  Analytics,
   ChevronDown,
   ChevronUp,
   LogOut,
@@ -32,6 +49,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+
 
 export default function Sidebar({
   open,
@@ -67,6 +85,11 @@ export default function Sidebar({
       setIsAccountDropdownOpen(!isAccountDropdownOpen);
     }
   };
+const navItems = [
+  { to: "/home", label: "Home", icon: Home },
+  { to: "/analytics", label: "Analytics", icon: Analytics },
+  // ...add all routes here
+];
 
   const handleLogout = async () => {
     try {
