@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import { motion } from "framer-motion";
 import { ThemeProvider } from "./components/ThemeProvider";
 
@@ -24,7 +29,6 @@ import AddTrade from "./pages/AddTrade";
 import Login from "./pages/Login";
 
 import ManageAccountsModal from "./components/modals/ManageAccountsModal";
-
 
 // ------------------------- PROTECTED ROUTE ------------------------- //
 function ProtectedRoute({ children }) {
@@ -102,7 +106,10 @@ function MainApp({
               }}
             >
               <Routes>
-                <Route path="/" element={<Dashboard currentAccount={currentAccount} />} />
+                <Route
+                  path="/"
+                  element={<Dashboard currentAccount={currentAccount} />}
+                />
                 <Route path="/journal" element={<DailyJournal />} />
                 <Route path="/trades" element={<Trades />} />
                 <Route path="/notebook" element={<Notebook />} />
@@ -111,8 +118,14 @@ function MainApp({
                 <Route path="/mentor" element={<MentorMode />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/backtest" element={<BacktestJournal />} />
-                <Route path="/quantitative-analysis" element={<QuantitativeAnalysis />} />
-                <Route path="/edit-balance-pnl" element={<EditBalancePNL onSaved={() => {}} />} />
+                <Route
+                  path="/quantitative-analysis"
+                  element={<QuantitativeAnalysis />}
+                />
+                <Route
+                  path="/edit-balance-pnl"
+                  element={<EditBalancePNL onSaved={() => {}} />}
+                />
                 <Route path="/trades/new" element={<AddTrade />} />
 
                 {/* DO NOT ALLOW LOGIN WHEN LOGGED IN */}
