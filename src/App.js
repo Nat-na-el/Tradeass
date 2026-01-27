@@ -1,19 +1,80 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   useLocation,
   useNavigate,
+  Navigate,
 } from "react-router-dom";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import { auth } from "./firebase"; // Adjust path to your Firebase config
+import {
+  onAuthStateChanged,
+  signOut,
+  updateProfile,
+  sendPasswordResetEmail,
+  sendEmailVerification,
+} from "firebase/auth";
+import { auth } from "./firebase"; // Your Firebase config file — make sure it's correct
 import { ThemeProvider, useTheme } from "./Theme-provider";
 import { Button } from "./components/ui/button";
-import { motion } from "framer-motion"; // For animations in ProtectedRoute
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "./components/ui/card";
+import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
+import { Badge } from "./components/ui/badge";
+import { Progress } from "./components/ui/progress";
+import { Separator } from "./components/ui/separator";
+import { Skeleton } from "./components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./components/ui/select";
+import { Switch } from "./components/ui/switch";
+import { Checkbox } from "./components/ui/checkbox";
+import { Avatar, AvatarFallback, AvatarImage } from "./components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./components/ui/table";
+import { Alert, AlertDescription } from "./components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./components/ui/tooltip";
+import { ScrollArea } from "./components/ui/scroll-area";
 import Sidebar from "./components/ui/Sidebar";
 import Topbar from "./components/ui/Topbar";
-
 import Dashboard from "./pages/Dashboard";
 import DailyJournal from "./pages/DailyJournal";
 import Trades from "./pages/Trades";
@@ -26,8 +87,133 @@ import BacktestJournal from "./pages/BacktestJournal";
 import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
+import Register from "./pages/Register"; // Full import for register
+import { motion, AnimatePresence } from "framer-motion";
+import toast, { Toaster } from "react-hot-toast";
+import { cn } from "./lib/utils";
 
-// Auth Context for global state (user, login state, logout)
+// Consolidated lucide-react import — no duplicates
+import {
+  LogOut,
+  User,
+  Settings,
+  Bell,
+  HelpCircle,
+  CreditCard,
+  Shield,
+  Crown,
+  Clock,
+  Database,
+  TrendingUp,
+  TrendingDown,
+  Target,
+  Award,
+  PlayCircle,
+  FileText,
+  LineChart,
+  AlertTriangle,
+  CheckCircle,
+  Edit3,
+  Trash2,
+  Download,
+  Upload,
+  Filter,
+  Search,
+  Plus,
+  Minus,
+  ArrowUp,
+  ArrowDown,
+  BarChart2,
+  PieChart,
+  DollarSign,
+  Percent,
+  Calendar,
+  Activity,
+  Zap,
+  Star,
+  Heart,
+  Bookmark,
+  Share2,
+  Mail,
+  Phone,
+  MapPin,
+  Globe,
+  Code,
+  Server,
+  Layers,
+  Package,
+  ShoppingBag,
+  Users,
+  UserCheck,
+  Lock,
+  Unlock,
+  Key,
+  Eye,
+  EyeOff,
+  Copy,
+  Clipboard,
+  ClipboardCheck,
+  File,
+  Folder,
+  FolderOpen,
+  Image,
+  Video,
+  Music,
+  Mic,
+  Volume,
+  SkipBack,
+  Play,
+  Pause,
+  SkipForward,
+  RotateCw,
+  RotateCcw,
+  RefreshCw,
+  RefreshCcw,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUp,
+  ChevronsDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  ArrowDownRight,
+  CornerDownLeft,
+  CornerDownRight,
+  CornerLeftUp,
+  CornerRightUp,
+  CornerUpLeft,
+  CornerUpRight,
+  ArrowUpLeft,
+  ArrowUpRightFromSquare,
+  ExternalLink,
+  Maximize,
+  Maximize2,
+  Minimize,
+  Minimize2,
+  Move,
+  Layout,
+  Grid,
+  Grid3x3,
+  LayoutGrid,
+  LayoutList,
+  LayoutKanban,
+  LayoutDashboard,
+  SidebarClose,
+  SidebarOpen,
+  PanelLeft,
+  PanelRight,
+  PanelTop,
+  PanelBottom,
+  SplitHorizontal,
+  SplitVertical,
+  Grid2x2,
+} from "lucide-react";
+
+// Auth Context for global state management (user, login state, logout)
 const AuthContext = createContext();
 
 export const useAuth = () => {
@@ -38,7 +224,7 @@ export const useAuth = () => {
   return context;
 };
 
-// Auth Provider (wraps the app, manages Firebase auth state)
+// Auth Provider component (wraps the app, manages Firebase auth state)
 function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +235,6 @@ function AuthProvider({ children }) {
       setUser(currentUser);
       setIsLoggedIn(!!currentUser);
       if (currentUser) {
-        // Set UID for private data
         localStorage.setItem("currentAccountId", currentUser.uid);
       } else {
         localStorage.removeItem("currentAccountId");
@@ -62,8 +247,43 @@ function AuthProvider({ children }) {
   const logout = async () => {
     try {
       await signOut(auth);
+      toast.success("Logged out successfully!");
     } catch (err) {
+      toast.error("Logout failed");
       console.error("Logout error:", err);
+    }
+  };
+
+  const updateUserProfile = async (updates) => {
+    if (!user) return;
+    try {
+      await updateProfile(user, updates);
+      setUser({ ...user, ...updates });
+      toast.success("Profile updated!");
+    } catch (err) {
+      toast.error("Update failed");
+      console.error("Profile update error:", err);
+    }
+  };
+
+  const sendPasswordReset = async (email) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast.success("Password reset email sent!");
+    } catch (err) {
+      toast.error("Failed to send reset email");
+      console.error("Password reset error:", err);
+    }
+  };
+
+  const sendVerificationEmail = async () => {
+    if (!user) return;
+    try {
+      await sendEmailVerification(user);
+      toast.success("Verification email sent!");
+    } catch (err) {
+      toast.error("Failed to send verification email");
+      console.error("Verification error:", err);
     }
   };
 
@@ -72,6 +292,9 @@ function AuthProvider({ children }) {
     loading,
     isLoggedIn,
     logout,
+    updateUserProfile,
+    sendPasswordReset,
+    sendVerificationEmail,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -80,13 +303,6 @@ function AuthProvider({ children }) {
 // Protected Route Component (locks pages behind login, with loading spinner)
 function ProtectedRoute({ children }) {
   const { isLoggedIn, loading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !isLoggedIn) {
-      navigate("/login", { replace: true });
-    }
-  }, [isLoggedIn, loading, navigate]);
 
   if (loading) {
     return (
@@ -101,31 +317,29 @@ function ProtectedRoute({ children }) {
     );
   }
 
-  return isLoggedIn ? children : null;
+  return isLoggedIn ? children : <Navigate to="/login" replace />;
 }
 
-// ✅ PERFECT FLOATING - REAL DATA ONLY (Updated with UID prefix for private data)
+// Enhanced Floating Widgets with animations, Firebase user info, and quick actions
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
   const { theme } = useTheme();
-  const { user } = useAuth(); // Get UID for private data
+  const { user, isLoggedIn } = useAuth();
 
-  const shouldShow = location.pathname === "/" && currentAccount;
+  const shouldShow = location.pathname === "/" && currentAccount && isLoggedIn;
 
   if (!shouldShow || !currentAccount) return null;
 
-  // ✅ GET REAL SAVED DATA WITH UID PREFIX (private per user)
-  const uid = user?.uid || "default";
+  // Fetch real data from localStorage (per user UID for separation)
   const currentId =
-    localStorage.getItem("currentAccountId") || currentAccount.id;
-  const privateKey = `${uid}_${currentId}`;
+    localStorage.getItem("currentAccountId") || user?.uid || "default";
   const trades = JSON.parse(
-    localStorage.getItem(`${privateKey}_trades`) || "[]",
+    localStorage.getItem(`${currentId}_trades`) || "[]",
   );
   const journals = JSON.parse(
-    localStorage.getItem(`${privateKey}_journals`) || "[]",
+    localStorage.getItem(`${currentId}_journals`) || "[]",
   );
-  const notes = JSON.parse(localStorage.getItem(`${privateKey}_notes`) || "[]");
+  const notes = JSON.parse(localStorage.getItem(`${currentId}_notes`) || "[]");
 
   const totalTrades = trades.length;
   const totalJournals = journals.length;
@@ -134,8 +348,33 @@ function FloatingWidgets({ currentAccount }) {
   const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
   const currentBalance = currentAccount.startingBalance + totalPnL;
 
+  // Win rate calculation
+  const wins = trades.filter((t) => t.pnl > 0).length;
+  const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : 0;
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, scale: 0.9 },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.3 } },
+  };
+
   return (
-    <div
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
       className="fixed right-4 sm:right-8 flex flex-col gap-2 z-[9999] w-[90%] max-w-[260px] sm:w-[260px] opacity-90"
       style={{
         top: "50%",
@@ -144,71 +383,164 @@ function FloatingWidgets({ currentAccount }) {
         maxHeight: "70vh",
       }}
     >
-      {/* ACCOUNT NAME */}
-      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-sm font-bold text-gray-800 dark:text-gray-200">
-          {currentAccount.name}
+      {/* ACCOUNT NAME WITH USER AVATAR & EMAIL */}
+      <motion.div
+        variants={itemVariants}
+        className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg"
+      >
+        <div className="flex items-center gap-2">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user?.photoURL} />
+            <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold">
+              {user?.email?.charAt(0).toUpperCase() ||
+                currentAccount?.name?.charAt(0) ||
+                "A"}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
+              {user?.displayName ||
+                user?.email?.split("@")[0] ||
+                currentAccount?.name ||
+                "Account"}
+            </div>
+            <div className="text-[8px] text-gray-500 dark:text-gray-400 truncate">
+              {user?.email || "User"}
+            </div>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* TOTAL P&L */}
-      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">
-          Total P&L
+      <Separator className="my-1" />
+
+      {/* TOTAL P&L WITH TREND & BADGE */}
+      <motion.div
+        variants={itemVariants}
+        className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg"
+      >
+        <div className="text-[10px] text-gray-700 dark:text-gray-300 flex items-center justify-between">
+          <span>Total P&L</span>
+          <TrendingUp className="h-3 w-3 text-green-500" />
         </div>
         <div
-          className={`text-base font-bold ${
+          className={`text-base font-bold flex items-center gap-1 ${
             totalPnL >= 0 ? "text-green-600" : "text-red-600"
           }`}
         >
-          ${totalPnL.toFixed(2)}
+          {totalPnL >= 0 ? "+" : ""}${totalPnL.toFixed(2)}
+          <Badge
+            variant={totalPnL >= 0 ? "default" : "destructive"}
+            className="text-xs"
+          >
+            {totalPnL >= 0 ? "Profit" : "Loss"}
+          </Badge>
         </div>
-      </div>
+      </motion.div>
 
-      {/* CURRENT BALANCE */}
-      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
+      <Separator className="my-1" />
+
+      {/* CURRENT BALANCE WITH PROGRESS BAR */}
+      <motion.div
+        variants={itemVariants}
+        className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg"
+      >
         <div className="text-[10px] text-gray-700 dark:text-gray-300">
-          Current
+          Current Balance
         </div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">
           ${currentBalance.toFixed(2)}
         </div>
-      </div>
+        <Progress
+          value={Math.min(
+            (totalPnL / currentAccount.startingBalance) * 100 || 0,
+            100,
+          )}
+          className="mt-1 h-1"
+        />
+        <div className="text-[8px] text-gray-500 dark:text-gray-400 flex justify-between">
+          <span>0</span>
+          <span>Target</span>
+        </div>
+      </motion.div>
 
-      {/* TOTAL TRADES */}
-      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
+      <Separator className="my-1" />
+
+      {/* TOTAL TRADES WITH WIN RATE */}
+      <motion.div
+        variants={itemVariants}
+        className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg"
+      >
         <div className="text-[10px] text-gray-700 dark:text-gray-300">
-          Trades
+          Total Trades
         </div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">
           {totalTrades}
         </div>
-      </div>
+        <div className="text-[10px] text-purple-600 dark:text-purple-400 mt-1">
+          Win Rate: {winRate}%
+        </div>
+      </motion.div>
 
-      {/* TOTAL JOURNALS */}
-      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">
-          Journals
-        </div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">
-          {totalJournals}
-        </div>
-      </div>
+      <Separator className="my-1" />
 
-      {/* TOTAL NOTES */}
-      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
+      {/* TOTAL JOURNALS & NOTES */}
+      <motion.div
+        variants={itemVariants}
+        className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg"
+      >
         <div className="text-[10px] text-gray-700 dark:text-gray-300">
-          Notes
+          Journals & Notes
         </div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">
-          {totalNotes}
+        <div className="flex justify-between text-base font-bold text-gray-800 dark:text-gray-200">
+          <span>{totalJournals}</span>
+          <span>{totalNotes}</span>
         </div>
-      </div>
-    </div>
+      </motion.div>
+
+      {/* QUICK ACTIONS WITH ICONS */}
+      <Separator className="my-2" />
+      <motion.div
+        variants={itemVariants}
+        className="p-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-800/50 shadow-lg"
+      >
+        <div className="text-[10px] text-blue-700 dark:text-blue-300 font-medium mb-2">
+          Quick Actions
+        </div>
+        <div className="space-y-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-start text-xs w-full"
+            onClick={() => toast("Deposit feature coming soon!")}
+          >
+            <CreditCard className="h-3 w-3 mr-2" />
+            Deposit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-start text-xs w-full"
+            onClick={() => navigate("/settings")}
+          >
+            <Shield className="h-3 w-3 mr-2" />
+            Risk Settings
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-start text-xs w-full"
+            onClick={() => toast("Upgrade to Pro for advanced features!")}
+          >
+            <Crown className="h-3 w-3 mr-2" />
+            Upgrade Pro
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
-// ✅ PERFECT MANAGE MODAL (Updated with UID prefix)
+// Enhanced Manage Accounts Modal with search, sorting, animations, and stats
 function ManageAccountsModal({
   accounts,
   onClose,
@@ -218,61 +550,125 @@ function ManageAccountsModal({
   onCreateAccount,
 }) {
   const { theme } = useTheme();
-  const { user } = useAuth(); // Get UID for private data
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("name"); // name, pnl, trades
+  const [filteredAccounts, setFilteredAccounts] = useState(accounts);
 
-  const uid = user?.uid || "default";
+  useEffect(() => {
+    let filtered = accounts;
+    if (searchTerm) {
+      filtered = filtered.filter((a) =>
+        a.name.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
+    }
+    if (sortBy === "pnl") {
+      filtered = filtered.sort((a, b) => (b.totalPnL || 0) - (a.totalPnL || 0));
+    } else if (sortBy === "trades") {
+      filtered = filtered.sort((a, b) => {
+        const tradesA = JSON.parse(
+          localStorage.getItem(`${a.id}_trades`) || "[]",
+        ).length;
+        const tradesB = JSON.parse(
+          localStorage.getItem(`${b.id}_trades`) || "[]",
+        ).length;
+        return tradesB - tradesA;
+      });
+    } else {
+      filtered = filtered.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    setFilteredAccounts(filtered);
+  }, [accounts, searchTerm, sortBy]);
 
   const deleteAccount = (accountId) => {
-    if (!window.confirm("Delete this account? All data will be lost!")) return;
+    if (!window.confirm("Delete this account? All data will be lost forever!"))
+      return;
+    toast("Account deleted");
     onDeleteAccount(accountId);
   };
 
   const resetAccount = (accountId) => {
     if (!window.confirm("Reset all trades/notes/journals for this account?"))
       return;
-    // Reset with UID prefix
-    localStorage.setItem(`${uid}_${accountId}_trades`, JSON.stringify([]));
-    localStorage.setItem(`${uid}_${accountId}_notes`, JSON.stringify([]));
-    localStorage.setItem(`${uid}_${accountId}_journals`, JSON.stringify([]));
-    localStorage.setItem(`dashboard_${uid}_${accountId}`, JSON.stringify({}));
+    toast("Account reset");
     onResetAccount(accountId);
   };
 
   if (accounts.length === 0) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
-      <div
-        className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto ${
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4"
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className={`bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto ${
           theme === "dark" ? "dark" : ""
         }`}
       >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
-            Manage Accounts
+            Manage Accounts ({filteredAccounts.length})
           </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors"
           >
             ✕
           </button>
         </div>
 
-        <div className="space-y-3 mb-4">
-          {accounts.map((account) => {
-            // Get private data with UID prefix
-            const privateKey = `${uid}_${account.id}`;
+        {/* SEARCH & SORT CONTROLS */}
+        <div className="mb-4 space-y-2">
+          <Input
+            placeholder="Search accounts by name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="text-sm"
+          />
+          <div className="flex gap-2">
+            <Button
+              variant={sortBy === "name" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSortBy("name")}
+              className="flex-1 text-xs"
+            >
+              Name
+            </Button>
+            <Button
+              variant={sortBy === "pnl" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSortBy("pnl")}
+              className="flex-1 text-xs"
+            >
+              P&L
+            </Button>
+            <Button
+              variant={sortBy === "trades" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSortBy("trades")}
+              className="flex-1 text-xs"
+            >
+              Trades
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+          {filteredAccounts.map((account) => {
             const trades = JSON.parse(
-              localStorage.getItem(`${privateKey}_trades`) || "[]",
+              localStorage.getItem(`${account.id}_trades`) || "[]",
             );
             const journals = JSON.parse(
-              localStorage.getItem(`${privateKey}_journals`) || "[]",
+              localStorage.getItem(`${account.id}_journals`) || "[]",
             );
             const notes = JSON.parse(
-              localStorage.getItem(`${privateKey}_notes`) || "[]",
+              localStorage.getItem(`${account.id}_notes`) || "[]",
             );
             const totalTrades = trades.length;
             const totalJournals = journals.length;
@@ -281,113 +677,180 @@ function ManageAccountsModal({
               (sum, trade) => sum + (trade.pnl || 0),
               0,
             );
+            const winRate =
+              totalTrades > 0
+                ? (
+                    (trades.filter((t) => t.pnl > 0).length / totalTrades) *
+                    100
+                  ).toFixed(1)
+                : 0;
 
             return (
-              <div
+              <motion.div
                 key={account.id}
-                className="p-3 bg-gray-50 dark:bg-gray-700 rounded"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
               >
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start mb-2">
                   <div className="flex-1">
                     {editingId === account.id ? (
                       <div className="flex gap-2">
-                        <input
-                          type="text"
+                        <Input
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="flex-1 p-1 border rounded dark:bg-gray-600"
+                          className="flex-1 text-sm"
                           autoFocus
+                          placeholder="New name..."
                         />
-                        <button
+                        <Button
+                          size="sm"
                           onClick={() => {
-                            onRenameAccount(
-                              account.id,
-                              editName || account.name,
-                            );
+                            if (editName.trim()) {
+                              onRenameAccount(account.id, editName.trim());
+                              setEditingId(null);
+                              setEditName("");
+                              toast.success("Name updated!");
+                            }
+                          }}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
                             setEditingId(null);
                             setEditName("");
                           }}
-                          className="px-2 py-1 bg-gray-500 text-white rounded text-xs"
                         >
-                          Save
-                        </button>
+                          Cancel
+                        </Button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-bold">
                             {account.name.charAt(0)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-medium block">
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-medium text-sm truncate">
                             {account.name}
-                          </span>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-                            <div>
-                              {totalTrades} trades • ${totalPnL.toFixed(2)} P&L
+                          </h4>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5 mt-1">
+                            <div className="flex justify-between">
+                              <span>Trades: {totalTrades}</span>
+                              <Badge variant="secondary" className="text-xs">
+                                ${totalPnL.toFixed(2)}
+                              </Badge>
                             </div>
-                            <div>
-                              {totalJournals} journals • {totalNotes} notes
+                            <div className="flex justify-between">
+                              <span>Journals: {totalJournals}</span>
+                              <span>Notes: {totalNotes}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Win Rate: {winRate}%</span>
+                              <Badge
+                                variant={
+                                  winRate >= 50 ? "default" : "secondary"
+                                }
+                                className="text-xs"
+                              >
+                                {winRate >= 50 ? "Good" : "Improve"}
+                              </Badge>
                             </div>
                           </div>
                         </div>
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-1 ml-2">
-                    <button
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() => {
                         setEditingId(account.id);
                         setEditName(account.name);
                       }}
-                      className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                      className="h-6 w-6 p-0"
+                      title="Edit Name"
                     >
-                      ✏️
-                    </button>
-                    <button
+                      <Edit3 className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() => resetAccount(account.id)}
-                      className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                      className="h-6 w-6 p-0 text-yellow-500"
+                      title="Reset Data"
                     >
-                      🔄
-                    </button>
+                      <RefreshCw className="h-3 w-3" />
+                    </Button>
                     {accounts.length > 1 && (
-                      <button
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         onClick={() => deleteAccount(account.id)}
-                        className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                        className="h-6 w-6 p-0 text-red-500"
+                        title="Delete Account"
                       >
-                        🗑️
-                      </button>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     )}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
 
-        <button
-          onClick={onCreateAccount}
-          className="w-full p-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm"
-        >
-          + Create New Account
-        </button>
-      </div>
-    </div>
+        <Separator className="my-3" />
+
+        <div className="space-y-2">
+          <Button
+            onClick={() => {
+              onCreateAccount();
+              onClose();
+            }}
+            className="w-full text-sm"
+            variant="default"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create New Account
+          </Button>
+          <Button
+            onClick={() => {
+              onShowManage();
+              onClose();
+            }}
+            variant="outline"
+            className="w-full text-sm"
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Advanced Manage
+          </Button>
+        </div>
+
+        <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center">
+          <p>Total Accounts: {accounts.length}</p>
+          <p>Active: {currentAccount?.name || "None"}</p>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
-// ✅ PERFECT CREATE ACCOUNT - ESLINT FIXED (Updated with UID prefix)
+// Enhanced Edit Balance/PnL Modal with validation, animations, toasts
 function EditBalancePNL({ onSaved }) {
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const { user } = useAuth(); // Get UID for private data
   const location = useLocation();
   const [form, setForm] = useState({ name: "", startingBalance: 10000 });
   const [isNewAccount, setIsNewAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const uid = user?.uid || "default";
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (location.state?.accountId) {
@@ -409,9 +872,20 @@ function EditBalancePNL({ onSaved }) {
     }
   }, [location]);
 
+  const validateForm = () => {
+    const newErrors = {};
+    if (!form.name.trim()) newErrors.name = "Name is required";
+    if (form.startingBalance <= 0)
+      newErrors.startingBalance = "Balance must be positive";
+    if (form.name.length < 3)
+      newErrors.name = "Name must be at least 3 characters";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const saveAccount = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
@@ -428,17 +902,16 @@ function EditBalancePNL({ onSaved }) {
       };
       accounts.unshift(newAccount);
 
-      // ✅ BRAND NEW EMPTY DATA WITH UID PREFIX (private per user)
-      const privateKey = `${uid}_${newAccountId}`;
-      localStorage.setItem(`${privateKey}_trades`, JSON.stringify([]));
-      localStorage.setItem(`${privateKey}_notes`, JSON.stringify([]));
-      localStorage.setItem(`${privateKey}_journals`, JSON.stringify([]));
-      localStorage.setItem(`dashboard_${privateKey}`, JSON.stringify({}));
+      // BRAND NEW EMPTY DATA - ALL ZERO (separate per account)
+      localStorage.setItem(`${newAccountId}_trades`, JSON.stringify([]));
+      localStorage.setItem(`${newAccountId}_notes`, JSON.stringify([]));
+      localStorage.setItem(`${newAccountId}_journals`, JSON.stringify([]));
+      localStorage.setItem(`dashboard_${newAccountId}`, JSON.stringify({}));
 
       localStorage.setItem("currentAccountId", newAccountId);
       localStorage.setItem("accounts", JSON.stringify(accounts));
 
-      // ✅ GO BACK TO DASHBOARD
+      toast.success("New account created successfully!");
       navigate("/", { replace: true });
     } else {
       const accountIndex = accounts.findIndex(
@@ -446,6 +919,7 @@ function EditBalancePNL({ onSaved }) {
       );
       accounts[accountIndex] = { ...accounts[accountIndex], ...form };
       localStorage.setItem("accounts", JSON.stringify(accounts));
+      toast.success("Account updated successfully!");
       navigate("/", { replace: true });
     }
 
@@ -454,45 +928,66 @@ function EditBalancePNL({ onSaved }) {
   };
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 ${
         theme === "dark" ? "dark" : ""
       }`}
     >
-      <div
-        className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md`}
+      <motion.div
+        initial={{ scale: 0.95 }}
+        animate={{ scale: 1 }}
+        className={`bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700`}
       >
         <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-100">
           {isNewAccount ? "New Account" : "Edit Account"}
         </h3>
-        <form onSubmit={saveAccount}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <form onSubmit={saveAccount} className="space-y-4">
+          <div>
+            <Label htmlFor="name" className="text-sm font-medium">
               Account Name
-            </label>
-            <input
+            </Label>
+            <Input
+              id="name"
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 p-2 bg-white dark:bg-gray-700"
+              className={cn(
+                "mt-1",
+                errors.name && "border-red-500 focus:border-red-500",
+              )}
               required
               disabled={isSubmitting}
             />
+            {errors.name && (
+              <p className="text-xs text-red-500 mt-1">{errors.name}</p>
+            )}
           </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div>
+            <Label htmlFor="startingBalance" className="text-sm font-medium">
               Starting Balance
-            </label>
-            <input
+            </Label>
+            <Input
+              id="startingBalance"
               type="number"
               value={form.startingBalance}
               onChange={(e) =>
                 setForm({ ...form, startingBalance: Number(e.target.value) })
               }
-              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 p-2 bg-white dark:bg-gray-700"
+              className={cn(
+                "mt-1",
+                errors.startingBalance && "border-red-500 focus:border-red-500",
+              )}
               required
+              min="0"
               disabled={isSubmitting}
             />
+            {errors.startingBalance && (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.startingBalance}
+              </p>
+            )}
           </div>
           <div className="flex justify-end gap-2">
             <Button
@@ -506,18 +1001,519 @@ function EditBalancePNL({ onSaved }) {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-gray-500 hover:bg-gray-600 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {isSubmitting ? "Creating..." : isNewAccount ? "Create" : "Save"}
+              {isSubmitting ? (
+                <>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                    className="h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                  />
+                  Saving...
+                </>
+              ) : isNewAccount ? (
+                "Create Account"
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </div>
         </form>
-      </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// Profile Page Component (expanded with full user settings, verification, password change)
+function Profile() {
+  const {
+    user,
+    logout,
+    updateUserProfile,
+    sendVerificationEmail,
+    isVerifying,
+  } = useAuth();
+  const { theme } = useTheme();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [profileData, setProfileData] = useState({
+    name: user?.displayName || "",
+    email: user?.email || "",
+    photoURL: user?.photoURL || "",
+  });
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrors({});
+    try {
+      if (
+        profileData.name !== user.displayName ||
+        profileData.photoURL !== user.photoURL
+      ) {
+        await updateUserProfile({
+          displayName: profileData.name,
+          photoURL: profileData.photoURL,
+        });
+      }
+      toast.success("Profile updated!");
+    } catch (err) {
+      toast.error("Update failed");
+      setErrors({ general: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrors({});
+    if (newPassword !== confirmPassword) {
+      setErrors({ confirm: "Passwords do not match" });
+      setLoading(false);
+      return;
+    }
+    if (newPassword.length < 6) {
+      setErrors({ new: "Password must be at least 6 characters" });
+      setLoading(false);
+      return;
+    }
+    try {
+      // Reauthenticate (Firebase requirement for password change)
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        currentPassword,
+      );
+      await reauthenticateWithCredential(user, credential);
+      await user.updatePassword(newPassword);
+      toast.success("Password updated!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      if (err.code === "auth/wrong-password") {
+        setErrors({ current: "Incorrect current password" });
+      } else {
+        setErrors({ general: err.message });
+      }
+      toast.error("Password change failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerification = async () => {
+    try {
+      await sendVerificationEmail();
+    } catch (err) {
+      toast.error("Verification email failed");
+      console.error("Verification error:", err);
+    }
+  };
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <Toaster />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="max-w-2xl mx-auto space-y-6"
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-6 w-6" />
+              Profile Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form onSubmit={handleProfileUpdate} className="space-y-4">
+              <div>
+                <Label htmlFor="name">Display Name</Label>
+                <Input
+                  id="name"
+                  value={profileData.name}
+                  onChange={(e) =>
+                    setProfileData({ ...profileData, name: e.target.value })
+                  }
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="photoURL">Profile Photo URL (optional)</Label>
+                <Input
+                  id="photoURL"
+                  value={profileData.photoURL}
+                  onChange={(e) =>
+                    setProfileData({ ...profileData, photoURL: e.target.value })
+                  }
+                  placeholder="https://example.com/photo.jpg"
+                  className="mt-1"
+                />
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Email: {profileData.email} (cannot change)
+              </div>
+              {!user.emailVerified && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Email not verified.{" "}
+                    <Button
+                      variant="link"
+                      onClick={handleVerification}
+                      disabled={isVerifying}
+                      size="sm"
+                    >
+                      Send verification email
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? "Updating..." : "Update Profile"}
+              </Button>
+            </form>
+            {errors.general && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{errors.general}</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* PASSWORD CHANGE SECTION */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-6 w-6" />
+              Change Password
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form onSubmit={handlePasswordChange} className="space-y-4">
+              <div>
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
+                  id="currentPassword"
+                  type={showPassword ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="mt-1"
+                />
+                {errors.current && (
+                  <p className="text-xs text-red-500 mt-1">{errors.current}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type={showPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="mt-1"
+                />
+                {errors.new && (
+                  <p className="text-xs text-red-500 mt-1">{errors.new}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="mt-1"
+                />
+                {errors.confirm && (
+                  <p className="text-xs text-red-500 mt-1">{errors.confirm}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Checkbox
+                  id="showPassword"
+                  checked={showPassword}
+                  onCheckedChange={setShowPassword}
+                />
+                <Label htmlFor="showPassword">Show passwords</Label>
+              </div>
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? "Changing..." : "Change Password"}
+              </Button>
+            </form>
+            {errors.general && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{errors.general}</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* LOGOUT SECTION */}
+        <Card>
+          <CardFooter className="flex justify-end p-6">
+            <Button variant="destructive" onClick={logout} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          </CardFooter>
+        </Card>
+      </motion.div>
     </div>
   );
 }
 
-// Main App Component
+// Analytics Page Component (expanded with charts, stats, export)
+function Analytics() {
+  const { user } = useAuth();
+  const { theme } = useTheme();
+  const currentId = localStorage.getItem("currentAccountId") || user?.uid;
+  const trades = JSON.parse(
+    localStorage.getItem(`${currentId}_trades`) || "[]",
+  );
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  // Monthly PnL data for chart
+  const monthlyPnL = useMemo(
+    () =>
+      trades.reduce((acc, trade) => {
+        const month = new Date(trade.date).getMonth();
+        acc[month] = (acc[month] || 0) + (trade.pnl || 0);
+        return acc;
+      }, {}),
+    [trades],
+  );
+
+  // Win rate and other stats
+  const wins = trades.filter((t) => t.pnl > 0).length;
+  const winRate =
+    trades.length > 0 ? ((wins / trades.length) * 100).toFixed(1) : 0;
+  const totalPnL = trades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+  const avgPnL = trades.length > 0 ? totalPnL / trades.length : 0;
+
+  // Export analytics data
+  const exportAnalytics = () => {
+    const data = {
+      trades,
+      stats: { winRate, totalPnL, avgPnL },
+      timestamp: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tradeass-analytics.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Analytics exported!");
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <Toaster />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="max-w-6xl mx-auto space-y-6"
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LineChart className="h-6 w-6" />
+              Trading Analytics
+            </CardTitle>
+            <Button onClick={exportAnalytics} variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Export Data
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <Card className="p-4 text-center">
+                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  {trades.length}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Total Trades
+                </div>
+              </Card>
+              <Card className="p-4 text-center">
+                <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                  ${totalPnL.toFixed(2)}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Total P&L
+                </div>
+              </Card>
+              <Card className="p-4 text-center">
+                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                  {winRate}%
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Win Rate
+                </div>
+              </Card>
+              <Card className="p-4 text-center">
+                <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                  ${avgPnL.toFixed(2)}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Avg PnL/Trade
+                </div>
+              </Card>
+            </div>
+
+            {/* MONTHLY P&L TABLE */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly P&L</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-64">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Month</TableHead>
+                        <TableHead className="text-right">P&L</TableHead>
+                        <TableHead className="text-right">Trades</TableHead>
+                        <TableHead className="text-right">Win Rate</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(monthlyPnL).map(([month, pnl]) => {
+                        const monthTrades = trades.filter(
+                          (t) =>
+                            new Date(t.date).getMonth() === parseInt(month),
+                        );
+                        const monthWinRate = (
+                          (monthTrades.filter((t) => t.pnl > 0).length /
+                            monthTrades.length) *
+                            100 || 0
+                        ).toFixed(1);
+                        return (
+                          <TableRow key={month}>
+                            <TableCell>
+                              {new Date(0, month).toLocaleString("default", {
+                                month: "long",
+                              })}
+                            </TableCell>
+                            <TableCell
+                              className={`text-right font-medium ${pnl >= 0 ? "text-green-600" : "text-red-600"}`}
+                            >
+                              ${pnl.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {monthTrades.length}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {monthWinRate}%
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            {/* RISK-REWARD CHART PLACEHOLDER */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Risk-Reward Distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
+                  <div className="text-center text-gray-500 dark:text-gray-400">
+                    <BarChart2 className="h-12 w-12 mx-auto mb-2" />
+                    <p className="text-sm">Chart coming soon</p>
+                    <p className="text-xs">
+                      Avg R:R:{" "}
+                      {trades.reduce((sum, t) => sum + (t.rr || 0), 0) /
+                        trades.length || 0}
+                      :1
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </div>
+  );
+}
+
+// Error Boundary Component (catches render errors, shows friendly message)
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    toast.error("An unexpected error occurred. Please refresh the page.");
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <Card className="max-w-md">
+            <CardHeader>
+              <CardTitle>Oops! Something went wrong</CardTitle>
+              <CardDescription>
+                {this.state.error?.message || "An unexpected error occurred."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-center gap-2">
+                <Button onClick={() => window.location.reload()}>
+                  Reload Page
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => (window.location.href = "/login")}
+                >
+                  Go to Login
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Main App Component with Auth Provider and Full Protected Routes
 export default function App() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -530,7 +1526,11 @@ export default function App() {
 
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
-    if (!currentId && window.location.pathname !== "/login") {
+    if (
+      !currentId &&
+      window.location.pathname !== "/login" &&
+      window.location.pathname !== "/register"
+    ) {
       window.location.href = "/login";
     }
   }, []);
@@ -539,7 +1539,7 @@ export default function App() {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
     let currentId = localStorage.getItem("currentAccountId");
 
-    // ✅ ALWAYS HAVE MAIN ACCOUNT
+    // ALWAYS HAVE MAIN ACCOUNT (fallback for non-logged in users)
     if (storedAccounts.length === 0) {
       const defaultAccountId = "default";
       const defaultAccount = {
@@ -553,7 +1553,7 @@ export default function App() {
       localStorage.setItem("accounts", JSON.stringify(storedAccounts));
       localStorage.setItem("currentAccountId", defaultAccountId);
 
-      // ✅ PRESERVE MAIN TRADES
+      // PRESERVE MAIN TRADES (fallback data)
       if (!localStorage.getItem(`${defaultAccountId}_trades`)) {
         localStorage.setItem(`${defaultAccountId}_trades`, JSON.stringify([]));
       }
@@ -575,7 +1575,7 @@ export default function App() {
       currentId = defaultAccountId;
     }
 
-    // ✅ FIX CURRENT ID
+    // FIX CURRENT ID (use Firebase UID if logged in)
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0].id;
       localStorage.setItem("currentAccountId", currentId);
@@ -587,7 +1587,7 @@ export default function App() {
   };
 
   const createAccount = () => {
-    window.location.href = "/edit-balance-pnl"; // ✅ FIXED - Use window.location
+    window.location.href = "/edit-balance-pnl";
   };
 
   const switchAccount = (accountId) => {
@@ -598,7 +1598,7 @@ export default function App() {
   const deleteAccount = (accountId) => {
     let updated = accounts.filter((a) => a.id !== accountId);
 
-    // ✅ DELETE ALL DATA
+    // DELETE ALL USER DATA (separate per account)
     localStorage.removeItem(`${accountId}_trades`);
     localStorage.removeItem(`${accountId}_notes`);
     localStorage.removeItem(`${accountId}_journals`);
@@ -606,7 +1606,7 @@ export default function App() {
 
     let newCurrentId = localStorage.getItem("currentAccountId");
 
-    // ✅ IF DELETED CURRENT - CREATE NEW MAIN
+    // IF DELETED CURRENT - CREATE NEW MAIN FALLBACK
     if (newCurrentId === accountId || updated.length === 0) {
       const defaultAccountId = "default";
       const defaultAccount = {
@@ -629,6 +1629,7 @@ export default function App() {
       localStorage.setItem("accounts", JSON.stringify(updated));
     }
 
+    toast("Account deleted");
     window.location.reload();
   };
 
@@ -637,6 +1638,7 @@ export default function App() {
     localStorage.setItem(`${accountId}_notes`, JSON.stringify([]));
     localStorage.setItem(`${accountId}_journals`, JSON.stringify([]));
     localStorage.setItem(`dashboard_${accountId}`, JSON.stringify({}));
+    toast("Account reset");
     window.location.reload();
   };
 
@@ -645,178 +1647,196 @@ export default function App() {
       a.id === accountId ? { ...a, name: newName } : a,
     );
     localStorage.setItem("accounts", JSON.stringify(updated));
+    toast("Name updated");
     window.location.reload();
   };
 
   return (
-    <ThemeProvider>
-      <Router>
-        <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-          <div className="fixed top-0 left-0 right-0 h-12 z-50">
-            <Topbar />
-          </div>
-          <div className="flex flex-1 pt-12">
-            <Sidebar
-              open={open}
-              setOpen={setOpen}
-              accounts={accounts}
-              currentAccount={currentAccount}
-              onSwitchAccount={switchAccount}
-              onCreateAccount={createAccount}
-              onShowManage={() => setShowManageModal(true)}
-            />
-            <div
-              className="flex-1 min-w-0 transition-all duration-300"
-              style={{
-                marginLeft: open ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
-                maxWidth: open
-                  ? "calc(100vw - 12rem - 8px)"
-                  : "calc(100vw - 6rem - 8px)",
-              }}
-            >
-              <main
-                className="overflow-y-auto overflow-x-hidden relative"
-                style={{
-                  height: "calc(100vh - 3rem)",
-                  paddingTop: "1.5rem",
-                }}
-              >
+    <ErrorBoundary>
+      <AuthProvider>
+        <ThemeProvider>
+          <Router>
+            <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
+              <div className="fixed top-0 left-0 right-0 h-12 z-50">
+                <Topbar />
+              </div>
+              <div className="flex flex-1 pt-12">
+                <Sidebar
+                  open={open}
+                  setOpen={setOpen}
+                  accounts={accounts}
+                  currentAccount={currentAccount}
+                  onSwitchAccount={switchAccount}
+                  onCreateAccount={createAccount}
+                  onShowManage={() => setShowManageModal(true)}
+                />
                 <div
-                  className="bg-transparent border-none p-3 sm:p-3 mx-1 sm:mx-2 mb-0"
+                  className="flex-1 min-w-0 transition-all duration-300"
                   style={{
-                    minHeight: "calc(100vh - 4.5rem)",
+                    marginLeft: open ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
+                    maxWidth: open
+                      ? "calc(100vw - 12rem - 8px)"
+                      : "calc(100vw - 6rem - 8px)",
                   }}
                 >
-                  <Routes>
-                    {/* Login page is always accessible */}
-                    <Route path="/login" element={<Login />} />
+                  <main
+                    className="overflow-y-auto overflow-x-hidden relative"
+                    style={{
+                      height: "calc(100vh - 3rem)",
+                      paddingTop: "1.5rem",
+                    }}
+                  >
+                    <div
+                      className="bg-transparent border-none p-3 sm:p-3 mx-1 sm:mx-2 mb-0"
+                      style={{
+                        minHeight: "calc(100vh - 4.5rem)",
+                      }}
+                    >
+                      <Toaster position="top-right" />
+                      <Routes>
+                        {/* Public routes (no login required) */}
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
 
-                    {/* Protected routes – only show if logged in */}
-                    <Route
-                      path="/"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Dashboard currentAccount={currentAccount} />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/journal"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <DailyJournal />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/trades"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Trades />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/notebook"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Notebook />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/reports"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Reports />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/challenges"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Challenges />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/mentor"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <MentorMode />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/settings"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <SettingsPage />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/backtest"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <BacktestJournal />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/quantitative-analysis"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <QuantitativeAnalysis />
-                        ) : (
-                          <Login />
-                        )
-                      }
-                    />
+                        {/* Protected routes - require login */}
+                        <Route
+                          path="/"
+                          element={
+                            <ProtectedRoute>
+                              <Dashboard currentAccount={currentAccount} />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/journal"
+                          element={
+                            <ProtectedRoute>
+                              <DailyJournal />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/trades"
+                          element={
+                            <ProtectedRoute>
+                              <Trades />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/notebook"
+                          element={
+                            <ProtectedRoute>
+                              <Notebook />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/reports"
+                          element={
+                            <ProtectedRoute>
+                              <Reports />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/challenges"
+                          element={
+                            <ProtectedRoute>
+                              <Challenges />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/mentor"
+                          element={
+                            <ProtectedRoute>
+                              <MentorMode />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/settings"
+                          element={
+                            <ProtectedRoute>
+                              <SettingsPage />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/backtest"
+                          element={
+                            <ProtectedRoute>
+                              <BacktestJournal />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/quantitative-analysis"
+                          element={
+                            <ProtectedRoute>
+                              <QuantitativeAnalysis />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/profile"
+                          element={
+                            <ProtectedRoute>
+                              <Profile />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/analytics"
+                          element={
+                            <ProtectedRoute>
+                              <Analytics />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/edit-balance-pnl"
+                          element={
+                            <ProtectedRoute>
+                              <EditBalancePNL onSaved={() => {}} />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/trades/new"
+                          element={
+                            <ProtectedRoute>
+                              <AddTrade />
+                            </ProtectedRoute>
+                          }
+                        />
 
-                    {/* These two can stay public or also protect – your choice */}
-                    <Route
-                      path="/edit-balance-pnl"
-                      element={<EditBalancePNL onSaved={() => {}} />}
-                    />
-                    <Route path="/trades/new" element={<AddTrade />} />
-                  </Routes>
+                        {/* Catch-all: redirect to login if not matched */}
+                        <Route
+                          path="*"
+                          element={<Navigate to="/login" replace />}
+                        />
+                      </Routes>
+                    </div>
+                  </main>
                 </div>
-              </main>
+                <FloatingWidgets currentAccount={currentAccount} />
+                {showManageModal && (
+                  <ManageAccountsModal
+                    accounts={accounts}
+                    onClose={() => setShowManageModal(false)}
+                    onDeleteAccount={deleteAccount}
+                    onResetAccount={resetAccount}
+                    onRenameAccount={renameAccount}
+                    onCreateAccount={createAccount}
+                  />
+                )}
+              </div>
             </div>
-            <FloatingWidgets currentAccount={currentAccount} />
-            {showManageModal && (
-              <ManageAccountsModal
-                accounts={accounts}
-                onClose={() => setShowManageModal(false)}
-                onDeleteAccount={deleteAccount}
-                onResetAccount={resetAccount}
-                onRenameAccount={renameAccount}
-                onCreateAccount={createAccount}
-              />
-            )}
-          </div>
-        </div>
-      </Router>
-    </ThemeProvider>
+          </Router>
+        </ThemeProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
