@@ -1,10 +1,3 @@
-const navItems = [
-  { to: "/home", label: "Home", icon: Home },
-  { to: "/trades", label: "Trades", icon: BookOpen },
-  { to: "/activity", label: "Activity", icon: Activity },
-  { to: "/analytics", label: "BarChart3", icon: BarChart3 },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,15 +16,6 @@ import {
   Calculator,
   UserPlus,
   Settings2,
-  TrendingUp,
-  CreditCard,
-  Shield,
-  Crown,
-  Edit3,
-  RefreshCw,
-  Trash2,
-  Plus,
-  Profile,
   ChevronDown,
   ChevronUp,
   LogOut,
@@ -48,6 +32,13 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+const navItems = [
+  { to: "/home", label: "Home", icon: Home },
+  { to: "/trades", label: "Trades", icon: BookOpen },
+  { to: "/activity", label: "Activity", icon: Activity },
+  { to: "/analytics", label: "BarChart3", icon: BarChart3 },
+  { to: "/settings", label: "Settings", icon: Settings },
+];
 
 
 export default function Sidebar({
