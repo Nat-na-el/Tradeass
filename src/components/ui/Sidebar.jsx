@@ -31,7 +31,7 @@ import {
   RefreshCw,
   Trash2,
   Plus,
-  Profile,,
+  Profile,
   ChevronDown,
   ChevronUp,
   LogOut,
