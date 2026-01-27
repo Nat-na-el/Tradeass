@@ -524,7 +524,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-export default function App() {
+ {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
   const [accounts, setAccounts] = useState([]);
