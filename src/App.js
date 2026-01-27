@@ -8,6 +8,10 @@ import {
   Navigate,
 } from "react-router-dom";
 import { onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail, sendEmailVerification } from 'firebase/auth';
+import {
+  Menu, X, Home, BookOpen, Activity, FileText, BarChart3, Trophy, Users,
+  Settings2, UserPlus, ChevronDown, ChevronUp, LogOut, Bell, Mail
+} from "lucide-react";
 import { auth } from './firebase'; // Your Firebase config file — make sure it's correct
 import { ThemeProvider, useTheme } from "./Theme-provider";
 import { Button } from "./components/ui/button";
