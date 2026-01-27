@@ -2,7 +2,7 @@ const navItems = [
   { to: "/home", label: "Home", icon: Home },
   { to: "/trades", label: "Trades", icon: BookOpen },
   { to: "/activity", label: "Activity", icon: Activity },
-  { to: "/analytics", label: "Analytics", icon: Analytics },
+  { to: "/analytics", label: "BarChart3", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 import React, { useState, useEffect } from "react";
@@ -31,8 +31,7 @@ import {
   RefreshCw,
   Trash2,
   Plus,
-  Profile,
-  Analytics,
+  Profile,,
   ChevronDown,
   ChevronUp,
   LogOut,
