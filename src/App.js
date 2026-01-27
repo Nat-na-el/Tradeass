@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useMemo,
   useRef,
+  Suspense,
 } from "react";
 import {
   BrowserRouter as Router,
@@ -21,6 +22,8 @@ import {
   updateProfile,
   sendPasswordResetEmail,
   sendEmailVerification,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
 } from "firebase/auth";
 import { auth } from "./firebase"; // Your Firebase config file — make sure it's correct
 import { ThemeProvider, useTheme } from "./Theme-provider";
@@ -38,7 +41,6 @@ import { Label } from "./components/ui/label";
 import { Badge } from "./components/ui/badge";
 import { Progress } from "./components/ui/progress";
 import { Separator } from "./components/ui/separator";
-import { Skeleton } from "./components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -87,46 +89,19 @@ import BacktestJournal from "./pages/BacktestJournal";
 import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
-import Register from "./pages/Register"; // Full import for register
+import Register from "./pages/Register";
 import { motion, AnimatePresence } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
 import { cn } from "./lib/utils";
 
-// Consolidated lucide-react import — no duplicates
+// Core Lucide icons only (what exists, no extras to avoid errors)
 import {
   LogOut,
   User,
   Settings,
-  Bell,
-  HelpCircle,
-  CreditCard,
-  Shield,
-  Crown,
-  Clock,
-  Database,
   TrendingUp,
   TrendingDown,
-  Target,
-  Award,
-  PlayCircle,
-  FileText,
-  LineChart,
-  AlertTriangle,
-  CheckCircle,
-  Edit3,
-  Trash2,
-  Download,
-  Upload,
-  Filter,
-  Search,
-  Plus,
-  Minus,
-  ArrowUp,
-  ArrowDown,
-  BarChart2,
-  PieChart,
   DollarSign,
-  Percent,
   Calendar,
   Activity,
   Zap,
@@ -156,61 +131,25 @@ import {
   File,
   Folder,
   FolderOpen,
-  Image,
-  Video,
-  Music,
-  Mic,
-  Volume,
-  SkipBack,
-  Play,
-  Pause,
-  SkipForward,
-  RotateCw,
-  RotateCcw,
+  Edit3,
+  Trash2,
+  Download,
+  Upload,
+  Filter,
+  Search,
+  Plus,
+  Minus,
+  ArrowUp,
+  ArrowDown,
+  BarChart2,
+  PieChart,
+  Percent,
+  CheckCircle,
+  AlertTriangle,
   RefreshCw,
-  RefreshCcw,
   ChevronLeft,
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  ChevronUp,
   ChevronDown,
-  ChevronsUp,
-  ChevronsDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUpRight,
-  ArrowDownRight,
-  CornerDownLeft,
-  CornerDownRight,
-  CornerLeftUp,
-  CornerRightUp,
-  CornerUpLeft,
-  CornerUpRight,
-  ArrowUpLeft,
-  ArrowUpRightFromSquare,
-  ExternalLink,
-  Maximize,
-  Maximize2,
-  Minimize,
-  Minimize2,
-  Move,
-  Layout,
-  Grid,
-  Grid3x3,
-  LayoutGrid,
-  LayoutList,
-  LayoutKanban,
-  LayoutDashboard,
-  SidebarClose,
-  SidebarOpen,
-  PanelLeft,
-  PanelRight,
-  PanelTop,
-  PanelBottom,
-  SplitHorizontal,
-  SplitVertical,
-  Grid2x2,
 } from "lucide-react";
 
 // Auth Context for global state management (user, login state, logout)
