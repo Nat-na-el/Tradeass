@@ -399,18 +399,14 @@ export default function App() {
     const currentId = localStorage.getItem("currentAccountId");
     const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
 
-    // Force login on ALL paths except login and register form
-    const isPublicPath =
-      window.location.pathname === "/login" ||
-      window.location.pathname === "/edit-balance-pnl";
-
-    if (!isPublicPath) {
-      if (
-        !currentId ||
-        storedAccounts.length === 0 ||
-        !storedAccounts.some((acc) => acc.id === currentId)
-      ) {
-        localStorage.removeItem("currentAccountId");
+    // Force login on ALL paths - no public pages except /login
+    if (
+      !currentId ||
+      storedAccounts.length === 0 ||
+      !storedAccounts.some((acc) => acc.id === currentId)
+    ) {
+      localStorage.removeItem("currentAccountId");
+      if (window.location.pathname !== "/login") {
         window.location.replace("/login");
       }
     }
@@ -615,10 +611,16 @@ export default function App() {
                         )
                       }
                     />
-                    {/* These two can stay public or also protect – your choice */}
+                    {/* edit-balance-pnl is now protected - only after login */}
                     <Route
                       path="/edit-balance-pnl"
-                      element={<EditBalancePNL onSaved={() => {}} />}
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <EditBalancePNL onSaved={() => {}} />
+                        ) : (
+                          <Login />
+                        )
+                      }
                     />
                     <Route path="/trades/new" element={<AddTrade />} />
                   </Routes>
