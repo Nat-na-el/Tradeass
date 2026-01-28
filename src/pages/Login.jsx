@@ -13,12 +13,40 @@ export default function Login() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  // Helper to create or get local account after Firebase login
+  const syncFirebaseUserToLocalAccount = (user) => {
+    const uid = user.uid;
+    let accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+    let account = accounts.find(acc => acc.id === uid);
+
+    if (!account) {
+      // Create new local account synced to Firebase user
+      account = {
+        id: uid,
+        name: user.displayName || email.split('@')[0] || "Trader",
+        startingBalance: 10000,
+        totalPnL: 0,
+        createdAt: new Date().toISOString(),
+      };
+      accounts.push(account);
+      localStorage.setItem("accounts", JSON.stringify(accounts));
+
+      // Initialize empty data (same as EditBalancePNL)
+      localStorage.setItem(`${uid}_trades`, JSON.stringify([]));
+      localStorage.setItem(`${uid}_notes`, JSON.stringify([]));
+      localStorage.setItem(`${uid}_journals`, JSON.stringify([]));
+      localStorage.setItem(`dashboard_${uid}`, JSON.stringify({}));
+    }
+
+    localStorage.setItem("currentAccountId", uid);
+  };
+
   // Login with email + password
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      localStorage.setItem('currentAccountId', userCredential.user.uid);
+      syncFirebaseUserToLocalAccount(userCredential.user);
       navigate('/');
     } catch (err) {
       setError(err.message);
@@ -29,7 +57,7 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      localStorage.setItem('currentAccountId', result.user.uid);
+      syncFirebaseUserToLocalAccount(result.user);
       navigate('/');
     } catch (err) {
       setError(err.message);
@@ -40,11 +68,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
       <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-xl p-8">
         <h1 className="text-3xl font-bold text-center mb-8">Tradeass Login</h1>
-
         {error && (
           <p className="text-red-500 text-center mb-6">{error}</p>
         )}
-
         <form onSubmit={handleEmailLogin} className="space-y-5">
           <div>
             <Label htmlFor="email">Email</Label>
@@ -58,7 +84,6 @@ export default function Login() {
               className="mt-1"
             />
           </div>
-
           <div>
             <Label htmlFor="password">Password</Label>
             <Input
@@ -71,14 +96,11 @@ export default function Login() {
               className="mt-1"
             />
           </div>
-
           <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 mt-2">
             Sign in with Email
           </Button>
         </form>
-
         <div className="my-6 text-center text-gray-500 dark:text-gray-400">or</div>
-
         <Button
           onClick={handleGoogleLogin}
           variant="outline"
@@ -92,7 +114,6 @@ export default function Login() {
           </svg>
           Sign in with Google
         </Button>
-
         <p className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
           Don't have an account?{' '}
           <button
