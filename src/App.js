@@ -23,6 +23,76 @@ import BacktestJournal from "./pages/BacktestJournal";
 import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
+import Register from "./pages/Register"; // ← Make sure Register is imported
+
+// NEW LANDING / WELCOME PAGE COMPONENT (added here for simplicity)
+function Landing() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+      {/* Top Bar with Sign In & Sign Up Buttons */}
+      <header className="w-full py-6 px-8 flex justify-end items-center gap-4">
+        <Button
+          onClick={() => navigate('/login')}
+          variant="outline"
+          className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+        >
+          Sign In
+        </Button>
+        <Button
+          onClick={() => navigate('/register')}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+        >
+          Sign Up
+        </Button>
+      </header>
+
+      {/* Hero / Welcome Section */}
+      <main className="flex-1 flex items-center justify-center px-6">
+        <div className="max-w-4xl text-center">
+          <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 dark:text-white mb-6">
+            Welcome to Tradeass
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-10 max-w-3xl mx-auto">
+            Tradeass is your personal, offline trading journal and performance tracker. Log trades, write daily journals, track notes, generate reports, run quantitative analysis, and review backtests — all in one secure, local-first app.
+          </p>
+          <p className="text-lg text-gray-600 dark:text-gray-400 mb-12">
+            How it works:<br />
+            1. Sign up or sign in<br />
+            2. Create your trading account<br />
+            3. Start logging trades, journals, and notes<br />
+            4. Analyze your performance and improve your edge
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <Button
+              onClick={() => navigate('/register')}
+              size="lg"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-lg px-10 py-6 rounded-xl shadow-lg"
+            >
+              Get Started – Sign Up
+            </Button>
+            <Button
+              onClick={() => navigate('/login')}
+              variant="outline"
+              size="lg"
+              className="text-lg px-10 py-6 border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl"
+            >
+              Already have an account? Sign In
+            </Button>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+        © {new Date().getFullYear()} Tradeass. Built for traders, powered by privacy.
+      </footer>
+    </div>
+  );
+}
+
 // ✅ PERFECT FLOATING - REAL DATA ONLY
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
@@ -399,14 +469,16 @@ export default function App() {
     const currentId = localStorage.getItem("currentAccountId");
     const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
 
-    // Force login on ALL paths except /login
-    if (
-      !currentId ||
-      storedAccounts.length === 0 ||
-      !storedAccounts.some((acc) => acc.id === currentId)
-    ) {
-      localStorage.removeItem("currentAccountId");
-      if (window.location.pathname !== "/login") {
+    // Force login on ALL protected paths
+    const isPublicPath = window.location.pathname === "/login" || window.location.pathname === "/";
+
+    if (!isPublicPath) {
+      if (
+        !currentId ||
+        storedAccounts.length === 0 ||
+        !storedAccounts.some((acc) => acc.id === currentId)
+      ) {
+        localStorage.removeItem("currentAccountId");
         window.location.replace("/login");
       }
     }
@@ -443,11 +515,11 @@ export default function App() {
     localStorage.removeItem(`${accountId}_journals`);
     localStorage.removeItem(`dashboard_${accountId}`);
     let newCurrentId = localStorage.getItem("currentAccountId");
-    // ✅ IF DELETED CURRENT - GO TO LOGIN (no recreate)
+    // ✅ IF DELETED CURRENT - GO TO LANDING (no recreate)
     if (newCurrentId === accountId || updated.length === 0) {
       localStorage.removeItem("currentAccountId");
       localStorage.setItem("accounts", JSON.stringify(updated));
-      window.location.href = "/login";
+      window.location.href = "/"; // ← Changed to landing page
       return;
     } else {
       localStorage.setItem("accounts", JSON.stringify(updated));
@@ -508,16 +580,19 @@ export default function App() {
                   }}
                 >
                   <Routes>
-                    {/* Login page is always accessible */}
+                    {/* Landing / Welcome page – always first */}
+                    <Route path="/" element={<Landing />} />
+                    {/* Login & Register */}
                     <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
                     {/* Protected routes – only show if logged in */}
                     <Route
-                      path="/"
+                      path="/dashboard"
                       element={
                         localStorage.getItem("currentAccountId") ? (
                           <Dashboard currentAccount={currentAccount} />
                         ) : (
-                          <Login />
+                          <Landing />  // ← Changed to landing instead of login
                         )
                       }
                     />
@@ -527,7 +602,7 @@ export default function App() {
                         localStorage.getItem("currentAccountId") ? (
                           <DailyJournal />
                         ) : (
-                          <Login />
+                          <Landing />
                         )
                       }
                     />
@@ -537,7 +612,7 @@ export default function App() {
                         localStorage.getItem("currentAccountId") ? (
                           <Trades />
                         ) : (
-                          <Login />
+                          <Landing />
                         )
                       }
                     />
@@ -547,7 +622,7 @@ export default function App() {
                         localStorage.getItem("currentAccountId") ? (
                           <Notebook />
                         ) : (
-                          <Login />
+                          <Landing />
                         )
                       }
                     />
@@ -557,7 +632,7 @@ export default function App() {
                         localStorage.getItem("currentAccountId") ? (
                           <Reports />
                         ) : (
-                          <Login />
+                          <Landing />
                         )
                       }
                     />
@@ -567,7 +642,7 @@ export default function App() {
                         localStorage.getItem("currentAccountId") ? (
                           <Challenges />
                         ) : (
-                          <Login />
+                          <Landing />
                         )
                       }
                     />
@@ -577,7 +652,7 @@ export default function App() {
                         localStorage.getItem("currentAccountId") ? (
                           <MentorMode />
                         ) : (
-                          <Login />
+                          <Landing />
                         )
                       }
                     />
@@ -587,7 +662,7 @@ export default function App() {
                         localStorage.getItem("currentAccountId") ? (
                           <SettingsPage />
                         ) : (
-                          <Login />
+                          <Landing />
                         )
                       }
                     />
@@ -597,7 +672,7 @@ export default function App() {
                         localStorage.getItem("currentAccountId") ? (
                           <BacktestJournal />
                         ) : (
-                          <Login />
+                          <Landing />
                         )
                       }
                     />
@@ -607,24 +682,31 @@ export default function App() {
                         localStorage.getItem("currentAccountId") ? (
                           <QuantitativeAnalysis />
                         ) : (
-                          <Login />
+                          <Landing />
                         )
                       }
                     />
-                    {/* edit-balance-pnl is now protected - only after login */}
                     <Route
                       path="/edit-balance-pnl"
                       element={
                         localStorage.getItem("currentAccountId") ? (
                           <EditBalancePNL onSaved={() => {}} />
                         ) : (
-                          <Login />
+                          <Landing />
                         )
                       }
                     />
-                    <Route path="/trades/new" element={<AddTrade />} />
+                    <Route
+                      path="/trades/new"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <AddTrade />
+                        ) : (
+                          <Landing />
+                        )
+                      }
+                    />
                   </Routes>
-                       
                 </div>
               </main>
             </div>
