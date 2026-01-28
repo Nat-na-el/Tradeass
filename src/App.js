@@ -397,19 +397,8 @@ export default function App() {
   }, []);
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
-    const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-
-    const isAllowedPath =
-      window.location.pathname === "/login" ||
-      window.location.pathname === "/edit-balance-pnl";
-
-    if (!isAllowedPath) {
-      if (
-        !currentId ||
-        storedAccounts.length === 0 ||
-        !storedAccounts.some((acc) => acc.id === currentId)
-      ) {
-        localStorage.removeItem("currentAccountId");
+    if (!currentId) {
+      if (window.location.pathname !== "/login" && window.location.pathname !== "/edit-balance-pnl") {
         window.location.href = "/login";
       }
     }
@@ -418,15 +407,13 @@ export default function App() {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
     let currentId = localStorage.getItem("currentAccountId");
 
-    // Removed automatic creation of default account so fresh open shows login
+    // No default account creation anymore
 
-    // FIX CURRENT ID
+    // ✅ FIX CURRENT ID
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0]?.id || null;
       if (currentId) {
         localStorage.setItem("currentAccountId", currentId);
-      } else {
-        localStorage.removeItem("currentAccountId");
       }
     }
     setAccounts(storedAccounts);
@@ -450,10 +437,22 @@ export default function App() {
     let newCurrentId = localStorage.getItem("currentAccountId");
     // ✅ IF DELETED CURRENT - CREATE NEW MAIN
     if (newCurrentId === accountId || updated.length === 0) {
-      localStorage.removeItem("currentAccountId");
+      const defaultAccountId = "default";
+      const defaultAccount = {
+        id: defaultAccountId,
+        name: "Main Account",
+        startingBalance: 10000,
+        totalPnL: 0,
+        createdAt: new Date().toISOString(),
+      };
+      updated = [defaultAccount];
       localStorage.setItem("accounts", JSON.stringify(updated));
-      window.location.href = "/login";
-      return;
+      localStorage.setItem("currentAccountId", defaultAccountId);
+      localStorage.setItem(`${defaultAccountId}_trades`, JSON.stringify([]));
+      localStorage.setItem(`${defaultAccountId}_notes`, JSON.stringify([]));
+      localStorage.setItem(`${defaultAccountId}_journals`, JSON.stringify([]));
+      localStorage.setItem(`dashboard_${defaultAccountId}`, JSON.stringify({}));
+      newCurrentId = defaultAccountId;
     } else {
       localStorage.setItem("accounts", JSON.stringify(updated));
     }
