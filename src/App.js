@@ -388,13 +388,13 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// LANDING PAGE (no sidebar, no topbar)
+// LANDING PAGE COMPONENT (no sidebar, no topbar, clean welcome)
 function Landing() {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
-      {/* Top Bar with Sign In & Sign Up */}
+      {/* Top-right Sign In / Sign Up */}
       <header className="w-full py-6 px-8 flex justify-end items-center gap-4">
         <Button
           onClick={() => navigate('/login')}
@@ -411,21 +411,21 @@ function Landing() {
         </Button>
       </header>
 
-      {/* Hero Content */}
+      {/* Main Welcome Content */}
       <main className="flex-1 flex items-center justify-center px-6">
         <div className="max-w-4xl text-center">
           <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 dark:text-white mb-6">
             Welcome to Tradeass
           </h1>
           <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-10 max-w-3xl mx-auto">
-            Tradeass is your personal, private trading journal and performance tracker. Log trades, write daily reflections, keep notes, generate reports, run quantitative analysis, and review backtests — all securely stored in your browser.
+            Tradeass is your personal, offline-first trading journal and performance tracker. Log trades, write daily reflections, keep notes, generate detailed reports, run quantitative analysis, and review backtests — all securely stored in your browser with no server needed.
           </p>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-12">
+          <p className="text-lg text-gray-600 dark:text-gray-400 mb-12 leading-relaxed">
             How it works:<br />
-            1. Sign up or sign in<br />
-            2. Create your trading account(s)<br />
-            3. Start logging trades, journals & notes<br />
-            4. Analyze your edge and improve over time
+            1. Sign up or sign in (email or Google)<br />
+            2. Create your trading account(s) with starting balance<br />
+            3. Log every trade, journal entry, and note<br />
+            4. Track performance, analyze patterns, and improve your trading edge over time
           </p>
 
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
@@ -450,7 +450,7 @@ function Landing() {
 
       {/* Footer */}
       <footer className="py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
-        © {new Date().getFullYear()} Tradeass • Private • Offline-first • Built for traders
+        © {new Date().getFullYear()} Tradeass • Private • Offline • Built for serious traders
       </footer>
     </div>
   );
@@ -470,8 +470,10 @@ export default function App() {
     const currentId = localStorage.getItem("currentAccountId");
     const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
 
-    // Force redirect to login on protected paths if no valid account
-    const isPublicPath = window.location.pathname === "/" || window.location.pathname === "/login" || window.location.pathname === "/register";
+    // Force login on protected paths
+    const isPublicPath = window.location.pathname === "/" ||
+                         window.location.pathname === "/login" ||
+                         window.location.pathname === "/register";
 
     if (!isPublicPath) {
       if (
@@ -522,7 +524,7 @@ export default function App() {
     if (newCurrentId === accountId || updated.length === 0) {
       localStorage.removeItem("currentAccountId");
       localStorage.setItem("accounts", JSON.stringify(updated));
-      window.location.href = "/";
+      window.location.href = "/"; // Back to landing
       return;
     } else {
       localStorage.setItem("accounts", JSON.stringify(updated));
@@ -546,13 +548,14 @@ export default function App() {
     window.location.reload();
   };
 
+  // Check if user is logged in
   const isLoggedIn = !!localStorage.getItem("currentAccountId");
 
   return (
     <ThemeProvider>
       <Router>
         <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-          {/* Only show Topbar & Sidebar when logged in */}
+          {/* ONLY show Topbar + Sidebar + main content when logged in */}
           {isLoggedIn && (
             <>
               <div className="fixed top-0 left-0 right-0 h-12 z-50">
@@ -627,12 +630,13 @@ export default function App() {
             </>
           )}
 
-          {/* Public routes – no sidebar/topbar */}
+          {/* Public routes – NO sidebar, NO topbar */}
           <Routes>
+            {/* Landing page – default entry point */}
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            {/* Redirect any unknown path to landing */}
+            {/* Redirect any invalid path to landing */}
             <Route path="*" element={<Landing />} />
           </Routes>
         </div>
