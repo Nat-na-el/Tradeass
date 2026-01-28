@@ -6,8 +6,8 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import { auth } from "./firebase"; // Adjust path to your Firebase config
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebase'; // Adjust path to your Firebase config
 import { ThemeProvider, useTheme } from "./Theme-provider";
 import { Button } from "./components/ui/button";
 import { motion } from "framer-motion"; // For animations in ProtectedRoute
@@ -33,7 +33,7 @@ const AuthContext = createContext();
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
@@ -50,9 +50,9 @@ function AuthProvider({ children }) {
       setIsLoggedIn(!!currentUser);
       if (currentUser) {
         // Set UID for private data
-        localStorage.setItem("currentAccountId", currentUser.uid);
+        localStorage.setItem('currentAccountId', currentUser.uid);
       } else {
-        localStorage.removeItem("currentAccountId");
+        localStorage.removeItem('currentAccountId');
       }
       setLoading(false);
     });
@@ -63,7 +63,7 @@ function AuthProvider({ children }) {
     try {
       await signOut(auth);
     } catch (err) {
-      console.error("Logout error:", err);
+      console.error('Logout error:', err);
     }
   };
 
@@ -84,7 +84,7 @@ function ProtectedRoute({ children }) {
 
   useEffect(() => {
     if (!loading && !isLoggedIn) {
-      navigate("/login", { replace: true });
+      navigate('/login', { replace: true });
     }
   }, [isLoggedIn, loading, navigate]);
 
@@ -115,9 +115,8 @@ function FloatingWidgets({ currentAccount }) {
   if (!shouldShow || !currentAccount) return null;
 
   // ✅ GET REAL SAVED DATA WITH UID PREFIX (private per user)
-  const uid = user?.uid || "default";
-  const currentId =
-    localStorage.getItem("currentAccountId") || currentAccount.id;
+  const uid = user?.uid || 'default';
+  const currentId = localStorage.getItem("currentAccountId") || currentAccount.id;
   const privateKey = `${uid}_${currentId}`;
   const trades = JSON.parse(
     localStorage.getItem(`${privateKey}_trades`) || "[]",
@@ -222,7 +221,7 @@ function ManageAccountsModal({
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
 
-  const uid = user?.uid || "default";
+  const uid = user?.uid || 'default';
 
   const deleteAccount = (accountId) => {
     if (!window.confirm("Delete this account? All data will be lost!")) return;
@@ -387,7 +386,7 @@ function EditBalancePNL({ onSaved }) {
   const [isNewAccount, setIsNewAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const uid = user?.uid || "default";
+  const uid = user?.uid || 'default';
 
   useEffect(() => {
     if (location.state?.accountId) {
