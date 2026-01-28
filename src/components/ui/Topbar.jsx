@@ -15,7 +15,7 @@ export default function Topbar() {
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
       localStorage.removeItem("currentAccountId");
-      window.location.href = "/login";
+      window.location.href = "/";
     }
   };
 
@@ -58,7 +58,7 @@ export default function Topbar() {
         </Button>
 
         {/* Logout button */}
-        <Button 
+        <Button
           variant="destructive"
           onClick={handleLogout}
           className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium rounded-md"
