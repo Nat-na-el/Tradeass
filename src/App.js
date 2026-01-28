@@ -24,14 +24,12 @@ import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
 import Register from "./pages/Register"; // ← Make sure Register is imported
-
-// LANDING / WELCOME PAGE COMPONENT (no sidebar, no topbar)
+// NEW LANDING / WELCOME PAGE COMPONENT (added here for simplicity)
 function Landing() {
   const navigate = useNavigate();
-
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
-      {/* Top-right Sign In / Sign Up */}
+      {/* Top Bar with Sign In & Sign Up Buttons */}
       <header className="w-full py-6 px-8 flex justify-end items-center gap-4">
         <Button
           onClick={() => navigate('/login')}
@@ -47,24 +45,22 @@ function Landing() {
           Sign Up
         </Button>
       </header>
-
-      {/* Hero Content */}
+      {/* Hero / Welcome Section */}
       <main className="flex-1 flex items-center justify-center px-6">
         <div className="max-w-4xl text-center">
           <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 dark:text-white mb-6">
             Welcome to Tradeass
           </h1>
           <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-10 max-w-3xl mx-auto">
-            Tradeass is your personal, offline-first trading journal and performance tracker. Log trades, write daily reflections, keep notes, generate detailed reports, run quantitative analysis, and review backtests — all securely stored in your browser with no server needed.
+            Tradeass is your personal, offline trading journal and performance tracker. Log trades, write daily journals, track notes, generate reports, run quantitative analysis, and review backtests — all in one secure, local-first app.
           </p>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-12 leading-relaxed">
+          <p className="text-lg text-gray-600 dark:text-gray-400 mb-12">
             How it works:<br />
-            1. Sign up or sign in (email or Google)<br />
-            2. Create your trading account(s) with starting balance<br />
-            3. Start logging every trade, journal entry, and note<br />
-            4. Track performance, analyze patterns, and improve your trading edge over time
+            1. Sign up or sign in<br />
+            2. Create your trading account<br />
+            3. Start logging trades, journals, and notes<br />
+            4. Analyze your performance and improve your edge
           </p>
-
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <Button
               onClick={() => navigate('/register')}
@@ -84,15 +80,13 @@ function Landing() {
           </div>
         </div>
       </main>
-
       {/* Footer */}
       <footer className="py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
-        © {new Date().getFullYear()} Tradeass • Private • Offline • Built for serious traders
+        © {new Date().getFullYear()} Tradeass. Built for traders, powered by privacy.
       </footer>
     </div>
   );
 }
-
 // ✅ PERFECT FLOATING - REAL DATA ONLY
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
@@ -468,12 +462,8 @@ export default function App() {
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
     const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-
-    // Force redirect to login on protected paths
-    const isPublicPath = window.location.pathname === "/" ||
-                         window.location.pathname === "/login" ||
-                         window.location.pathname === "/register";
-
+    // Force login on ALL protected paths
+    const isPublicPath = window.location.pathname === "/login" || window.location.pathname === "/";
     if (!isPublicPath) {
       if (
         !currentId ||
@@ -488,9 +478,7 @@ export default function App() {
   const initializeAccounts = () => {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
     let currentId = localStorage.getItem("currentAccountId");
-
     // No default account creation anymore
-
     // FIX CURRENT ID
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0]?.id || null;
@@ -521,7 +509,7 @@ export default function App() {
     if (newCurrentId === accountId || updated.length === 0) {
       localStorage.removeItem("currentAccountId");
       localStorage.setItem("accounts", JSON.stringify(updated));
-      window.location.href = "/";
+      window.location.href = "/"; // ← Changed to landing page
       return;
     } else {
       localStorage.setItem("accounts", JSON.stringify(updated));
@@ -542,98 +530,188 @@ export default function App() {
     localStorage.setItem("accounts", JSON.stringify(updated));
     window.location.reload();
   };
-
-  // Check if user is logged in (used to hide sidebar/topbar on landing)
-  const isLoggedIn = !!localStorage.getItem("currentAccountId");
-
   return (
     <ThemeProvider>
       <Router>
         <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-          {/* ONLY show Topbar + Sidebar + main content when logged in */}
-          {isLoggedIn && (
-            <>
-              <div className="fixed top-0 left-0 right-0 h-12 z-50">
-                <Topbar />
-              </div>
-              <div className="flex flex-1 pt-12">
-                <Sidebar
-                  open={open}
-                  setOpen={setOpen}
-                  accounts={accounts}
-                  currentAccount={currentAccount}
-                  onSwitchAccount={switchAccount}
-                  onCreateAccount={createAccount}
-                  onShowManage={() => setShowManageModal(true)}
-                />
+          <div className="fixed top-0 left-0 right-0 h-12 z-50">
+            <Topbar />
+          </div>
+          <div className="flex flex-1 pt-12">
+            <Sidebar
+              open={open}
+              setOpen={setOpen}
+              accounts={accounts}
+              currentAccount={currentAccount}
+              onSwitchAccount={switchAccount}
+              onCreateAccount={createAccount}
+              onShowManage={() => setShowManageModal(true)}
+            />
+            <div
+              className="flex-1 min-w-0 transition-all duration-300"
+              style={{
+                marginLeft: open ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
+                maxWidth: open
+                  ? "calc(100vw - 12rem - 8px)"
+                  : "calc(100vw - 6rem - 8px)",
+              }}
+            >
+              <main
+                className="overflow-y-auto overflow-x-hidden relative"
+                style={{
+                  height: "calc(100vh - 3rem)",
+                  paddingTop: "1.5rem",
+                }}
+              >
                 <div
-                  className="flex-1 min-w-0 transition-all duration-300"
+                  className="bg-transparent border-none p-3 sm:p-3 mx-1 sm:mx-2 mb-0"
                   style={{
-                    marginLeft: open ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
-                    maxWidth: open
-                      ? "calc(100vw - 12rem - 8px)"
-                      : "calc(100vw - 6rem - 8px)",
+                    minHeight: "calc(100vh - 4.5rem)",
                   }}
                 >
-                  <main
-                    className="overflow-y-auto overflow-x-hidden relative"
-                    style={{
-                      height: "calc(100vh - 3rem)",
-                      paddingTop: "1.5rem",
-                    }}
-                  >
-                    <div
-                      className="bg-transparent border-none p-3 sm:p-3 mx-1 sm:mx-2 mb-0"
-                      style={{
-                        minHeight: "calc(100vh - 4.5rem)",
-                      }}
-                    >
-                      <Routes>
-                        <Route
-                          path="/dashboard"
-                          element={<Dashboard currentAccount={currentAccount} />}
-                        />
-                        <Route path="/journal" element={<DailyJournal />} />
-                        <Route path="/trades" element={<Trades />} />
-                        <Route path="/notebook" element={<Notebook />} />
-                        <Route path="/reports" element={<Reports />} />
-                        <Route path="/challenges" element={<Challenges />} />
-                        <Route path="/mentor" element={<MentorMode />} />
-                        <Route path="/settings" element={<SettingsPage />} />
-                        <Route path="/backtest" element={<BacktestJournal />} />
-                        <Route path="/quantitative-analysis" element={<QuantitativeAnalysis />} />
-                        <Route path="/edit-balance-pnl" element={<EditBalancePNL onSaved={() => {}} />} />
-                        <Route path="/trades/new" element={<AddTrade />} />
-                        {/* Catch-all for logged-in users */}
-                        <Route path="*" element={<Dashboard currentAccount={currentAccount} />} />
-                      </Routes>
-                    </div>
-                  </main>
+                  <Routes>
+                    {/* Landing / Welcome page – always first */}
+                    <Route path="/" element={<Landing />} />
+                    {/* Login & Register */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    {/* Protected routes – only show if logged in */}
+                    <Route
+                      path="/dashboard"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <Dashboard currentAccount={currentAccount} />
+                        ) : (
+                          <Landing /> // ← Changed to landing instead of login
+                        )
+                      }
+                    />
+                    <Route
+                      path="/journal"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <DailyJournal />
+                        ) : (
+                          <Landing />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/trades"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <Trades />
+                        ) : (
+                          <Landing />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/notebook"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <Notebook />
+                        ) : (
+                          <Landing />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/reports"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <Reports />
+                        ) : (
+                          <Landing />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/challenges"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <Challenges />
+                        ) : (
+                          <Landing />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/mentor"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <MentorMode />
+                        ) : (
+                          <Landing />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/settings"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <SettingsPage />
+                        ) : (
+                          <Landing />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/backtest"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <BacktestJournal />
+                        ) : (
+                          <Landing />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/quantitative-analysis"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <QuantitativeAnalysis />
+                        ) : (
+                          <Landing />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/edit-balance-pnl"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <EditBalancePNL onSaved={() => {}} />
+                        ) : (
+                          <Landing />
+                        )
+                      }
+                    />
+                    <Route
+                      path="/trades/new"
+                      element={
+                        localStorage.getItem("currentAccountId") ? (
+                          <AddTrade />
+                        ) : (
+                          <Landing />
+                        )
+                      }
+                    />
+                  </Routes>
                 </div>
-                <FloatingWidgets currentAccount={currentAccount} />
-                {showManageModal && (
-                  <ManageAccountsModal
-                    accounts={accounts}
-                    onClose={() => setShowManageModal(false)}
-                    onDeleteAccount={deleteAccount}
-                    onResetAccount={resetAccount}
-                    onRenameAccount={renameAccount}
-                    onCreateAccount={createAccount}
-                  />
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Public routes – no sidebar, no topbar */}
-          <Routes>
-            {/* Landing page – default starting point */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            {/* Redirect any unknown path to landing */}
-            <Route path="*" element={<Landing />} />
-          </Routes>
+              </main>
+            </div>
+            <FloatingWidgets currentAccount={currentAccount} />
+            {showManageModal && (
+              <ManageAccountsModal
+                accounts={accounts}
+                onClose={() => setShowManageModal(false)}
+                onDeleteAccount={deleteAccount}
+                onResetAccount={resetAccount}
+                onRenameAccount={renameAccount}
+                onCreateAccount={createAccount}
+              />
+            )}
+          </div>
         </div>
       </Router>
     </ThemeProvider>
