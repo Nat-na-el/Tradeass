@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -6,13 +6,12 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth } from './firebase'; // Adjust path to your Firebase config
 import { ThemeProvider, useTheme } from "./Theme-provider";
 import { Button } from "./components/ui/button";
-import { motion } from "framer-motion"; // For animations in ProtectedRoute
 import Sidebar from "./components/ui/Sidebar";
 import Topbar from "./components/ui/Topbar";
+
+import PrivateRoute from "./PrivateRoute";
 
 import Dashboard from "./pages/Dashboard";
 import DailyJournal from "./pages/DailyJournal";
@@ -27,104 +26,24 @@ import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
 
-// Auth Context for global state (user, login state, logout)
-const AuthContext = createContext();
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-// Auth Provider (wraps the app, manages Firebase auth state)
-function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setIsLoggedIn(!!currentUser);
-      if (currentUser) {
-        // Set UID for private data
-        localStorage.setItem('currentAccountId', currentUser.uid);
-      } else {
-        localStorage.removeItem('currentAccountId');
-      }
-      setLoading(false);
-    });
-    return unsubscribe;
-  }, []);
-
-  const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
-  };
-
-  const value = {
-    user,
-    loading,
-    isLoggedIn,
-    logout,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-// Protected Route Component (locks pages behind login, with loading spinner)
-function ProtectedRoute({ children }) {
-  const { isLoggedIn, loading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !isLoggedIn) {
-      navigate('/login', { replace: true });
-    }
-  }, [isLoggedIn, loading, navigate]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full mr-2"
-        />
-        <p className="text-sm text-gray-500">Loading...</p>
-      </div>
-    );
-  }
-
-  return isLoggedIn ? children : null;
-}
-
-// ✅ PERFECT FLOATING - REAL DATA ONLY (Updated with UID prefix for private data)
+// ✅ PERFECT FLOATING - REAL DATA ONLY
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
   const { theme } = useTheme();
-  const { user } = useAuth(); // Get UID for private data
 
   const shouldShow = location.pathname === "/" && currentAccount;
 
   if (!shouldShow || !currentAccount) return null;
 
-  // ✅ GET REAL SAVED DATA WITH UID PREFIX (private per user)
-  const uid = user?.uid || 'default';
-  const currentId = localStorage.getItem("currentAccountId") || currentAccount.id;
-  const privateKey = `${uid}_${currentId}`;
+  // ✅ GET REAL SAVED DATA
+  const currentId = localStorage.getItem("currentAccountId");
   const trades = JSON.parse(
-    localStorage.getItem(`${privateKey}_trades`) || "[]",
+    localStorage.getItem(`${currentId}_trades`) || "[]",
   );
   const journals = JSON.parse(
-    localStorage.getItem(`${privateKey}_journals`) || "[]",
+    localStorage.getItem(`${currentId}_journals`) || "[]",
   );
-  const notes = JSON.parse(localStorage.getItem(`${privateKey}_notes`) || "[]");
+  const notes = JSON.parse(localStorage.getItem(`${currentId}_notes`) || "[]");
 
   const totalTrades = trades.length;
   const totalJournals = journals.length;
@@ -207,7 +126,7 @@ function FloatingWidgets({ currentAccount }) {
   );
 }
 
-// ✅ PERFECT MANAGE MODAL (Updated with UID prefix)
+// ✅ PERFECT MANAGE MODAL
 function ManageAccountsModal({
   accounts,
   onClose,
@@ -217,11 +136,8 @@ function ManageAccountsModal({
   onCreateAccount,
 }) {
   const { theme } = useTheme();
-  const { user } = useAuth(); // Get UID for private data
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
-
-  const uid = user?.uid || 'default';
 
   const deleteAccount = (accountId) => {
     if (!window.confirm("Delete this account? All data will be lost!")) return;
@@ -231,11 +147,6 @@ function ManageAccountsModal({
   const resetAccount = (accountId) => {
     if (!window.confirm("Reset all trades/notes/journals for this account?"))
       return;
-    // Reset with UID prefix
-    localStorage.setItem(`${uid}_${accountId}_trades`, JSON.stringify([]));
-    localStorage.setItem(`${uid}_${accountId}_notes`, JSON.stringify([]));
-    localStorage.setItem(`${uid}_${accountId}_journals`, JSON.stringify([]));
-    localStorage.setItem(`dashboard_${uid}_${accountId}`, JSON.stringify({}));
     onResetAccount(accountId);
   };
 
@@ -262,16 +173,14 @@ function ManageAccountsModal({
 
         <div className="space-y-3 mb-4">
           {accounts.map((account) => {
-            // Get private data with UID prefix
-            const privateKey = `${uid}_${account.id}`;
             const trades = JSON.parse(
-              localStorage.getItem(`${privateKey}_trades`) || "[]",
+              localStorage.getItem(`${account.id}_trades`) || "[]",
             );
             const journals = JSON.parse(
-              localStorage.getItem(`${privateKey}_journals`) || "[]",
+              localStorage.getItem(`${account.id}_journals`) || "[]",
             );
             const notes = JSON.parse(
-              localStorage.getItem(`${privateKey}_notes`) || "[]",
+              localStorage.getItem(`${account.id}_notes`) || "[]",
             );
             const totalTrades = trades.length;
             const totalJournals = journals.length;
@@ -376,17 +285,14 @@ function ManageAccountsModal({
   );
 }
 
-// ✅ PERFECT CREATE ACCOUNT - ESLINT FIXED (Updated with UID prefix)
+// ✅ PERFECT CREATE ACCOUNT - ESLINT FIXED
 function EditBalancePNL({ onSaved }) {
   const { theme } = useTheme();
-  const navigate = useNavigate();
-  const { user } = useAuth(); // Get UID for private data
+  const navigate = useNavigate(); // ✅ FIXED - MOVED TO TOP
   const location = useLocation();
   const [form, setForm] = useState({ name: "", startingBalance: 10000 });
   const [isNewAccount, setIsNewAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const uid = user?.uid || 'default';
 
   useEffect(() => {
     if (location.state?.accountId) {
@@ -427,12 +333,11 @@ function EditBalancePNL({ onSaved }) {
       };
       accounts.unshift(newAccount);
 
-      // ✅ BRAND NEW EMPTY DATA WITH UID PREFIX (private per user)
-      const privateKey = `${uid}_${newAccountId}`;
-      localStorage.setItem(`${privateKey}_trades`, JSON.stringify([]));
-      localStorage.setItem(`${privateKey}_notes`, JSON.stringify([]));
-      localStorage.setItem(`${privateKey}_journals`, JSON.stringify([]));
-      localStorage.setItem(`dashboard_${privateKey}`, JSON.stringify({}));
+      // ✅ BRAND NEW EMPTY DATA - ALL ZERO
+      localStorage.setItem(`${newAccountId}_trades`, JSON.stringify([]));
+      localStorage.setItem(`${newAccountId}_notes`, JSON.stringify([]));
+      localStorage.setItem(`${newAccountId}_journals`, JSON.stringify([]));
+      localStorage.setItem(`dashboard_${newAccountId}`, JSON.stringify({}));
 
       localStorage.setItem("currentAccountId", newAccountId);
       localStorage.setItem("accounts", JSON.stringify(accounts));
@@ -516,7 +421,6 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// Main App Component
 export default function App() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -526,7 +430,6 @@ export default function App() {
   useEffect(() => {
     initializeAccounts();
   }, []);
-
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
     if (!currentId && window.location.pathname !== "/login") {
@@ -799,6 +702,7 @@ export default function App() {
                     />
                     <Route path="/trades/new" element={<AddTrade />} />
                   </Routes>
+                        
                 </div>
               </main>
             </div>
