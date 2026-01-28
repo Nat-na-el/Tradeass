@@ -43,6 +43,7 @@ function FloatingWidgets({ currentAccount }) {
   const totalNotes = notes.length;
   const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
   const currentBalance = currentAccount.startingBalance + totalPnL;
+  <div style={{color: "red", textAlign: "center"}}>TEST: No auto-account</div>
   return (
     <div
       className="fixed right-4 sm:right-8 flex flex-col gap-2 z-[9999] w-[90%] max-w-[260px] sm:w-[260px] opacity-90"
