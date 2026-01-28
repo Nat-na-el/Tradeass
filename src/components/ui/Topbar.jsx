@@ -1,10 +1,23 @@
 import React from "react";
-import { Sun, Moon, Settings } from "lucide-react";
+import { Sun, Moon, Settings, LogOut } from "lucide-react";
 import { Button } from "./button";
 import { useTheme } from "../../Theme-provider";
 
 export default function Topbar() {
   const { theme, setTheme } = useTheme();
+
+  // Get current account name safely
+  const currentId = localStorage.getItem("currentAccountId");
+  const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+  const currentAccount = accounts.find(acc => acc.id === currentId);
+  const accountName = currentAccount ? currentAccount.name : "Guest";
+
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to log out?")) {
+      localStorage.removeItem("currentAccountId");
+      window.location.href = "/login";
+    }
+  };
 
   return (
     <header className="fixed top-4 left-4 right-4 z-50 h-16 flex items-center justify-between px-6 bg-white/70 dark:bg-gradient-to-r dark:from-slate-900 dark:to-slate-800 backdrop-blur-xl shadow-[0_4px_12px_rgba(75,94,170,0.3)] border border-gray-200/40 dark:border-gray-400/20 rounded-2xl transition-all duration-500">
@@ -22,6 +35,11 @@ export default function Topbar() {
         </div>
       </div>
       <div className="flex items-center gap-3">
+        {/* Account name display */}
+        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 px-3 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded-md">
+          {accountName}
+        </div>
+
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="p-2 rounded-md hover:bg-gray-200/40 dark:hover:bg-indigo-600/30 transition"
@@ -33,9 +51,20 @@ export default function Topbar() {
             <Moon className="h-5 w-5 text-gray-900" />
           )}
         </button>
+
         <Button className="bg-gradient-to-r from-indigo-600 to-indigo-400 text-white font-medium rounded-md">
           <Settings className="h-5 w-5 mr-2" />
           Settings
+        </Button>
+
+        {/* Logout button */}
+        <Button 
+          variant="destructive"
+          onClick={handleLogout}
+          className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium rounded-md"
+        >
+          <LogOut className="h-5 w-5 mr-2" />
+          Logout
         </Button>
       </div>
     </header>
