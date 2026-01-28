@@ -309,7 +309,7 @@ function EditBalancePNL({ onSaved }) {
       localStorage.setItem(`${newAccountId}_notes`, JSON.stringify([]));
       localStorage.setItem(`${newAccountId}_journals`, JSON.stringify([]));
       localStorage.setItem(`dashboard_${newAccountId}`, JSON.stringify({}));
-      sessionStorage.setItem("currentAccountId", newAccountId);  // ← changed to sessionStorage
+      localStorage.setItem("currentAccountId", newAccountId);
       localStorage.setItem("accounts", JSON.stringify(accounts));
       // ✅ GO BACK TO DASHBOARD
       navigate("/", { replace: true });
@@ -396,16 +396,16 @@ export default function App() {
     initializeAccounts();
   }, []);
   useEffect(() => {
-    const currentId = sessionStorage.getItem("currentAccountId"); // ← changed to sessionStorage
+    const currentId = localStorage.getItem("currentAccountId");
     const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
 
-    // Force login on ALL paths - no public pages except /login
+    // Force login on ALL paths - only /login is allowed without account
     if (
       !currentId ||
       storedAccounts.length === 0 ||
       !storedAccounts.some((acc) => acc.id === currentId)
     ) {
-      sessionStorage.removeItem("currentAccountId"); // ← changed to sessionStorage
+      localStorage.removeItem("currentAccountId");
       if (window.location.pathname !== "/login") {
         window.location.replace("/login");
       }
@@ -413,7 +413,7 @@ export default function App() {
   }, []);
   const initializeAccounts = () => {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-    let currentId = sessionStorage.getItem("currentAccountId"); // ← changed to sessionStorage
+    let currentId = localStorage.getItem("currentAccountId");
 
     // No default account creation anymore
 
@@ -421,7 +421,7 @@ export default function App() {
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0]?.id || null;
       if (currentId) {
-        sessionStorage.setItem("currentAccountId", currentId); // ← changed to sessionStorage
+        localStorage.setItem("currentAccountId", currentId);
       }
     }
     setAccounts(storedAccounts);
@@ -432,7 +432,7 @@ export default function App() {
     window.location.href = "/edit-balance-pnl"; // ✅ FIXED - Use window.location
   };
   const switchAccount = (accountId) => {
-    sessionStorage.setItem("currentAccountId", accountId); // ← changed to sessionStorage
+    localStorage.setItem("currentAccountId", accountId);
     window.location.reload();
   };
   const deleteAccount = (accountId) => {
@@ -442,10 +442,10 @@ export default function App() {
     localStorage.removeItem(`${accountId}_notes`);
     localStorage.removeItem(`${accountId}_journals`);
     localStorage.removeItem(`dashboard_${accountId}`);
-    let newCurrentId = sessionStorage.getItem("currentAccountId"); // ← changed to sessionStorage
+    let newCurrentId = localStorage.getItem("currentAccountId");
     // ✅ IF DELETED CURRENT - GO TO LOGIN (no recreate)
     if (newCurrentId === accountId || updated.length === 0) {
-      sessionStorage.removeItem("currentAccountId"); // ← changed to sessionStorage
+      localStorage.removeItem("currentAccountId");
       localStorage.setItem("accounts", JSON.stringify(updated));
       window.location.href = "/login";
       return;
@@ -514,7 +514,7 @@ export default function App() {
                     <Route
                       path="/"
                       element={
-                        sessionStorage.getItem("currentAccountId") ? (  // ← changed to sessionStorage
+                        localStorage.getItem("currentAccountId") ? (
                           <Dashboard currentAccount={currentAccount} />
                         ) : (
                           <Login />
@@ -524,7 +524,7 @@ export default function App() {
                     <Route
                       path="/journal"
                       element={
-                        sessionStorage.getItem("currentAccountId") ? (
+                        localStorage.getItem("currentAccountId") ? (
                           <DailyJournal />
                         ) : (
                           <Login />
@@ -534,7 +534,7 @@ export default function App() {
                     <Route
                       path="/trades"
                       element={
-                        sessionStorage.getItem("currentAccountId") ? (
+                        localStorage.getItem("currentAccountId") ? (
                           <Trades />
                         ) : (
                           <Login />
@@ -544,7 +544,7 @@ export default function App() {
                     <Route
                       path="/notebook"
                       element={
-                        sessionStorage.getItem("currentAccountId") ? (
+                        localStorage.getItem("currentAccountId") ? (
                           <Notebook />
                         ) : (
                           <Login />
@@ -554,7 +554,7 @@ export default function App() {
                     <Route
                       path="/reports"
                       element={
-                        sessionStorage.getItem("currentAccountId") ? (
+                        localStorage.getItem("currentAccountId") ? (
                           <Reports />
                         ) : (
                           <Login />
@@ -564,7 +564,7 @@ export default function App() {
                     <Route
                       path="/challenges"
                       element={
-                        sessionStorage.getItem("currentAccountId") ? (
+                        localStorage.getItem("currentAccountId") ? (
                           <Challenges />
                         ) : (
                           <Login />
@@ -574,7 +574,7 @@ export default function App() {
                     <Route
                       path="/mentor"
                       element={
-                        sessionStorage.getItem("currentAccountId") ? (
+                        localStorage.getItem("currentAccountId") ? (
                           <MentorMode />
                         ) : (
                           <Login />
@@ -584,7 +584,7 @@ export default function App() {
                     <Route
                       path="/settings"
                       element={
-                        sessionStorage.getItem("currentAccountId") ? (
+                        localStorage.getItem("currentAccountId") ? (
                           <SettingsPage />
                         ) : (
                           <Login />
@@ -594,7 +594,7 @@ export default function App() {
                     <Route
                       path="/backtest"
                       element={
-                        sessionStorage.getItem("currentAccountId") ? (
+                        localStorage.getItem("currentAccountId") ? (
                           <BacktestJournal />
                         ) : (
                           <Login />
@@ -604,7 +604,7 @@ export default function App() {
                     <Route
                       path="/quantitative-analysis"
                       element={
-                        sessionStorage.getItem("currentAccountId") ? (
+                        localStorage.getItem("currentAccountId") ? (
                           <QuantitativeAnalysis />
                         ) : (
                           <Login />
@@ -615,7 +615,7 @@ export default function App() {
                     <Route
                       path="/edit-balance-pnl"
                       element={
-                        sessionStorage.getItem("currentAccountId") ? (
+                        localStorage.getItem("currentAccountId") ? (
                           <EditBalancePNL onSaved={() => {}} />
                         ) : (
                           <Login />
