@@ -1,4 +1,4 @@
-// Register with email + password
+// Replace your existing handleEmailRegister with this
 const handleEmailRegister = async (e) => {
   e.preventDefault();
   try {
@@ -30,7 +30,7 @@ const handleEmailRegister = async (e) => {
   }
 };
 
-// Register with Google – same logic
+// Replace your existing handleGoogleRegister with this
 const handleGoogleRegister = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
