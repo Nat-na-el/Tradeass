@@ -399,7 +399,7 @@ export default function App() {
     const currentId = localStorage.getItem("currentAccountId");
     const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
 
-    // Force login on ALL paths - only /login is allowed without account
+    // Force login on ALL paths except /login
     if (
       !currentId ||
       storedAccounts.length === 0 ||
