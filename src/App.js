@@ -10,7 +10,9 @@ import { ThemeProvider, useTheme } from "./Theme-provider";
 import { Button } from "./components/ui/button";
 import Sidebar from "./components/ui/Sidebar";
 import Topbar from "./components/ui/Topbar";
+
 import PrivateRoute from "./PrivateRoute";
+
 import Dashboard from "./pages/Dashboard";
 import DailyJournal from "./pages/DailyJournal";
 import Trades from "./pages/Trades";
@@ -23,12 +25,16 @@ import BacktestJournal from "./pages/BacktestJournal";
 import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
+
 // ✅ PERFECT FLOATING - REAL DATA ONLY
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
   const { theme } = useTheme();
+
   const shouldShow = location.pathname === "/" && currentAccount;
+
   if (!shouldShow || !currentAccount) return null;
+
   // ✅ GET REAL SAVED DATA
   const currentId = localStorage.getItem("currentAccountId");
   const trades = JSON.parse(
@@ -38,11 +44,14 @@ function FloatingWidgets({ currentAccount }) {
     localStorage.getItem(`${currentId}_journals`) || "[]",
   );
   const notes = JSON.parse(localStorage.getItem(`${currentId}_notes`) || "[]");
+
   const totalTrades = trades.length;
   const totalJournals = journals.length;
   const totalNotes = notes.length;
+
   const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
   const currentBalance = currentAccount.startingBalance + totalPnL;
+
   return (
     <div
       className="fixed right-4 sm:right-8 flex flex-col gap-2 z-[9999] w-[90%] max-w-[260px] sm:w-[260px] opacity-90"
@@ -59,6 +68,7 @@ function FloatingWidgets({ currentAccount }) {
           {currentAccount.name}
         </div>
       </div>
+
       {/* TOTAL P&L */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-[10px] text-gray-700 dark:text-gray-300">
@@ -72,6 +82,7 @@ function FloatingWidgets({ currentAccount }) {
           ${totalPnL.toFixed(2)}
         </div>
       </div>
+
       {/* CURRENT BALANCE */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-[10px] text-gray-700 dark:text-gray-300">
@@ -81,6 +92,7 @@ function FloatingWidgets({ currentAccount }) {
           ${currentBalance.toFixed(2)}
         </div>
       </div>
+
       {/* TOTAL TRADES */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-[10px] text-gray-700 dark:text-gray-300">
@@ -90,6 +102,7 @@ function FloatingWidgets({ currentAccount }) {
           {totalTrades}
         </div>
       </div>
+
       {/* TOTAL JOURNALS */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-[10px] text-gray-700 dark:text-gray-300">
@@ -99,6 +112,7 @@ function FloatingWidgets({ currentAccount }) {
           {totalJournals}
         </div>
       </div>
+
       {/* TOTAL NOTES */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-[10px] text-gray-700 dark:text-gray-300">
@@ -111,6 +125,7 @@ function FloatingWidgets({ currentAccount }) {
     </div>
   );
 }
+
 // ✅ PERFECT MANAGE MODAL
 function ManageAccountsModal({
   accounts,
@@ -123,16 +138,20 @@ function ManageAccountsModal({
   const { theme } = useTheme();
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
+
   const deleteAccount = (accountId) => {
     if (!window.confirm("Delete this account? All data will be lost!")) return;
     onDeleteAccount(accountId);
   };
+
   const resetAccount = (accountId) => {
     if (!window.confirm("Reset all trades/notes/journals for this account?"))
       return;
     onResetAccount(accountId);
   };
+
   if (accounts.length === 0) return null;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
       <div
@@ -151,6 +170,7 @@ function ManageAccountsModal({
             ✕
           </button>
         </div>
+
         <div className="space-y-3 mb-4">
           {accounts.map((account) => {
             const trades = JSON.parse(
@@ -169,6 +189,7 @@ function ManageAccountsModal({
               (sum, trade) => sum + (trade.pnl || 0),
               0,
             );
+
             return (
               <div
                 key={account.id}
@@ -252,6 +273,7 @@ function ManageAccountsModal({
             );
           })}
         </div>
+
         <button
           onClick={onCreateAccount}
           className="w-full p-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm"
@@ -262,6 +284,7 @@ function ManageAccountsModal({
     </div>
   );
 }
+
 // ✅ PERFECT CREATE ACCOUNT - ESLINT FIXED
 function EditBalancePNL({ onSaved }) {
   const { theme } = useTheme();
@@ -270,6 +293,7 @@ function EditBalancePNL({ onSaved }) {
   const [form, setForm] = useState({ name: "", startingBalance: 10000 });
   const [isNewAccount, setIsNewAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     if (location.state?.accountId) {
       const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
@@ -289,11 +313,15 @@ function EditBalancePNL({ onSaved }) {
       });
     }
   }, [location]);
+
   const saveAccount = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
+
     setIsSubmitting(true);
+
     const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+
     if (isNewAccount) {
       const newAccountId = `acc-${Date.now()}`;
       const newAccount = {
@@ -304,13 +332,16 @@ function EditBalancePNL({ onSaved }) {
         createdAt: new Date().toISOString(),
       };
       accounts.unshift(newAccount);
+
       // ✅ BRAND NEW EMPTY DATA - ALL ZERO
       localStorage.setItem(`${newAccountId}_trades`, JSON.stringify([]));
       localStorage.setItem(`${newAccountId}_notes`, JSON.stringify([]));
       localStorage.setItem(`${newAccountId}_journals`, JSON.stringify([]));
       localStorage.setItem(`dashboard_${newAccountId}`, JSON.stringify({}));
+
       localStorage.setItem("currentAccountId", newAccountId);
       localStorage.setItem("accounts", JSON.stringify(accounts));
+
       // ✅ GO BACK TO DASHBOARD
       navigate("/", { replace: true });
     } else {
@@ -321,9 +352,11 @@ function EditBalancePNL({ onSaved }) {
       localStorage.setItem("accounts", JSON.stringify(accounts));
       navigate("/", { replace: true });
     }
+
     setIsSubmitting(false);
     if (onSaved) onSaved();
   };
+
   return (
     <div
       className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 ${
@@ -387,116 +420,120 @@ function EditBalancePNL({ onSaved }) {
     </div>
   );
 }
+
 export default function App() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [showManageModal, setShowManageModal] = useState(false);
+
   useEffect(() => {
     initializeAccounts();
   }, []);
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
-    const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-    // Stronger protection: force login if no valid current account exists
-    if (
-      !currentId ||
-      storedAccounts.length === 0 ||
-      !storedAccounts.some((acc) => acc.id === currentId)
-    ) {
-      if (window.location.pathname !== "/login") {
-        localStorage.removeItem("currentAccountId");
-        window.location.href = "/login";
-      }
+    if (!currentId && window.location.pathname !== "/login") {
+      window.location.href = "/login";
     }
   }, []);
+
   const initializeAccounts = () => {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
     let currentId = localStorage.getItem("currentAccountId");
-    // ✅ ALWAYS HAVE MAIN ACCOUNT - commented out for protection (forces login/create)
-    // if (storedAccounts.length === 0) {
-    //   const defaultAccountId = "default";
-    //   const defaultAccount = {
-    //     id: defaultAccountId,
-    //     name: "Main Account",
-    //     startingBalance: 10000,
-    //     totalPnL: 0,
-    //     createdAt: new Date().toISOString(),
-    //   };
-    //   storedAccounts = [defaultAccount];
-    //   localStorage.setItem("accounts", JSON.stringify(storedAccounts));
-    //   localStorage.setItem("currentAccountId", defaultAccountId);
-    //   // ✅ PRESERVE MAIN TRADES
-    //   if (!localStorage.getItem(`${defaultAccountId}_trades`)) {
-    //     localStorage.setItem(`${defaultAccountId}_trades`, JSON.stringify([]));
-    //   }
-    //   if (!localStorage.getItem(`${defaultAccountId}_notes`)) {
-    //     localStorage.setItem(`${defaultAccountId}_notes`, JSON.stringify([]));
-    //   }
-    //   if (!localStorage.getItem(`${defaultAccountId}_journals`)) {
-    //     localStorage.setItem(
-    //       `${defaultAccountId}_journals`,
-    //       JSON.stringify([]),
-    //     );
-    //   }
-    //   if (!localStorage.getItem(`dashboard_${defaultAccountId}`)) {
-    //     localStorage.setItem(
-    //       `dashboard_${defaultAccountId}`,
-    //       JSON.stringify({}),
-    //     );
-    //   }
-    //   currentId = defaultAccountId;
-    // }
+
+    // ✅ ALWAYS HAVE MAIN ACCOUNT
+    if (storedAccounts.length === 0) {
+      const defaultAccountId = "default";
+      const defaultAccount = {
+        id: defaultAccountId,
+        name: "Main Account",
+        startingBalance: 10000,
+        totalPnL: 0,
+        createdAt: new Date().toISOString(),
+      };
+      storedAccounts = [defaultAccount];
+      localStorage.setItem("accounts", JSON.stringify(storedAccounts));
+      localStorage.setItem("currentAccountId", defaultAccountId);
+
+      // ✅ PRESERVE MAIN TRADES
+      if (!localStorage.getItem(`${defaultAccountId}_trades`)) {
+        localStorage.setItem(`${defaultAccountId}_trades`, JSON.stringify([]));
+      }
+      if (!localStorage.getItem(`${defaultAccountId}_notes`)) {
+        localStorage.setItem(`${defaultAccountId}_notes`, JSON.stringify([]));
+      }
+      if (!localStorage.getItem(`${defaultAccountId}_journals`)) {
+        localStorage.setItem(
+          `${defaultAccountId}_journals`,
+          JSON.stringify([]),
+        );
+      }
+      if (!localStorage.getItem(`dashboard_${defaultAccountId}`)) {
+        localStorage.setItem(
+          `dashboard_${defaultAccountId}`,
+          JSON.stringify({}),
+        );
+      }
+      currentId = defaultAccountId;
+    }
+
     // ✅ FIX CURRENT ID
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0].id;
       localStorage.setItem("currentAccountId", currentId);
     }
+
     setAccounts(storedAccounts);
     const current = storedAccounts.find((a) => a.id === currentId);
     setCurrentAccount(current);
   };
+
   const createAccount = () => {
     window.location.href = "/edit-balance-pnl"; // ✅ FIXED - Use window.location
   };
+
   const switchAccount = (accountId) => {
     localStorage.setItem("currentAccountId", accountId);
     window.location.reload();
   };
+
   const deleteAccount = (accountId) => {
     let updated = accounts.filter((a) => a.id !== accountId);
+
     // ✅ DELETE ALL DATA
     localStorage.removeItem(`${accountId}_trades`);
     localStorage.removeItem(`${accountId}_notes`);
     localStorage.removeItem(`${accountId}_journals`);
     localStorage.removeItem(`dashboard_${accountId}`);
+
     let newCurrentId = localStorage.getItem("currentAccountId");
-    // ✅ IF DELETED CURRENT - CREATE NEW MAIN - commented out for protection (forces login)
+
+    // ✅ IF DELETED CURRENT - CREATE NEW MAIN
     if (newCurrentId === accountId || updated.length === 0) {
-      // const defaultAccountId = "default";
-      // const defaultAccount = {
-      //   id: defaultAccountId,
-      //   name: "Main Account",
-      //   startingBalance: 10000,
-      //   totalPnL: 0,
-      //   createdAt: new Date().toISOString(),
-      // };
-      // updated = [defaultAccount];
-      // localStorage.setItem("accounts", JSON.stringify(updated));
-      // localStorage.setItem("currentAccountId", defaultAccountId);
-      // localStorage.setItem(`${defaultAccountId}_trades`, JSON.stringify([]));
-      // localStorage.setItem(`${defaultAccountId}_notes`, JSON.stringify([]));
-      // localStorage.setItem(`${defaultAccountId}_journals`, JSON.stringify([]));
-      // localStorage.setItem(`dashboard_${defaultAccountId}`, JSON.stringify({}));
-      // newCurrentId = defaultAccountId;
-      localStorage.removeItem("currentAccountId");
+      const defaultAccountId = "default";
+      const defaultAccount = {
+        id: defaultAccountId,
+        name: "Main Account",
+        startingBalance: 10000,
+        totalPnL: 0,
+        createdAt: new Date().toISOString(),
+      };
+      updated = [defaultAccount];
       localStorage.setItem("accounts", JSON.stringify(updated));
-      window.location.href = "/login";
+      localStorage.setItem("currentAccountId", defaultAccountId);
+
+      localStorage.setItem(`${defaultAccountId}_trades`, JSON.stringify([]));
+      localStorage.setItem(`${defaultAccountId}_notes`, JSON.stringify([]));
+      localStorage.setItem(`${defaultAccountId}_journals`, JSON.stringify([]));
+      localStorage.setItem(`dashboard_${defaultAccountId}`, JSON.stringify({}));
+      newCurrentId = defaultAccountId;
     } else {
       localStorage.setItem("accounts", JSON.stringify(updated));
     }
+
     window.location.reload();
   };
+
   const resetAccount = (accountId) => {
     localStorage.setItem(`${accountId}_trades`, JSON.stringify([]));
     localStorage.setItem(`${accountId}_notes`, JSON.stringify([]));
@@ -504,6 +541,7 @@ export default function App() {
     localStorage.setItem(`dashboard_${accountId}`, JSON.stringify({}));
     window.location.reload();
   };
+
   const renameAccount = (accountId, newName) => {
     const updated = accounts.map((a) =>
       a.id === accountId ? { ...a, name: newName } : a,
@@ -511,6 +549,7 @@ export default function App() {
     localStorage.setItem("accounts", JSON.stringify(updated));
     window.location.reload();
   };
+
   return (
     <ThemeProvider>
       <Router>
@@ -553,6 +592,7 @@ export default function App() {
                   <Routes>
                     {/* Login page is always accessible */}
                     <Route path="/login" element={<Login />} />
+
                     {/* Protected routes – only show if logged in */}
                     <Route
                       path="/"
@@ -654,6 +694,7 @@ export default function App() {
                         )
                       }
                     />
+
                     {/* These two can stay public or also protect – your choice */}
                     <Route
                       path="/edit-balance-pnl"
@@ -661,7 +702,7 @@ export default function App() {
                     />
                     <Route path="/trades/new" element={<AddTrade />} />
                   </Routes>
-                       
+                        
                 </div>
               </main>
             </div>
