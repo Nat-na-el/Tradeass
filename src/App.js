@@ -91,7 +91,7 @@ function Landing() {
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
   const { theme } = useTheme();
-  const shouldShow = location.pathname === "/" && currentAccount;
+  const shouldShow = location.pathname === "/dashboard" && currentAccount;
   if (!shouldShow || !currentAccount) return null;
   // ✅ GET REAL SAVED DATA
   const currentId = localStorage.getItem("currentAccountId");
@@ -376,14 +376,14 @@ function EditBalancePNL({ onSaved }) {
       localStorage.setItem("currentAccountId", newAccountId);
       localStorage.setItem("accounts", JSON.stringify(accounts));
       // ✅ GO BACK TO DASHBOARD
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     } else {
       const accountIndex = accounts.findIndex(
         (a) => a.id === location.state.accountId,
       );
       accounts[accountIndex] = { ...accounts[accountIndex], ...form };
       localStorage.setItem("accounts", JSON.stringify(accounts));
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
     setIsSubmitting(false);
     if (onSaved) onSaved();
@@ -432,7 +432,7 @@ function EditBalancePNL({ onSaved }) {
           <div className="flex justify-end gap-2">
             <Button
               type="button"
-              onClick={() => navigate("/", { replace: true })}
+              onClick={() => navigate("/dashboard", { replace: true })}
               variant="outline"
               disabled={isSubmitting}
             >
@@ -451,6 +451,158 @@ function EditBalancePNL({ onSaved }) {
     </div>
   );
 }
+
+// ✅ INNER APP COMPONENT - Handles routing with location awareness
+function AppContent({
+  open,
+  setOpen,
+  accounts,
+  currentAccount,
+  switchAccount,
+  createAccount,
+  showManageModal,
+  setShowManageModal,
+  deleteAccount,
+  resetAccount,
+  renameAccount,
+}) {
+  const location = useLocation();
+
+  // Check if user is logged in
+  const isLoggedIn = !!localStorage.getItem("currentAccountId");
+
+  // Check if current path is a public route
+  const publicPaths = ["/", "/login", "/register"];
+  const isPublicPath = publicPaths.includes(location.pathname);
+
+  return (
+    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
+      {/* Topbar - only show when logged in AND not on public routes */}
+      {isLoggedIn && !isPublicPath && (
+        <div className="fixed top-0 left-0 right-0 h-12 z-50">
+          <Topbar />
+        </div>
+      )}
+      <div className={`flex flex-1 ${isLoggedIn && !isPublicPath ? 'pt-12' : ''}`}>
+        {/* Sidebar - only show when logged in AND not on public routes */}
+        {isLoggedIn && !isPublicPath && (
+          <Sidebar
+            open={open}
+            setOpen={setOpen}
+            accounts={accounts}
+            currentAccount={currentAccount}
+            onSwitchAccount={switchAccount}
+            onCreateAccount={createAccount}
+            onShowManage={() => setShowManageModal(true)}
+          />
+        )}
+        <div
+          className={`flex-1 min-w-0 transition-all duration-300`}
+          style={isLoggedIn && !isPublicPath ? {
+            marginLeft: open ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
+            maxWidth: open
+              ? "calc(100vw - 12rem - 8px)"
+              : "calc(100vw - 6rem - 8px)",
+          } : {}}
+        >
+          <main
+            className={`overflow-y-auto overflow-x-hidden relative ${isLoggedIn && !isPublicPath ? '' : 'h-screen'}`}
+            style={isLoggedIn && !isPublicPath ? {
+              height: "calc(100vh - 3rem)",
+              paddingTop: "1.5rem",
+            } : {}}
+          >
+            <div
+              className={`bg-transparent border-none ${isLoggedIn && !isPublicPath ? 'p-3 sm:p-3 mx-1 sm:mx-2 mb-0' : ''}`}
+              style={isLoggedIn && !isPublicPath ? {
+                minHeight: "calc(100vh - 4.5rem)",
+              } : {}}
+            >
+              {/* Public Routes */}
+              <Routes>
+                {/* Landing / Welcome page – always first */}
+                <Route path="/" element={<Landing />} />
+                {/* Login & Register */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+              </Routes>
+
+              {/* Protected Routes - only render when logged in */}
+              {isLoggedIn && (
+                <Routes>
+                  <Route
+                    path="/dashboard"
+                    element={<Dashboard currentAccount={currentAccount} />}
+                  />
+                  <Route
+                    path="/journal"
+                    element={<DailyJournal />}
+                  />
+                  <Route
+                    path="/trades"
+                    element={<Trades />}
+                  />
+                  <Route
+                    path="/notebook"
+                    element={<Notebook />}
+                  />
+                  <Route
+                    path="/reports"
+                    element={<Reports />}
+                  />
+                  <Route
+                    path="/challenges"
+                    element={<Challenges />}
+                  />
+                  <Route
+                    path="/mentor"
+                    element={<MentorMode />}
+                  />
+                  <Route
+                    path="/settings"
+                    element={<SettingsPage />}
+                  />
+                  <Route
+                    path="/backtest"
+                    element={<BacktestJournal />}
+                  />
+                  <Route
+                    path="/quantitative-analysis"
+                    element={<QuantitativeAnalysis />}
+                  />
+                  <Route
+                    path="/edit-balance-pnl"
+                    element={<EditBalancePNL onSaved={() => {}} />}
+                  />
+                  <Route
+                    path="/trades/new"
+                    element={<AddTrade />}
+                  />
+                </Routes>
+              )}
+            </div>
+          </main>
+        </div>
+        {/* FloatingWidgets - only show when logged in AND not on public routes */}
+        {isLoggedIn && !isPublicPath && (
+          <FloatingWidgets currentAccount={currentAccount} />
+        )}
+        {/* ManageAccountsModal - only show when logged in AND not on public routes */}
+        {isLoggedIn && !isPublicPath && showManageModal && (
+          <ManageAccountsModal
+            accounts={accounts}
+            onClose={() => setShowManageModal(false)}
+            onDeleteAccount={deleteAccount}
+            onResetAccount={resetAccount}
+            onRenameAccount={renameAccount}
+            onCreateAccount={createAccount}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -458,22 +610,6 @@ export default function App() {
   const [showManageModal, setShowManageModal] = useState(false);
   useEffect(() => {
     initializeAccounts();
-  }, []);
-  useEffect(() => {
-    const currentId = localStorage.getItem("currentAccountId");
-    const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-    // Force login on ALL protected paths
-    const isPublicPath = window.location.pathname === "/login" || window.location.pathname === "/";
-    if (!isPublicPath) {
-      if (
-        !currentId ||
-        storedAccounts.length === 0 ||
-        !storedAccounts.some((acc) => acc.id === currentId)
-      ) {
-        localStorage.removeItem("currentAccountId");
-        window.location.replace("/login");
-      }
-    }
   }, []);
   const initializeAccounts = () => {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
@@ -533,186 +669,19 @@ export default function App() {
   return (
     <ThemeProvider>
       <Router>
-        <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-          <div className="fixed top-0 left-0 right-0 h-12 z-50">
-            <Topbar />
-          </div>
-          <div className="flex flex-1 pt-12">
-            <Sidebar
-              open={open}
-              setOpen={setOpen}
-              accounts={accounts}
-              currentAccount={currentAccount}
-              onSwitchAccount={switchAccount}
-              onCreateAccount={createAccount}
-              onShowManage={() => setShowManageModal(true)}
-            />
-            <div
-              className="flex-1 min-w-0 transition-all duration-300"
-              style={{
-                marginLeft: open ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
-                maxWidth: open
-                  ? "calc(100vw - 12rem - 8px)"
-                  : "calc(100vw - 6rem - 8px)",
-              }}
-            >
-              <main
-                className="overflow-y-auto overflow-x-hidden relative"
-                style={{
-                  height: "calc(100vh - 3rem)",
-                  paddingTop: "1.5rem",
-                }}
-              >
-                <div
-                  className="bg-transparent border-none p-3 sm:p-3 mx-1 sm:mx-2 mb-0"
-                  style={{
-                    minHeight: "calc(100vh - 4.5rem)",
-                  }}
-                >
-                  <Routes>
-                    {/* Landing / Welcome page – always first */}
-                    <Route path="/" element={<Landing />} />
-                    {/* Login & Register */}
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    {/* Protected routes – only show if logged in */}
-                    <Route
-                      path="/dashboard"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Dashboard currentAccount={currentAccount} />
-                        ) : (
-                          <Landing /> // ← Changed to landing instead of login
-                        )
-                      }
-                    />
-                    <Route
-                      path="/journal"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <DailyJournal />
-                        ) : (
-                          <Landing />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/trades"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Trades />
-                        ) : (
-                          <Landing />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/notebook"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Notebook />
-                        ) : (
-                          <Landing />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/reports"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Reports />
-                        ) : (
-                          <Landing />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/challenges"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <Challenges />
-                        ) : (
-                          <Landing />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/mentor"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <MentorMode />
-                        ) : (
-                          <Landing />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/settings"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <SettingsPage />
-                        ) : (
-                          <Landing />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/backtest"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <BacktestJournal />
-                        ) : (
-                          <Landing />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/quantitative-analysis"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <QuantitativeAnalysis />
-                        ) : (
-                          <Landing />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/edit-balance-pnl"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <EditBalancePNL onSaved={() => {}} />
-                        ) : (
-                          <Landing />
-                        )
-                      }
-                    />
-                    <Route
-                      path="/trades/new"
-                      element={
-                        localStorage.getItem("currentAccountId") ? (
-                          <AddTrade />
-                        ) : (
-                          <Landing />
-                        )
-                      }
-                    />
-                  </Routes>
-                </div>
-              </main>
-            </div>
-            <FloatingWidgets currentAccount={currentAccount} />
-            {showManageModal && (
-              <ManageAccountsModal
-                accounts={accounts}
-                onClose={() => setShowManageModal(false)}
-                onDeleteAccount={deleteAccount}
-                onResetAccount={resetAccount}
-                onRenameAccount={renameAccount}
-                onCreateAccount={createAccount}
-              />
-            )}
-          </div>
-        </div>
+        <AppContent
+          open={open}
+          setOpen={setOpen}
+          accounts={accounts}
+          currentAccount={currentAccount}
+          switchAccount={switchAccount}
+          createAccount={createAccount}
+          showManageModal={showManageModal}
+          setShowManageModal={setShowManageModal}
+          deleteAccount={deleteAccount}
+          resetAccount={resetAccount}
+          renameAccount={renameAccount}
+        />
       </Router>
     </ThemeProvider>
   );
