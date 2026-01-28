@@ -43,7 +43,6 @@ function FloatingWidgets({ currentAccount }) {
   const totalNotes = notes.length;
   const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
   const currentBalance = currentAccount.startingBalance + totalPnL;
-  <div style={{color: "red", textAlign: "center"}}>TEST: No auto-account</div>
   return (
     <div
       className="fixed right-4 sm:right-8 flex flex-col gap-2 z-[9999] w-[90%] max-w-[260px] sm:w-[260px] opacity-90"
@@ -398,9 +397,21 @@ export default function App() {
   }, []);
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
-    if (!currentId) {
-      if (window.location.pathname !== "/login" && window.location.pathname !== "/edit-balance-pnl") {
-        window.location.href = "/login";
+    const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+
+    // Force login on ALL paths except login and register form
+    const isPublicPath =
+      window.location.pathname === "/login" ||
+      window.location.pathname === "/edit-balance-pnl";
+
+    if (!isPublicPath) {
+      if (
+        !currentId ||
+        storedAccounts.length === 0 ||
+        !storedAccounts.some((acc) => acc.id === currentId)
+      ) {
+        localStorage.removeItem("currentAccountId");
+        window.location.replace("/login");
       }
     }
   }, []);
@@ -410,7 +421,7 @@ export default function App() {
 
     // No default account creation anymore
 
-    // ✅ FIX CURRENT ID
+    // FIX CURRENT ID
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0]?.id || null;
       if (currentId) {
@@ -436,24 +447,12 @@ export default function App() {
     localStorage.removeItem(`${accountId}_journals`);
     localStorage.removeItem(`dashboard_${accountId}`);
     let newCurrentId = localStorage.getItem("currentAccountId");
-    // ✅ IF DELETED CURRENT - CREATE NEW MAIN
+    // ✅ IF DELETED CURRENT - GO TO LOGIN (no recreate)
     if (newCurrentId === accountId || updated.length === 0) {
-      const defaultAccountId = "default";
-      const defaultAccount = {
-        id: defaultAccountId,
-        name: "Main Account",
-        startingBalance: 10000,
-        totalPnL: 0,
-        createdAt: new Date().toISOString(),
-      };
-      updated = [defaultAccount];
+      localStorage.removeItem("currentAccountId");
       localStorage.setItem("accounts", JSON.stringify(updated));
-      localStorage.setItem("currentAccountId", defaultAccountId);
-      localStorage.setItem(`${defaultAccountId}_trades`, JSON.stringify([]));
-      localStorage.setItem(`${defaultAccountId}_notes`, JSON.stringify([]));
-      localStorage.setItem(`${defaultAccountId}_journals`, JSON.stringify([]));
-      localStorage.setItem(`dashboard_${defaultAccountId}`, JSON.stringify({}));
-      newCurrentId = defaultAccountId;
+      window.location.href = "/login";
+      return;
     } else {
       localStorage.setItem("accounts", JSON.stringify(updated));
     }
