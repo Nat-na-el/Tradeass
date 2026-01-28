@@ -23,6 +23,76 @@ import BacktestJournal from "./pages/BacktestJournal";
 import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
+import Register from "./pages/Register"; // ← Make sure Register is imported
+
+// LANDING / WELCOME PAGE COMPONENT (no sidebar, no topbar)
+function Landing() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+      {/* Top-right Sign In / Sign Up */}
+      <header className="w-full py-6 px-8 flex justify-end items-center gap-4">
+        <Button
+          onClick={() => navigate('/login')}
+          variant="outline"
+          className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+        >
+          Sign In
+        </Button>
+        <Button
+          onClick={() => navigate('/register')}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+        >
+          Sign Up
+        </Button>
+      </header>
+
+      {/* Hero Content */}
+      <main className="flex-1 flex items-center justify-center px-6">
+        <div className="max-w-4xl text-center">
+          <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 dark:text-white mb-6">
+            Welcome to Tradeass
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-10 max-w-3xl mx-auto">
+            Tradeass is your personal, offline-first trading journal and performance tracker. Log trades, write daily reflections, keep notes, generate detailed reports, run quantitative analysis, and review backtests — all securely stored in your browser with no server needed.
+          </p>
+          <p className="text-lg text-gray-600 dark:text-gray-400 mb-12 leading-relaxed">
+            How it works:<br />
+            1. Sign up or sign in (email or Google)<br />
+            2. Create your trading account(s) with starting balance<br />
+            3. Start logging every trade, journal entry, and note<br />
+            4. Track performance, analyze patterns, and improve your trading edge over time
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <Button
+              onClick={() => navigate('/register')}
+              size="lg"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-lg px-10 py-6 rounded-xl shadow-lg"
+            >
+              Get Started – Sign Up
+            </Button>
+            <Button
+              onClick={() => navigate('/login')}
+              variant="outline"
+              size="lg"
+              className="text-lg px-10 py-6 border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl"
+            >
+              Already have an account? Sign In
+            </Button>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+        © {new Date().getFullYear()} Tradeass • Private • Offline • Built for serious traders
+      </footer>
+    </div>
+  );
+}
+
 // ✅ PERFECT FLOATING - REAL DATA ONLY
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
@@ -387,90 +457,19 @@ function EditBalancePNL({ onSaved }) {
     </div>
   );
 }
-
-// LANDING PAGE COMPONENT (no sidebar, no topbar, clean welcome)
-function Landing() {
-  const navigate = useNavigate();
-
-  return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
-      {/* Top-right Sign In / Sign Up */}
-      <header className="w-full py-6 px-8 flex justify-end items-center gap-4">
-        <Button
-          onClick={() => navigate('/login')}
-          variant="outline"
-          className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
-        >
-          Sign In
-        </Button>
-        <Button
-          onClick={() => navigate('/register')}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white"
-        >
-          Sign Up
-        </Button>
-      </header>
-
-      {/* Main Welcome Content */}
-      <main className="flex-1 flex items-center justify-center px-6">
-        <div className="max-w-4xl text-center">
-          <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 dark:text-white mb-6">
-            Welcome to Tradeass
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-10 max-w-3xl mx-auto">
-            Tradeass is your personal, offline-first trading journal and performance tracker. Log trades, write daily reflections, keep notes, generate detailed reports, run quantitative analysis, and review backtests — all securely stored in your browser with no server needed.
-          </p>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-12 leading-relaxed">
-            How it works:<br />
-            1. Sign up or sign in (email or Google)<br />
-            2. Create your trading account(s) with starting balance<br />
-            3. Log every trade, journal entry, and note<br />
-            4. Track performance, analyze patterns, and improve your trading edge over time
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <Button
-              onClick={() => navigate('/register')}
-              size="lg"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white text-lg px-10 py-6 rounded-xl shadow-lg"
-            >
-              Get Started – Sign Up
-            </Button>
-            <Button
-              onClick={() => navigate('/login')}
-              variant="outline"
-              size="lg"
-              className="text-lg px-10 py-6 border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl"
-            >
-              Already have an account? Sign In
-            </Button>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
-        © {new Date().getFullYear()} Tradeass • Private • Offline • Built for serious traders
-      </footer>
-    </div>
-  );
-}
-
 export default function App() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [showManageModal, setShowManageModal] = useState(false);
-
   useEffect(() => {
     initializeAccounts();
   }, []);
-
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
     const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
 
-    // Force login on protected paths
+    // Force redirect to login on protected paths
     const isPublicPath = window.location.pathname === "/" ||
                          window.location.pathname === "/login" ||
                          window.location.pathname === "/register";
@@ -486,7 +485,6 @@ export default function App() {
       }
     }
   }, []);
-
   const initializeAccounts = () => {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
     let currentId = localStorage.getItem("currentAccountId");
@@ -504,34 +502,32 @@ export default function App() {
     const current = storedAccounts.find((a) => a.id === currentId);
     setCurrentAccount(current);
   };
-
   const createAccount = () => {
-    window.location.href = "/edit-balance-pnl";
+    window.location.href = "/edit-balance-pnl"; // ✅ FIXED - Use window.location
   };
-
   const switchAccount = (accountId) => {
     localStorage.setItem("currentAccountId", accountId);
     window.location.reload();
   };
-
   const deleteAccount = (accountId) => {
     let updated = accounts.filter((a) => a.id !== accountId);
+    // ✅ DELETE ALL DATA
     localStorage.removeItem(`${accountId}_trades`);
     localStorage.removeItem(`${accountId}_notes`);
     localStorage.removeItem(`${accountId}_journals`);
     localStorage.removeItem(`dashboard_${accountId}`);
     let newCurrentId = localStorage.getItem("currentAccountId");
+    // ✅ IF DELETED CURRENT - GO TO LANDING (no recreate)
     if (newCurrentId === accountId || updated.length === 0) {
       localStorage.removeItem("currentAccountId");
       localStorage.setItem("accounts", JSON.stringify(updated));
-      window.location.href = "/"; // Back to landing
+      window.location.href = "/";
       return;
     } else {
       localStorage.setItem("accounts", JSON.stringify(updated));
     }
     window.location.reload();
   };
-
   const resetAccount = (accountId) => {
     localStorage.setItem(`${accountId}_trades`, JSON.stringify([]));
     localStorage.setItem(`${accountId}_notes`, JSON.stringify([]));
@@ -539,7 +535,6 @@ export default function App() {
     localStorage.setItem(`dashboard_${accountId}`, JSON.stringify({}));
     window.location.reload();
   };
-
   const renameAccount = (accountId, newName) => {
     const updated = accounts.map((a) =>
       a.id === accountId ? { ...a, name: newName } : a,
@@ -548,7 +543,7 @@ export default function App() {
     window.location.reload();
   };
 
-  // Check if user is logged in
+  // Check if user is logged in (used to hide sidebar/topbar on landing)
   const isLoggedIn = !!localStorage.getItem("currentAccountId");
 
   return (
@@ -630,13 +625,13 @@ export default function App() {
             </>
           )}
 
-          {/* Public routes – NO sidebar, NO topbar */}
+          {/* Public routes – no sidebar, no topbar */}
           <Routes>
-            {/* Landing page – default entry point */}
+            {/* Landing page – default starting point */}
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            {/* Redirect any invalid path to landing */}
+            {/* Redirect any unknown path to landing */}
             <Route path="*" element={<Landing />} />
           </Routes>
         </div>
