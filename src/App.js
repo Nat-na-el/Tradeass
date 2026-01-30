@@ -23,11 +23,17 @@ import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
-// FloatingWidgets (unchanged)
+
+// FloatingWidgets - now visible on dashboard & protected routes
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
-  const shouldShow = location.pathname === "/" && currentAccount;
-  if (!shouldShow || !currentAccount) return null;
+
+  // Show on all non-public pages (dashboard, journal, trades, etc.)
+  const isPublic = ["/", "/login", "/register"].includes(location.pathname);
+  const shouldShow = !isPublic && currentAccount;
+
+  if (!shouldShow) return null;
+
   const currentId = localStorage.getItem("currentAccountId");
   const trades = JSON.parse(localStorage.getItem(`${currentId}_trades`) || "[]");
   const journals = JSON.parse(localStorage.getItem(`${currentId}_journals`) || "[]");
@@ -37,6 +43,7 @@ function FloatingWidgets({ currentAccount }) {
   const totalNotes = notes.length;
   const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
   const currentBalance = currentAccount.startingBalance + totalPnL;
+
   return (
     <div
       className="fixed right-4 sm:right-8 flex flex-col gap-2 z-[9999] w-[90%] max-w-[260px] sm:w-[260px] opacity-90"
@@ -59,7 +66,7 @@ function FloatingWidgets({ currentAccount }) {
         </div>
       </div>
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Current</div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Current Balance</div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">
           ${currentBalance.toFixed(2)}
         </div>
@@ -79,6 +86,7 @@ function FloatingWidgets({ currentAccount }) {
     </div>
   );
 }
+
 // ManageAccountsModal (unchanged)
 function ManageAccountsModal({
   accounts,
@@ -90,15 +98,19 @@ function ManageAccountsModal({
 }) {
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
+
   const deleteAccount = (accountId) => {
     if (!window.confirm("Delete this account? All data will be lost!")) return;
     onDeleteAccount(accountId);
   };
+
   const resetAccount = (accountId) => {
     if (!window.confirm("Reset all trades/notes/journals for this account?")) return;
     onResetAccount(accountId);
   };
+
   if (accounts.length === 0) return null;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
@@ -119,6 +131,7 @@ function ManageAccountsModal({
             const totalJournals = journals.length;
             const totalNotes = notes.length;
             const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+
             return (
               <div key={account.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
                 <div className="flex justify-between items-start">
@@ -200,13 +213,15 @@ function ManageAccountsModal({
     </div>
   );
 }
-// EditBalancePNL - redirect to dashboard
+
+// EditBalancePNL (unchanged)
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ name: "", startingBalance: 10000 });
   const [isNewAccount, setIsNewAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     if (location.state?.accountId) {
       const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
@@ -226,11 +241,14 @@ function EditBalancePNL({ onSaved }) {
       });
     }
   }, [location]);
+
   const saveAccount = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
+
     const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+
     if (isNewAccount) {
       const newAccountId = `acc-${Date.now()}`;
       const newAccount = {
@@ -241,12 +259,14 @@ function EditBalancePNL({ onSaved }) {
         createdAt: new Date().toISOString(),
       };
       accounts.unshift(newAccount);
+
       localStorage.setItem(`${newAccountId}_trades`, JSON.stringify([]));
       localStorage.setItem(`${newAccountId}_notes`, JSON.stringify([]));
       localStorage.setItem(`${newAccountId}_journals`, JSON.stringify([]));
       localStorage.setItem(`dashboard_${newAccountId}`, JSON.stringify({}));
       localStorage.setItem("currentAccountId", newAccountId);
       localStorage.setItem("accounts", JSON.stringify(accounts));
+
       navigate("/dashboard", { replace: true });
     } else {
       const accountIndex = accounts.findIndex(
@@ -256,9 +276,11 @@ function EditBalancePNL({ onSaved }) {
       localStorage.setItem("accounts", JSON.stringify(accounts));
       navigate("/dashboard", { replace: true });
     }
+
     setIsSubmitting(false);
     if (onSaved) onSaved();
   };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
@@ -316,49 +338,61 @@ function EditBalancePNL({ onSaved }) {
     </div>
   );
 }
-// Inner App content (hooks are safe here, inside Router)
+
+// Inner content
 function AppContent() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [showManageModal, setShowManageModal] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
+
   useEffect(() => {
     initializeAccounts();
   }, []);
-  // Auth-aware redirects
+
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
     const isLoggedIn = !!currentId;
+
     const publicPaths = ["/", "/login", "/register"];
+
     if (isLoggedIn && publicPaths.includes(location.pathname)) {
       navigate("/dashboard", { replace: true });
     }
+
     if (!isLoggedIn && !publicPaths.includes(location.pathname)) {
       navigate("/login", { replace: true });
     }
   }, [location.pathname, navigate]);
+
   const initializeAccounts = () => {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
     let currentId = localStorage.getItem("currentAccountId");
+
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0]?.id || null;
       if (currentId) {
         localStorage.setItem("currentAccountId", currentId);
       }
     }
+
     setAccounts(storedAccounts);
     const current = storedAccounts.find((a) => a.id === currentId);
     setCurrentAccount(current);
   };
+
   const createAccount = () => {
     navigate("/edit-balance-pnl");
   };
+
   const switchAccount = (accountId) => {
     localStorage.setItem("currentAccountId", accountId);
     navigate("/dashboard", { replace: true });
   };
+
   const deleteAccount = (accountId) => {
     let updated = accounts.filter((a) => a.id !== accountId);
     localStorage.removeItem(`${accountId}_trades`);
@@ -366,15 +400,18 @@ function AppContent() {
     localStorage.removeItem(`${accountId}_journals`);
     localStorage.removeItem(`dashboard_${accountId}`);
     const currentId = localStorage.getItem("currentAccountId");
+
     if (currentId === accountId || updated.length === 0) {
       localStorage.removeItem("currentAccountId");
       localStorage.setItem("accounts", JSON.stringify(updated));
       navigate("/", { replace: true });
       return;
     }
+
     localStorage.setItem("accounts", JSON.stringify(updated));
     navigate("/dashboard", { replace: true });
   };
+
   const resetAccount = (accountId) => {
     localStorage.setItem(`${accountId}_trades`, JSON.stringify([]));
     localStorage.setItem(`${accountId}_notes`, JSON.stringify([]));
@@ -382,6 +419,7 @@ function AppContent() {
     localStorage.setItem(`dashboard_${accountId}`, JSON.stringify({}));
     navigate("/dashboard", { replace: true });
   };
+
   const renameAccount = (accountId, newName) => {
     const updated = accounts.map((a) =>
       a.id === accountId ? { ...a, name: newName } : a
@@ -389,15 +427,17 @@ function AppContent() {
     localStorage.setItem("accounts", JSON.stringify(updated));
     navigate("/dashboard", { replace: true });
   };
+
   const isLoggedIn = !!localStorage.getItem("currentAccountId");
+
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-      {/* Protected layout */}
       {isLoggedIn && (
         <>
           <div className="fixed top-0 left-0 right-0 h-12 z-50">
             <Topbar />
           </div>
+
           <div className="flex flex-1 pt-12">
             <Sidebar
               open={open}
@@ -408,6 +448,7 @@ function AppContent() {
               onCreateAccount={createAccount}
               onShowManage={() => setShowManageModal(true)}
             />
+
             <div
               className="flex-1 min-w-0 transition-all duration-300"
               style={{
@@ -446,7 +487,9 @@ function AppContent() {
                 </div>
               </main>
             </div>
+
             <FloatingWidgets currentAccount={currentAccount} />
+
             {showManageModal && (
               <ManageAccountsModal
                 accounts={accounts}
@@ -460,7 +503,7 @@ function AppContent() {
           </div>
         </>
       )}
-      {/* Public pages */}
+
       {!isLoggedIn && (
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -472,7 +515,7 @@ function AppContent() {
     </div>
   );
 }
-// Top-level App - only Router + ThemeProvider
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -480,69 +523,5 @@ export default function App() {
         <AppContent />
       </Router>
     </ThemeProvider>
-  );
-} and the topbar import React from "react";
-import { Sun, Moon, Settings, LogOut } from "lucide-react";
-import { Button } from "./button";
-import { useTheme } from "../../Theme-provider";
-export default function Topbar() {
-  const { theme, setTheme } = useTheme();
-  // Get current account name safely
-  const currentId = localStorage.getItem("currentAccountId");
-  const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-  const currentAccount = accounts.find(acc => acc.id === currentId);
-  const accountName = currentAccount ? currentAccount.name : "Guest";
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out?")) {
-      localStorage.removeItem("currentAccountId");
-      window.location.href = "/login";
-    }
-  };
-  return (
-    <header className="fixed top-4 left-4 right-4 z-50 h-16 flex items-center justify-between px-6 bg-white/70 dark:bg-gradient-to-r dark:from-slate-900 dark:to-slate-800 backdrop-blur-xl shadow-[0_4px_12px_rgba(75,94,170,0.3)] border border-gray-200/40 dark:border-gray-400/20 rounded-2xl transition-all duration-500">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-md bg-gradient-to-br from-indigo-600 to-indigo-400 flex items-center justify-center font-bold text-white">
-          TZ
-        </div>
-        <div>
-          <div className="text-sm font-semibold text-gray-900 dark:text-white">
-            TRADEASS
-          </div>
-          <div className="text-xs text-gray-500 dark:text-gray-300 -mt-0.5">
-            Trading Dashboard
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center gap-3">
-        {/* Account name display */}
-        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 px-3 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded-md">
-          {accountName}
-        </div>
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="p-2 rounded-md hover:bg-gray-200/40 dark:hover:bg-indigo-600/30 transition"
-          aria-label="Toggle Theme"
-        >
-          {theme === "dark" ? (
-            <Sun className="h-5 w-5 text-indigo-400" />
-          ) : (
-            <Moon className="h-5 w-5 text-gray-900" />
-          )}
-        </button>
-        <Button className="bg-gradient-to-r from-indigo-600 to-indigo-400 text-white font-medium rounded-md">
-          <Settings className="h-5 w-5 mr-2" />
-          Settings
-        </Button>
-        {/* Logout button */}
-        <Button
-          variant="destructive"
-          onClick={handleLogout}
-          className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium rounded-md"
-        >
-          <LogOut className="h-5 w-5 mr-2" />
-          Logout
-        </Button>
-      </div>
-    </header>
   );
 }
