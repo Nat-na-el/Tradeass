@@ -23,77 +23,15 @@ import BacktestJournal from "./pages/BacktestJournal";
 import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
-import Register from "./pages/Register"; // ← Make sure Register is imported
-// NEW LANDING / WELCOME PAGE COMPONENT (added here for simplicity)
-function Landing() {
-  const navigate = useNavigate();
-  return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
-      {/* Top Bar with Sign In & Sign Up Buttons */}
-      <header className="w-full py-6 px-8 flex justify-end items-center gap-4">
-        <Button
-          onClick={() => navigate('/login')}
-          variant="outline"
-          className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
-        >
-          Sign In
-        </Button>
-        <Button
-          onClick={() => navigate('/register')}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white"
-        >
-          Sign Up
-        </Button>
-      </header>
-      {/* Hero / Welcome Section */}
-      <main className="flex-1 flex items-center justify-center px-6">
-        <div className="max-w-4xl text-center">
-          <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 dark:text-white mb-6">
-            Welcome to Tradeass
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-10 max-w-3xl mx-auto">
-            Tradeass is your personal, offline trading journal and performance tracker. Log trades, write daily journals, track notes, generate reports, run quantitative analysis, and review backtests — all in one secure, local-first app.
-          </p>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-12">
-            How it works:<br />
-            1. Sign up or sign in<br />
-            2. Create your trading account<br />
-            3. Start logging trades, journals, and notes<br />
-            4. Analyze your performance and improve your edge
-          </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <Button
-              onClick={() => navigate('/register')}
-              size="lg"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white text-lg px-10 py-6 rounded-xl shadow-lg"
-            >
-              Get Started – Sign Up
-            </Button>
-            <Button
-              onClick={() => navigate('/login')}
-              variant="outline"
-              size="lg"
-              className="text-lg px-10 py-6 border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl"
-            >
-              Already have an account? Sign In
-            </Button>
-          </div>
-        </div>
-      </main>
-      {/* Footer */}
-      <footer className="py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
-        © {new Date().getFullYear()} Tradeass. Built for traders, powered by privacy.
-      </footer>
-    </div>
-  );
-}
+import Register from "./pages/Register";
+import Landing from "./pages/Landing"; // ← Import the external Landing component
+
 // ✅ PERFECT FLOATING - REAL DATA ONLY
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
   const { theme } = useTheme();
   const shouldShow = location.pathname === "/" && currentAccount;
   if (!shouldShow || !currentAccount) return null;
-  // ✅ GET REAL SAVED DATA
   const currentId = localStorage.getItem("currentAccountId");
   const trades = JSON.parse(
     localStorage.getItem(`${currentId}_trades`) || "[]",
@@ -117,64 +55,39 @@ function FloatingWidgets({ currentAccount }) {
         maxHeight: "70vh",
       }}
     >
-      {/* ACCOUNT NAME */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-sm font-bold text-gray-800 dark:text-gray-200">
           {currentAccount.name}
         </div>
       </div>
-      {/* TOTAL P&L */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">
-          Total P&L
-        </div>
-        <div
-          className={`text-base font-bold ${
-            totalPnL >= 0 ? "text-green-600" : "text-red-600"
-          }`}
-        >
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Total P&L</div>
+        <div className={`text-base font-bold ${totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}>
           ${totalPnL.toFixed(2)}
         </div>
       </div>
-      {/* CURRENT BALANCE */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">
-          Current
-        </div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Current</div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">
           ${currentBalance.toFixed(2)}
         </div>
       </div>
-      {/* TOTAL TRADES */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">
-          Trades
-        </div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">
-          {totalTrades}
-        </div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Trades</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totalTrades}</div>
       </div>
-      {/* TOTAL JOURNALS */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">
-          Journals
-        </div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">
-          {totalJournals}
-        </div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Journals</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totalJournals}</div>
       </div>
-      {/* TOTAL NOTES */}
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">
-          Notes
-        </div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">
-          {totalNotes}
-        </div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Notes</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totalNotes}</div>
       </div>
     </div>
   );
 }
+
 // ✅ PERFECT MANAGE MODAL
 function ManageAccountsModal({
   accounts,
@@ -192,8 +105,7 @@ function ManageAccountsModal({
     onDeleteAccount(accountId);
   };
   const resetAccount = (accountId) => {
-    if (!window.confirm("Reset all trades/notes/journals for this account?"))
-      return;
+    if (!window.confirm("Reset all trades/notes/journals for this account?")) return;
     onResetAccount(accountId);
   };
   if (accounts.length === 0) return null;
@@ -208,36 +120,21 @@ function ManageAccountsModal({
           <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
             Manage Accounts
           </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             ✕
           </button>
         </div>
         <div className="space-y-3 mb-4">
           {accounts.map((account) => {
-            const trades = JSON.parse(
-              localStorage.getItem(`${account.id}_trades`) || "[]",
-            );
-            const journals = JSON.parse(
-              localStorage.getItem(`${account.id}_journals`) || "[]",
-            );
-            const notes = JSON.parse(
-              localStorage.getItem(`${account.id}_notes`) || "[]",
-            );
+            const trades = JSON.parse(localStorage.getItem(`${account.id}_trades`) || "[]");
+            const journals = JSON.parse(localStorage.getItem(`${account.id}_journals`) || "[]");
+            const notes = JSON.parse(localStorage.getItem(`${account.id}_notes`) || "[]");
             const totalTrades = trades.length;
             const totalJournals = journals.length;
             const totalNotes = notes.length;
-            const totalPnL = trades.reduce(
-              (sum, trade) => sum + (trade.pnl || 0),
-              0,
-            );
+            const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
             return (
-              <div
-                key={account.id}
-                className="p-3 bg-gray-50 dark:bg-gray-700 rounded"
-              >
+              <div key={account.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     {editingId === account.id ? (
@@ -251,10 +148,7 @@ function ManageAccountsModal({
                         />
                         <button
                           onClick={() => {
-                            onRenameAccount(
-                              account.id,
-                              editName || account.name,
-                            );
+                            onRenameAccount(account.id, editName || account.name);
                             setEditingId(null);
                             setEditName("");
                           }}
@@ -271,16 +165,10 @@ function ManageAccountsModal({
                           </span>
                         </div>
                         <div>
-                          <span className="font-medium block">
-                            {account.name}
-                          </span>
+                          <span className="font-medium block">{account.name}</span>
                           <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-                            <div>
-                              {totalTrades} trades • ${totalPnL.toFixed(2)} P&L
-                            </div>
-                            <div>
-                              {totalJournals} journals • {totalNotes} notes
-                            </div>
+                            <div>{totalTrades} trades • ${totalPnL.toFixed(2)} P&L</div>
+                            <div>{totalJournals} journals • {totalNotes} notes</div>
                           </div>
                         </div>
                       </div>
@@ -326,10 +214,11 @@ function ManageAccountsModal({
     </div>
   );
 }
+
 // ✅ PERFECT CREATE ACCOUNT - ESLINT FIXED
 function EditBalancePNL({ onSaved }) {
   const { theme } = useTheme();
-  const navigate = useNavigate(); // ✅ FIXED - MOVED TO TOP
+  const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ name: "", startingBalance: 10000 });
   const [isNewAccount, setIsNewAccount] = useState(false);
@@ -368,14 +257,12 @@ function EditBalancePNL({ onSaved }) {
         createdAt: new Date().toISOString(),
       };
       accounts.unshift(newAccount);
-      // ✅ BRAND NEW EMPTY DATA - ALL ZERO
       localStorage.setItem(`${newAccountId}_trades`, JSON.stringify([]));
       localStorage.setItem(`${newAccountId}_notes`, JSON.stringify([]));
       localStorage.setItem(`${newAccountId}_journals`, JSON.stringify([]));
       localStorage.setItem(`dashboard_${newAccountId}`, JSON.stringify({}));
       localStorage.setItem("currentAccountId", newAccountId);
       localStorage.setItem("accounts", JSON.stringify(accounts));
-      // ✅ GO BACK TO DASHBOARD
       navigate("/", { replace: true });
     } else {
       const accountIndex = accounts.findIndex(
@@ -394,9 +281,7 @@ function EditBalancePNL({ onSaved }) {
         theme === "dark" ? "dark" : ""
       }`}
     >
-      <div
-        className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md`}
-      >
+      <div className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md`}>
         <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-100">
           {isNewAccount ? "New Account" : "Edit Account"}
         </h3>
@@ -451,19 +336,26 @@ function EditBalancePNL({ onSaved }) {
     </div>
   );
 }
+
 export default function App() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [showManageModal, setShowManageModal] = useState(false);
+
   useEffect(() => {
     initializeAccounts();
   }, []);
+
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
     const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-    // Force login on ALL protected paths
-    const isPublicPath = window.location.pathname === "/login" || window.location.pathname === "/";
+
+    const isPublicPath =
+      window.location.pathname === "/" ||
+      window.location.pathname === "/login" ||
+      window.location.pathname === "/register";
+
     if (!isPublicPath) {
       if (
         !currentId ||
@@ -475,11 +367,11 @@ export default function App() {
       }
     }
   }, []);
+
   const initializeAccounts = () => {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
     let currentId = localStorage.getItem("currentAccountId");
-    // No default account creation anymore
-    // FIX CURRENT ID
+
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0]?.id || null;
       if (currentId) {
@@ -490,32 +382,34 @@ export default function App() {
     const current = storedAccounts.find((a) => a.id === currentId);
     setCurrentAccount(current);
   };
+
   const createAccount = () => {
-    window.location.href = "/edit-balance-pnl"; // ✅ FIXED - Use window.location
+    window.location.href = "/edit-balance-pnl";
   };
+
   const switchAccount = (accountId) => {
     localStorage.setItem("currentAccountId", accountId);
     window.location.reload();
   };
+
   const deleteAccount = (accountId) => {
     let updated = accounts.filter((a) => a.id !== accountId);
-    // ✅ DELETE ALL DATA
     localStorage.removeItem(`${accountId}_trades`);
     localStorage.removeItem(`${accountId}_notes`);
     localStorage.removeItem(`${accountId}_journals`);
     localStorage.removeItem(`dashboard_${accountId}`);
     let newCurrentId = localStorage.getItem("currentAccountId");
-    // ✅ IF DELETED CURRENT - GO TO LANDING (no recreate)
     if (newCurrentId === accountId || updated.length === 0) {
       localStorage.removeItem("currentAccountId");
       localStorage.setItem("accounts", JSON.stringify(updated));
-      window.location.href = "/"; // ← Changed to landing page
+      window.location.href = "/";
       return;
     } else {
       localStorage.setItem("accounts", JSON.stringify(updated));
     }
     window.location.reload();
   };
+
   const resetAccount = (accountId) => {
     localStorage.setItem(`${accountId}_trades`, JSON.stringify([]));
     localStorage.setItem(`${accountId}_notes`, JSON.stringify([]));
@@ -523,6 +417,7 @@ export default function App() {
     localStorage.setItem(`dashboard_${accountId}`, JSON.stringify({}));
     window.location.reload();
   };
+
   const renameAccount = (accountId, newName) => {
     const updated = accounts.map((a) =>
       a.id === accountId ? { ...a, name: newName } : a,
@@ -531,14 +426,14 @@ export default function App() {
     window.location.reload();
   };
 
-  // NEW: Check if user is logged in (used to hide sidebar/topbar on landing)
+  // Check login status to show/hide app UI
   const isLoggedIn = !!localStorage.getItem("currentAccountId");
 
   return (
     <ThemeProvider>
       <Router>
         <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-          {/* ONLY show Topbar + Sidebar + protected content when logged in */}
+          {/* App UI (Topbar + Sidebar + main content) only when logged in */}
           {isLoggedIn && (
             <>
               <div className="fixed top-0 left-0 right-0 h-12 z-50">
@@ -572,12 +467,9 @@ export default function App() {
                   >
                     <div
                       className="bg-transparent border-none p-3 sm:p-3 mx-1 sm:mx-2 mb-0"
-                      style={{
-                        minHeight: "calc(100vh - 4.5rem)",
-                      }}
+                      style={{ minHeight: "calc(100vh - 4.5rem)" }}
                     >
                       <Routes>
-                        {/* Protected routes – only inside logged-in block */}
                         <Route
                           path="/dashboard"
                           element={<Dashboard currentAccount={currentAccount} />}
@@ -593,7 +485,6 @@ export default function App() {
                         <Route path="/quantitative-analysis" element={<QuantitativeAnalysis />} />
                         <Route path="/edit-balance-pnl" element={<EditBalancePNL onSaved={() => {}} />} />
                         <Route path="/trades/new" element={<AddTrade />} />
-                        {/* Catch-all for logged-in users */}
                         <Route path="*" element={<Dashboard currentAccount={currentAccount} />} />
                       </Routes>
                     </div>
@@ -614,13 +505,11 @@ export default function App() {
             </>
           )}
 
-          {/* Public routes – clean, no sidebar/topbar */}
+          {/* Public routes – no sidebar, no topbar */}
           <Routes>
-            {/* Landing page – default entry point */}
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            {/* Redirect any unknown path to landing */}
             <Route path="*" element={<Landing />} />
           </Routes>
         </div>
