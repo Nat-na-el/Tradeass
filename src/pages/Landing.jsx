@@ -69,7 +69,7 @@ export default function Landing() {
 
         <div className="max-w-5xl mx-auto relative z-10 space-y-10">
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-none">
-            Master Your Trading Edge
+            Master Your Trading Edges
           </h1>
 
           <p className="text-xl md:text-3xl text-gray-700 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed">
