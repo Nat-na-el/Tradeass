@@ -24,12 +24,11 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 
-// FloatingWidgets - shows on dashboard & protected routes
+// FloatingWidgets — now ONLY on dashboard
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
-  const isPublic = ["/", "/login", "/register"].includes(location.pathname);
-  const shouldShow = !isPublic && currentAccount;
-
+  // Show ONLY on /dashboard route + when currentAccount exists
+  const shouldShow = location.pathname === "/dashboard" && currentAccount;
   if (!shouldShow) return null;
 
   const currentId = localStorage.getItem("currentAccountId");
@@ -212,7 +211,7 @@ function ManageAccountsModal({
   );
 }
 
-// EditBalancePNL (redirects to dashboard)
+// EditBalancePNL (unchanged)
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -337,7 +336,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// Main content (inside Router)
+// Main content
 function AppContent() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -450,10 +449,10 @@ function AppContent() {
             <div
               className="flex-1 min-w-0 transition-all duration-300"
               style={{
-                marginLeft: open ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
+                marginLeft: open ? "calc(15rem + 8px)" : "calc(5rem + 8px)", // adjusted for sidebar size
                 maxWidth: open
-                  ? "calc(100vw - 12rem - 8px)"
-                  : "calc(100vw - 6rem - 8px)",
+                  ? "calc(100vw - 15rem - 8px)"
+                  : "calc(100vw - 5rem - 8px)",
               }}
             >
               <main
