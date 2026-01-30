@@ -2,9 +2,11 @@ import React from "react";
 import { Sun, Moon, Settings, LogOut } from "lucide-react";
 import { Button } from "./button";
 import { useTheme } from "../../Theme-provider";
+import { useNavigate } from "react-router-dom";
 
 export default function Topbar() {
   const { theme, setTheme } = useTheme();
+  const navigate = useNavigate();
 
   // Get current account name safely
   const currentId = localStorage.getItem("currentAccountId");
@@ -15,7 +17,11 @@ export default function Topbar() {
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
       localStorage.removeItem("currentAccountId");
-      window.location.href = "/login";
+      // Optional: clear more data if needed
+      // localStorage.removeItem("accounts");
+      navigate("/", { replace: true });
+      // Force refresh to guarantee layout change
+      window.location.reload();
     }
   };
 
@@ -34,12 +40,14 @@ export default function Topbar() {
           </div>
         </div>
       </div>
+
       <div className="flex items-center gap-3">
-        {/* Account name display */}
+        {/* Account name */}
         <div className="text-sm font-medium text-gray-700 dark:text-gray-300 px-3 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded-md">
           {accountName}
         </div>
 
+        {/* Theme toggle */}
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="p-2 rounded-md hover:bg-gray-200/40 dark:hover:bg-indigo-600/30 transition"
@@ -52,13 +60,14 @@ export default function Topbar() {
           )}
         </button>
 
+        {/* Settings */}
         <Button className="bg-gradient-to-r from-indigo-600 to-indigo-400 text-white font-medium rounded-md">
           <Settings className="h-5 w-5 mr-2" />
           Settings
         </Button>
 
-        {/* Logout button */}
-        <Button 
+        {/* Logout - WORKING */}
+        <Button
           variant="destructive"
           onClick={handleLogout}
           className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium rounded-md"
