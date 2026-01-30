@@ -24,12 +24,12 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 
-// FloatingWidgets (keep your version)
+// FloatingWidgets - removed useTheme (unused here)
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
-  const { theme } = useTheme();
   const shouldShow = location.pathname === "/" && currentAccount;
   if (!shouldShow || !currentAccount) return null;
+
   const currentId = localStorage.getItem("currentAccountId");
   const trades = JSON.parse(localStorage.getItem(`${currentId}_trades`) || "[]");
   const journals = JSON.parse(localStorage.getItem(`${currentId}_journals`) || "[]");
@@ -39,6 +39,7 @@ function FloatingWidgets({ currentAccount }) {
   const totalNotes = notes.length;
   const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
   const currentBalance = currentAccount.startingBalance + totalPnL;
+
   return (
     <div
       className="fixed right-4 sm:right-8 flex flex-col gap-2 z-[9999] w-[90%] max-w-[260px] sm:w-[260px] opacity-90"
@@ -82,7 +83,7 @@ function FloatingWidgets({ currentAccount }) {
   );
 }
 
-// ManageAccountsModal (unchanged)
+// ManageAccountsModal - removed useTheme (unused)
 function ManageAccountsModal({
   accounts,
   onClose,
@@ -91,25 +92,24 @@ function ManageAccountsModal({
   onRenameAccount,
   onCreateAccount,
 }) {
-  const { theme } = useTheme();
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
+
   const deleteAccount = (accountId) => {
     if (!window.confirm("Delete this account? All data will be lost!")) return;
     onDeleteAccount(accountId);
   };
+
   const resetAccount = (accountId) => {
     if (!window.confirm("Reset all trades/notes/journals for this account?")) return;
     onResetAccount(accountId);
   };
+
   if (accounts.length === 0) return null;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
-      <div
-        className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto ${
-          theme === "dark" ? "dark" : ""
-        }`}
-      >
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
             Manage Accounts
@@ -127,6 +127,7 @@ function ManageAccountsModal({
             const totalJournals = journals.length;
             const totalNotes = notes.length;
             const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+
             return (
               <div key={account.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
                 <div className="flex justify-between items-start">
@@ -209,9 +210,8 @@ function ManageAccountsModal({
   );
 }
 
-// EditBalancePNL - changed redirect to /dashboard
+// EditBalancePNL - fixed redirect to /dashboard + removed Button import (use native button or your own)
 function EditBalancePNL({ onSaved }) {
-  const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ name: "", startingBalance: 10000 });
@@ -242,7 +242,9 @@ function EditBalancePNL({ onSaved }) {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
+
     const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+
     if (isNewAccount) {
       const newAccountId = `acc-${Date.now()}`;
       const newAccount = {
@@ -253,32 +255,31 @@ function EditBalancePNL({ onSaved }) {
         createdAt: new Date().toISOString(),
       };
       accounts.unshift(newAccount);
+
       localStorage.setItem(`${newAccountId}_trades`, JSON.stringify([]));
       localStorage.setItem(`${newAccountId}_notes`, JSON.stringify([]));
       localStorage.setItem(`${newAccountId}_journals`, JSON.stringify([]));
       localStorage.setItem(`dashboard_${newAccountId}`, JSON.stringify({}));
       localStorage.setItem("currentAccountId", newAccountId);
       localStorage.setItem("accounts", JSON.stringify(accounts));
-      navigate("/dashboard", { replace: true }); // ← FIXED: go to dashboard
+
+      navigate("/dashboard", { replace: true });
     } else {
       const accountIndex = accounts.findIndex(
-        (a) => a.id === location.state.accountId,
+        (a) => a.id === location.state.accountId
       );
       accounts[accountIndex] = { ...accounts[accountIndex], ...form };
       localStorage.setItem("accounts", JSON.stringify(accounts));
       navigate("/dashboard", { replace: true });
     }
+
     setIsSubmitting(false);
     if (onSaved) onSaved();
   };
 
   return (
-    <div
-      className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 ${
-        theme === "dark" ? "dark" : ""
-      }`}
-    >
-      <div className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md`}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
         <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-100">
           {isNewAccount ? "New Account" : "Edit Account"}
         </h3>
@@ -312,21 +313,21 @@ function EditBalancePNL({ onSaved }) {
             />
           </div>
           <div className="flex justify-end gap-2">
-            <Button
+            <button
               type="button"
               onClick={() => navigate("/dashboard", { replace: true })}
-              variant="outline"
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
               disabled={isSubmitting}
             >
               Cancel
-            </Button>
-            <Button
+            </button>
+            <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-gray-500 hover:bg-gray-600 text-white"
+              className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md"
             >
               {isSubmitting ? "Creating..." : isNewAccount ? "Create" : "Save"}
-            </Button>
+            </button>
           </div>
         </form>
       </div>
@@ -347,19 +348,19 @@ export default function App() {
     initializeAccounts();
   }, []);
 
-  // Critical: Redirect logged-in users away from public pages
+  // Auth-aware redirects (run on every path change)
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
     const isLoggedIn = !!currentId;
 
     const publicPaths = ["/", "/login", "/register"];
 
-    // If logged in and trying to access public page → redirect to dashboard
+    // Logged-in users should never stay on public pages
     if (isLoggedIn && publicPaths.includes(location.pathname)) {
       navigate("/dashboard", { replace: true });
     }
 
-    // If NOT logged in and trying to access protected page → redirect to login
+    // Not logged-in users should not access protected pages
     if (!isLoggedIn && !publicPaths.includes(location.pathname)) {
       navigate("/login", { replace: true });
     }
@@ -431,7 +432,7 @@ export default function App() {
     <ThemeProvider>
       <Router>
         <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-          {/* Full protected app UI (sidebar + topbar + content) */}
+          {/* Protected layout: sidebar + topbar + content */}
           {isLoggedIn && (
             <>
               <div className="fixed top-0 left-0 right-0 h-12 z-50">
@@ -504,7 +505,7 @@ export default function App() {
             </>
           )}
 
-          {/* Public pages - shown only when NOT logged in */}
+          {/* Public layout: clean pages, no app UI */}
           {!isLoggedIn && (
             <Routes>
               <Route path="/" element={<Landing />} />
