@@ -1,201 +1,121 @@
-import React, { useState, useEffect } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import React from "react";
+import { Sun, Moon, Settings, LogOut } from "lucide-react";
+import { Button } from "./button";
+import { useTheme } from "../../Theme-provider"; // ← Make sure this path is correct
+import { useNavigate } from "react-router-dom";
 import {
-  Menu,
-  X,
-  Home,
-  BookOpen,
-  Activity,
-  FileText,
-  BarChart3,
-  Trophy,
-  Users,
-  Settings,
-  Calculator,
-  UserPlus,
-  Settings2,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
-import { useTheme } from "../../Theme-provider";
-import { signOut } from 'firebase/auth';
-import { auth } from '../../firebase'; // Adjust path if needed
-export default function Sidebar({
-  open,
-  setOpen,
-  accounts,
-  currentAccount,
-  onSwitchAccount,
-  onCreateAccount,
-  onShowManage,
-}) {
-  const { theme } = useTheme();
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "./dialog";
+
+export default function Topbar() {
+  const { theme, setTheme } = useTheme(); // This should now work if path is correct
   const navigate = useNavigate();
-  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
 
-  const toggleSidebar = () => {
-    setOpen((prev) => !prev);
-    setIsAccountDropdownOpen(false);
-  };
-const handleLogout = async () => {
-  try {
-    await signOut(auth);
-    localStorage.removeItem('currentAccountId');
-    window.location.href = '/login';
-  } catch (err) {
-    console.error('Logout error:', err);
-  }
-};
-  const toggleAccountDropdown = () => {
-    if (open) {
-      setIsAccountDropdownOpen(!isAccountDropdownOpen);
-    }
-  };
+  // Get current account name safely
+  const currentId = localStorage.getItem("currentAccountId");
+  const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+  const currentAccount = accounts.find(acc => acc.id === currentId);
+  const accountName = currentAccount ? currentAccount.name : "Guest";
 
-  const navItems = [
-    { to: "/", icon: Home, label: "Dashboard" },
-    { to: "/journal", icon: BookOpen, label: "Daily Journal" },
-    { to: "/trades", icon: Activity, label: "Trades" },
-    { to: "/notebook", icon: FileText, label: "Notebook" },
-    { to: "/reports", icon: BarChart3, label: "Reports" },
-    { to: "/challenges", icon: Trophy, label: "Challenges" },
-    { to: "/mentor", icon: Users, label: "Mentor Mode" },
-    { to: "/settings", icon: Settings, label: "Settings" },
-    { to: "/backtest", icon: Calculator, label: "Backtest" },
-  ];
+  const [showLogoutDialog, setShowLogoutDialog] = React.useState(false);
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutDialog(false);
+    localStorage.removeItem("currentAccountId");
+
+    // Use direct browser navigation to bypass React Router race condition
+    window.location.href = "/"; // This forces clean landing without coming back
+
+    // Optional: fallback reload if needed (usually not required with window.location)
+    // window.location.reload();
+  };
 
   return (
-    <div
-      className={`fixed left-8 top-20 h-[calc(100vh-2.5rem)] bg-gray-900 dark:bg-gray-800 border-r border-gray-800 shadow-2xl transition-all duration-300 z-[1000] ${
-        open ? "w-48" : "w-16"
-      } ${theme === "dark" ? "dark" : ""}`}
-      style={{
-        minWidth: open ? "12rem" : "4rem",
-        boxShadow: "4px 0 10px rgba(0, 0, 0, 0.3)",
-      }}
-    >
-      <div className="flex flex-col h-full">
-        <div className="flex items-center justify-end p-3 pt-2">
-          <button
-            onClick={toggleSidebar}
-            className="p-2 rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 transition-all duration-300 flex items-center justify-center"
-          >
-            {open ? <X size={18} /> : <Menu size={18} />}
-          </button>
+    <>
+      <header className="fixed top-4 left-4 right-4 z-50 h-16 flex items-center justify-between px-6 bg-white/70 dark:bg-gradient-to-r dark:from-slate-900 dark:to-slate-800 backdrop-blur-xl shadow-[0_4px_12px_rgba(75,94,170,0.3)] border border-gray-200/40 dark:border-gray-400/20 rounded-2xl transition-all duration-500">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-md bg-gradient-to-br from-indigo-600 to-indigo-400 flex items-center justify-center font-bold text-white">
+            TZ
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-gray-900 dark:text-white">
+              TRADEASS
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-300 -mt-0.5">
+              Trading Dashboard
+            </div>
+          </div>
         </div>
 
-        {/* ✅ PERFECT ACCOUNT SECTION - SMALLER FONT */}
-        <div className="p-3 border-b border-gray-700">
-          {/* CURRENT ACCOUNT DISPLAY */}
-          <div
-            className={`flex items-center gap-2 p-2 rounded cursor-pointer ${
-              open ? "justify-between" : "justify-center"
-            }`}
-            onClick={toggleAccountDropdown}
-          >
-            <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">
-                {currentAccount?.name?.charAt(0) || "A"}
-              </span>
-            </div>
-            {open && (
-              <>
-                <div className="min-w-0 flex-1">
-                  {/* ✅ SMALLER FONT - text-xs */}
-                  <div className="text-xs font-medium text-gray-200">
-                    {currentAccount?.name || "Account"}
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  {isAccountDropdownOpen ? (
-                    <ChevronUp size={14} className="text-gray-400" />
-                  ) : (
-                    <ChevronDown size={14} className="text-gray-400" />
-                  )}
-                </div>
-              </>
-            )}
+        <div className="flex items-center gap-3">
+          {/* Account name */}
+          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 px-3 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded-md">
+            {accountName}
           </div>
 
-          {/* ✅ ACCOUNT DROPDOWN - SMALLER FONT */}
-          {open && isAccountDropdownOpen && (
-            <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
-              {/* ALL ACCOUNTS - SELECTED HIGHLIGHT */}
-              {accounts.map((account) => (
-                <button
-                  key={account.id}
-                  onClick={() => {
-                    onSwitchAccount(account.id);
-                    setIsAccountDropdownOpen(false);
-                  }}
-                  className={`w-full text-left p-2 rounded text-xs font-normal ${
-                    currentAccount?.id === account.id
-                      ? "bg-gray-700 text-white border-l-2 border-gray-300"
-                      : "text-gray-400 hover:bg-gray-700 hover:text-white"
-                  }`}
-                >
-                  {account.name}
-                </button>
-              ))}
+          {/* Theme toggle - now should work if import path is correct */}
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-2 rounded-md hover:bg-gray-200/40 dark:hover:bg-indigo-600/30 transition"
+            aria-label="Toggle Theme"
+          >
+            {theme === "dark" ? (
+              <Sun className="h-5 w-5 text-indigo-400" />
+            ) : (
+              <Moon className="h-5 w-5 text-gray-900" />
+            )}
+          </button>
 
-              {/* ✅ BUTTONS - NORMAL GRAY */}
-              <div className="pt-2 border-t border-gray-600 space-y-1">
-                <button
-                  onClick={() => {
-                    onCreateAccount();
-                    setIsAccountDropdownOpen(false);
-                  }}
-                  className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
-                >
-                  + New Account
-                </button>
-                <button
-                  onClick={() => {
-                    onShowManage();
-                    setIsAccountDropdownOpen(false);
-                  }}
-                  className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
-                >
-                  Manage Accounts
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Settings */}
+          <Button className="bg-gradient-to-r from-indigo-600 to-indigo-400 text-white font-medium rounded-md">
+            <Settings className="h-5 w-5 mr-2" />
+            Settings
+          </Button>
+
+          {/* Logout button */}
+          <Button
+            variant="destructive"
+            onClick={() => setShowLogoutDialog(true)}
+            className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium rounded-md"
+          >
+            <LogOut className="h-5 w-5 mr-2" />
+            Logout
+          </Button>
         </div>
+      </header>
 
-        {/* NAVIGATION ITEMS */}
-        <nav className="flex-1 flex flex-col gap-1 p-3 overflow-y-auto">
-          {navItems.map((item, index) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 p-2 rounded-lg text-sm transition-all duration-300 ${
-                  isActive
-                    ? "bg-gray-700 text-white shadow-inner"
-                    : "text-gray-400 hover:bg-gray-700 hover:text-white"
-                } ${
-                  open ? "justify-start pl-3" : "justify-center items-center"
-                }`.trim()
-              }
-              style={{
-                marginBottom: index < navItems.length - 1 ? "2px" : "0",
-                minHeight: "48px",
-              }}
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <DialogContent className="max-w-md bg-white text-slate-900 dark:bg-[#0f1724] dark:text-white border border-slate-300 dark:border-[#B78727]/20 rounded-2xl shadow-2xl p-6">
+          <DialogHeader>
+            <DialogTitle>Confirm Logout</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-slate-600 dark:text-slate-200">
+              Are you sure you want to log out?
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowLogoutDialog(false)}
+              className="border border-slate-400 dark:border-[#B78727]/20 text-slate-900 dark:text-white bg-white dark:bg-transparent"
             >
-              <item.icon
-                size={open ? 20 : 24}
-                className={`flex-shrink-0 ${open ? "mr-3" : "mx-auto"}`}
-              />
-              {open && (
-                <span className="whitespace-nowrap overflow-hidden text-ellipsis font-medium">
-                  {item.label}
-                </span>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-      </div>
-    </div>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleLogoutConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-lg"
+            >
+              Yes, Log Out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
