@@ -11,9 +11,10 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Sync Firebase user → local account system
+  // Sync Firebase user to local account system
   const syncFirebaseUserToLocalAccount = (user) => {
     const uid = user.uid;
     let accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
@@ -30,7 +31,6 @@ export default function Login() {
       accounts.push(account);
       localStorage.setItem("accounts", JSON.stringify(accounts));
 
-      // Empty initial data
       localStorage.setItem(`${uid}_trades`, JSON.stringify([]));
       localStorage.setItem(`${uid}_notes`, JSON.stringify([]));
       localStorage.setItem(`${uid}_journals`, JSON.stringify([]));
@@ -40,28 +40,32 @@ export default function Login() {
     localStorage.setItem("currentAccountId", uid);
   };
 
-  // Email + Password login
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       syncFirebaseUserToLocalAccount(userCredential.user);
-      navigate("/dashboard", { replace: true }); // ← FIXED: go to dashboard
+      navigate("/dashboard", { replace: true });
     } catch (err) {
-      setError(err.message || "Login failed. Please check your email and password.");
+      setError(err.message || "Login failed. Check your credentials.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Google login
   const handleGoogleLogin = async () => {
     setError('');
+    setLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       syncFirebaseUserToLocalAccount(result.user);
-      navigate("/dashboard", { replace: true }); // ← FIXED: go to dashboard
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.message || "Google login failed. Try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,6 +95,7 @@ export default function Login() {
               placeholder="you@example.com"
               required
               className="mt-1"
+              disabled={loading}
             />
           </div>
 
@@ -106,14 +111,16 @@ export default function Login() {
               placeholder="••••••••"
               required
               className="mt-1"
+              disabled={loading}
             />
           </div>
 
           <Button
             type="submit"
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-2"
+            disabled={loading}
           >
-            Sign in with Email
+            {loading ? "Signing in..." : "Sign in with Email"}
           </Button>
         </form>
 
@@ -123,6 +130,7 @@ export default function Login() {
           onClick={handleGoogleLogin}
           variant="outline"
           className="w-full flex items-center justify-center gap-3 border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+          disabled={loading}
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
@@ -130,7 +138,7 @@ export default function Login() {
               d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.44-3.39-7.44-7.565s3.345-7.565 7.44-7.565c2.33 0 3.918.98 4.82 1.83l3.28-3.16C18.72 1.45 15.66 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.87 11.52-11.74 0-.79-.085-1.39-.185-1.99H12.24z"
             />
           </svg>
-          Continue with Google
+          {loading ? "Signing in..." : "Continue with Google"}
         </Button>
 
         <p className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
@@ -139,6 +147,7 @@ export default function Login() {
             type="button"
             onClick={() => navigate('/register')}
             className="text-indigo-600 hover:underline font-medium"
+            disabled={loading}
           >
             Sign up
           </button>
