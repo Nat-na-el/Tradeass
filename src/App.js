@@ -24,11 +24,15 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 
-// FloatingWidgets (unchanged)
+// FloatingWidgets - now shows on dashboard & protected routes
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
-  const shouldShow = location.pathname === "/" && currentAccount;
-  if (!shouldShow || !currentAccount) return null;
+
+  // Show on all protected pages (dashboard, journal, etc.), hide on public
+  const isPublic = ["/", "/login", "/register"].includes(location.pathname);
+  const shouldShow = !isPublic && currentAccount;
+
+  if (!shouldShow) return null;
 
   const currentId = localStorage.getItem("currentAccountId");
   const trades = JSON.parse(localStorage.getItem(`${currentId}_trades`) || "[]");
@@ -62,7 +66,7 @@ function FloatingWidgets({ currentAccount }) {
         </div>
       </div>
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Current</div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Current Balance</div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">
           ${currentBalance.toFixed(2)}
         </div>
@@ -210,7 +214,7 @@ function ManageAccountsModal({
   );
 }
 
-// EditBalancePNL - redirect to dashboard
+// EditBalancePNL (redirect to dashboard)
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -335,7 +339,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// Inner App content (hooks are safe here, inside Router)
+// Inner content (hooks inside Router)
 function AppContent() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -349,7 +353,7 @@ function AppContent() {
     initializeAccounts();
   }, []);
 
-  // Auth-aware redirects
+  // Auth protection & redirects
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
     const isLoggedIn = !!currentId;
@@ -371,9 +375,7 @@ function AppContent() {
 
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0]?.id || null;
-      if (currentId) {
-        localStorage.setItem("currentAccountId", currentId);
-      }
+      if (currentId) localStorage.setItem("currentAccountId", currentId);
     }
 
     setAccounts(storedAccounts);
@@ -429,7 +431,6 @@ function AppContent() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-      {/* Protected layout */}
       {isLoggedIn && (
         <>
           <div className="fixed top-0 left-0 right-0 h-12 z-50">
@@ -502,7 +503,6 @@ function AppContent() {
         </>
       )}
 
-      {/* Public pages */}
       {!isLoggedIn && (
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -515,7 +515,7 @@ function AppContent() {
   );
 }
 
-// Top-level App - only Router + ThemeProvider
+// Top-level wrapper
 export default function App() {
   return (
     <ThemeProvider>
