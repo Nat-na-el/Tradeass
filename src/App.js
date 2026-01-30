@@ -24,7 +24,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 
-// FloatingWidgets - removed useTheme (unused here)
+// FloatingWidgets
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
   const shouldShow = location.pathname === "/" && currentAccount;
@@ -83,7 +83,7 @@ function FloatingWidgets({ currentAccount }) {
   );
 }
 
-// ManageAccountsModal - removed useTheme (unused)
+// ManageAccountsModal
 function ManageAccountsModal({
   accounts,
   onClose,
@@ -210,7 +210,7 @@ function ManageAccountsModal({
   );
 }
 
-// EditBalancePNL - fixed redirect to /dashboard + removed Button import (use native button or your own)
+// EditBalancePNL - fixed redirect + no Button/useTheme
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -316,7 +316,7 @@ function EditBalancePNL({ onSaved }) {
             <button
               type="button"
               onClick={() => navigate("/dashboard", { replace: true })}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
               disabled={isSubmitting}
             >
               Cancel
@@ -324,7 +324,7 @@ function EditBalancePNL({ onSaved }) {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md"
+              className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md disabled:opacity-50"
             >
               {isSubmitting ? "Creating..." : isNewAccount ? "Create" : "Save"}
             </button>
@@ -348,19 +348,19 @@ export default function App() {
     initializeAccounts();
   }, []);
 
-  // Auth-aware redirects (run on every path change)
+  // Auth-aware redirects + protection
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
     const isLoggedIn = !!currentId;
 
     const publicPaths = ["/", "/login", "/register"];
 
-    // Logged-in users should never stay on public pages
+    // Logged-in user on public page → redirect to dashboard
     if (isLoggedIn && publicPaths.includes(location.pathname)) {
       navigate("/dashboard", { replace: true });
     }
 
-    // Not logged-in users should not access protected pages
+    // Not logged-in on protected page → redirect to login
     if (!isLoggedIn && !publicPaths.includes(location.pathname)) {
       navigate("/login", { replace: true });
     }
@@ -432,7 +432,7 @@ export default function App() {
     <ThemeProvider>
       <Router>
         <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-          {/* Protected layout: sidebar + topbar + content */}
+          {/* Protected layout: only shown when logged in */}
           {isLoggedIn && (
             <>
               <div className="fixed top-0 left-0 right-0 h-12 z-50">
@@ -505,7 +505,7 @@ export default function App() {
             </>
           )}
 
-          {/* Public layout: clean pages, no app UI */}
+          {/* Public layout - clean, no sidebar/topbar */}
           {!isLoggedIn && (
             <Routes>
               <Route path="/" element={<Landing />} />
