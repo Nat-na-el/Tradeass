@@ -1,7 +1,8 @@
-import React from "react";
+// src/components/ui/Topbar.jsx
+import React, { useState } from "react";
 import { Sun, Moon, Settings, LogOut } from "lucide-react";
 import { Button } from "./button";
-import { useTheme } from "../../Theme-provider";
+import { useTheme } from "../../Theme-provider"; // adjust path if needed (common locations: "./Theme-provider" or "../Theme-provider")
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -9,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "./dialog";
+} from "./dialog"; // your Dialog component
 
 export default function Topbar() {
   const { theme, setTheme } = useTheme();
@@ -21,14 +22,16 @@ export default function Topbar() {
   const currentAccount = accounts.find(acc => acc.id === currentId);
   const accountName = currentAccount ? currentAccount.name : "Guest";
 
-  const [showLogoutDialog, setShowLogoutDialog] = React.useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const handleLogoutConfirm = () => {
-    localStorage.removeItem("currentAccountId");
     setShowLogoutDialog(false);
-    navigate("/", { replace: true });
-    // Force reload to guarantee clean landing (prevents any flash-back)
-    window.location.reload();
+    localStorage.removeItem("currentAccountId");
+
+    // Direct browser navigation + reload = no race condition / no flash-back to dashboard
+    window.location.href = "/";
+    // The reload below is optional but helps in some browsers
+    // window.location.reload();
   };
 
   return (
@@ -49,12 +52,12 @@ export default function Topbar() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Account name */}
+          {/* Account name display */}
           <div className="text-sm font-medium text-gray-700 dark:text-gray-300 px-3 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded-md">
             {accountName}
           </div>
 
-          {/* Theme toggle - fully working */}
+          {/* Theme toggle - this works when useTheme path is correct */}
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="p-2 rounded-md hover:bg-gray-200/40 dark:hover:bg-indigo-600/30 transition"
@@ -67,13 +70,13 @@ export default function Topbar() {
             )}
           </button>
 
-          {/* Settings */}
+          {/* Settings button */}
           <Button className="bg-gradient-to-r from-indigo-600 to-indigo-400 text-white font-medium rounded-md">
             <Settings className="h-5 w-5 mr-2" />
             Settings
           </Button>
 
-          {/* Logout button - opens nice dialog */}
+          {/* Logout button - opens dialog */}
           <Button
             variant="destructive"
             onClick={() => setShowLogoutDialog(true)}
