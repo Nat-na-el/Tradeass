@@ -24,11 +24,11 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 
-// FloatingWidgets - now visible on dashboard & protected routes
+// FloatingWidgets - now visible on dashboard & all protected routes
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
 
-  // Show on all non-public pages (dashboard, journal, trades, etc.)
+  // Show on protected pages (dashboard, journal, etc.), hide on public
   const isPublic = ["/", "/login", "/register"].includes(location.pathname);
   const shouldShow = !isPublic && currentAccount;
 
@@ -214,7 +214,7 @@ function ManageAccountsModal({
   );
 }
 
-// EditBalancePNL (unchanged)
+// EditBalancePNL (unchanged - already redirects to dashboard)
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
