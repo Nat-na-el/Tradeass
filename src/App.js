@@ -24,7 +24,6 @@ import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
 import Register from "./pages/Register"; // ← Make sure Register is imported
-
 // NEW LANDING / WELCOME PAGE COMPONENT (added here for simplicity)
 function Landing() {
   const navigate = useNavigate();
@@ -88,7 +87,6 @@ function Landing() {
     </div>
   );
 }
-
 // ✅ PERFECT FLOATING - REAL DATA ONLY
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
