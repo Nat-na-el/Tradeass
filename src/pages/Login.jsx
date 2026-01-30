@@ -13,14 +13,13 @@ export default function Login() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // Helper to create or get local account after Firebase login
+  // Sync Firebase user to local account system
   const syncFirebaseUserToLocalAccount = (user) => {
     const uid = user.uid;
     let accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
     let account = accounts.find(acc => acc.id === uid);
 
     if (!account) {
-      // Create new local account synced to Firebase user
       account = {
         id: uid,
         name: user.displayName || email.split('@')[0] || "Trader",
@@ -31,7 +30,7 @@ export default function Login() {
       accounts.push(account);
       localStorage.setItem("accounts", JSON.stringify(accounts));
 
-      // Initialize empty data (same as EditBalancePNL)
+      // Initialize empty data
       localStorage.setItem(`${uid}_trades`, JSON.stringify([]));
       localStorage.setItem(`${uid}_notes`, JSON.stringify([]));
       localStorage.setItem(`${uid}_journals`, JSON.stringify([]));
@@ -41,39 +40,49 @@ export default function Login() {
     localStorage.setItem("currentAccountId", uid);
   };
 
-  // Login with email + password
+  // Email + Password login
   const handleEmailLogin = async (e) => {
     e.preventDefault();
+    setError('');
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       syncFirebaseUserToLocalAccount(userCredential.user);
-      navigate('/');
+      navigate("/dashboard", { replace: true }); // ← Redirect to dashboard!
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Login failed. Check your credentials.");
     }
   };
 
-  // Login with Google
+  // Google login
   const handleGoogleLogin = async () => {
+    setError('');
     try {
       const result = await signInWithPopup(auth, googleProvider);
       syncFirebaseUserToLocalAccount(result.user);
-      navigate('/');
+      navigate("/dashboard", { replace: true }); // ← Redirect to dashboard!
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Google login failed.");
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
       <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-xl p-8">
-        <h1 className="text-3xl font-bold text-center mb-8">Tradeass Login</h1>
+        <h1 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">
+          Tradeass Login
+        </h1>
+
         {error && (
-          <p className="text-red-500 text-center mb-6">{error}</p>
+          <p className="text-red-500 text-center mb-6 bg-red-50 dark:bg-red-950/30 p-3 rounded">
+            {error}
+          </p>
         )}
+
         <form onSubmit={handleEmailLogin} className="space-y-5">
           <div>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">
+              Email
+            </Label>
             <Input
               id="email"
               type="email"
@@ -84,8 +93,11 @@ export default function Login() {
               className="mt-1"
             />
           </div>
+
           <div>
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-gray-700 dark:text-gray-300">
+              Password
+            </Label>
             <Input
               id="password"
               type="password"
@@ -96,15 +108,21 @@ export default function Login() {
               className="mt-1"
             />
           </div>
-          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 mt-2">
+
+          <Button
+            type="submit"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-2"
+          >
             Sign in with Email
           </Button>
         </form>
+
         <div className="my-6 text-center text-gray-500 dark:text-gray-400">or</div>
+
         <Button
           onClick={handleGoogleLogin}
           variant="outline"
-          className="w-full flex items-center justify-center gap-3 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30"
+          className="w-full flex items-center justify-center gap-3 border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
@@ -114,12 +132,13 @@ export default function Login() {
           </svg>
           Sign in with Google
         </Button>
+
         <p className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
           Don't have an account?{' '}
           <button
             type="button"
             onClick={() => navigate('/register')}
-            className="text-blue-600 hover:underline font-medium"
+            className="text-indigo-600 hover:underline font-medium"
           >
             Create one
           </button>
