@@ -6,11 +6,9 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { ThemeProvider, useTheme } from "./Theme-provider";
-import { Button } from "./components/ui/button";
+import { ThemeProvider } from "./Theme-provider";
 import Sidebar from "./components/ui/Sidebar";
 import Topbar from "./components/ui/Topbar";
-import PrivateRoute from "./PrivateRoute";
 import Dashboard from "./pages/Dashboard";
 import DailyJournal from "./pages/DailyJournal";
 import Trades from "./pages/Trades";
@@ -24,20 +22,17 @@ import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Landing from "./pages/Landing"; // ← Import the external Landing component
-// ✅ PERFECT FLOATING - REAL DATA ONLY
+import Landing from "./pages/Landing";
+
+// FloatingWidgets (keep your version)
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
   const { theme } = useTheme();
   const shouldShow = location.pathname === "/" && currentAccount;
   if (!shouldShow || !currentAccount) return null;
   const currentId = localStorage.getItem("currentAccountId");
-  const trades = JSON.parse(
-    localStorage.getItem(`${currentId}_trades`) || "[]",
-  );
-  const journals = JSON.parse(
-    localStorage.getItem(`${currentId}_journals`) || "[]",
-  );
+  const trades = JSON.parse(localStorage.getItem(`${currentId}_trades`) || "[]");
+  const journals = JSON.parse(localStorage.getItem(`${currentId}_journals`) || "[]");
   const notes = JSON.parse(localStorage.getItem(`${currentId}_notes`) || "[]");
   const totalTrades = trades.length;
   const totalJournals = journals.length;
@@ -86,7 +81,8 @@ function FloatingWidgets({ currentAccount }) {
     </div>
   );
 }
-// ✅ PERFECT MANAGE MODAL
+
+// ManageAccountsModal (unchanged)
 function ManageAccountsModal({
   accounts,
   onClose,
@@ -212,7 +208,8 @@ function ManageAccountsModal({
     </div>
   );
 }
-// ✅ PERFECT CREATE ACCOUNT - ESLINT FIXED
+
+// EditBalancePNL - changed redirect to /dashboard
 function EditBalancePNL({ onSaved }) {
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -220,6 +217,7 @@ function EditBalancePNL({ onSaved }) {
   const [form, setForm] = useState({ name: "", startingBalance: 10000 });
   const [isNewAccount, setIsNewAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     if (location.state?.accountId) {
       const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
@@ -239,6 +237,7 @@ function EditBalancePNL({ onSaved }) {
       });
     }
   }, [location]);
+
   const saveAccount = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -260,18 +259,19 @@ function EditBalancePNL({ onSaved }) {
       localStorage.setItem(`dashboard_${newAccountId}`, JSON.stringify({}));
       localStorage.setItem("currentAccountId", newAccountId);
       localStorage.setItem("accounts", JSON.stringify(accounts));
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true }); // ← FIXED: go to dashboard
     } else {
       const accountIndex = accounts.findIndex(
         (a) => a.id === location.state.accountId,
       );
       accounts[accountIndex] = { ...accounts[accountIndex], ...form };
       localStorage.setItem("accounts", JSON.stringify(accounts));
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
     setIsSubmitting(false);
     if (onSaved) onSaved();
   };
+
   return (
     <div
       className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 ${
@@ -314,7 +314,7 @@ function EditBalancePNL({ onSaved }) {
           <div className="flex justify-end gap-2">
             <Button
               type="button"
-              onClick={() => navigate("/", { replace: true })}
+              onClick={() => navigate("/dashboard", { replace: true })}
               variant="outline"
               disabled={isSubmitting}
             >
@@ -333,95 +333,111 @@ function EditBalancePNL({ onSaved }) {
     </div>
   );
 }
+
 export default function App() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [showManageModal, setShowManageModal] = useState(false);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
   useEffect(() => {
     initializeAccounts();
   }, []);
+
+  // Critical: Redirect logged-in users away from public pages
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
-    const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-    const isPublicPath =
-      window.location.pathname === "/" ||
-      window.location.pathname === "/login" ||
-      window.location.pathname === "/register";
-    if (!isPublicPath) {
-      if (
-        !currentId ||
-        storedAccounts.length === 0 ||
-        !storedAccounts.some((acc) => acc.id === currentId)
-      ) {
-        localStorage.removeItem("currentAccountId");
-        window.location.replace("/login");
-      }
+    const isLoggedIn = !!currentId;
+
+    const publicPaths = ["/", "/login", "/register"];
+
+    // If logged in and trying to access public page → redirect to dashboard
+    if (isLoggedIn && publicPaths.includes(location.pathname)) {
+      navigate("/dashboard", { replace: true });
     }
-  }, []);
+
+    // If NOT logged in and trying to access protected page → redirect to login
+    if (!isLoggedIn && !publicPaths.includes(location.pathname)) {
+      navigate("/login", { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
   const initializeAccounts = () => {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
     let currentId = localStorage.getItem("currentAccountId");
+
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0]?.id || null;
       if (currentId) {
         localStorage.setItem("currentAccountId", currentId);
       }
     }
+
     setAccounts(storedAccounts);
     const current = storedAccounts.find((a) => a.id === currentId);
     setCurrentAccount(current);
   };
+
   const createAccount = () => {
-    window.location.href = "/edit-balance-pnl";
+    navigate("/edit-balance-pnl");
   };
+
   const switchAccount = (accountId) => {
     localStorage.setItem("currentAccountId", accountId);
-    window.location.reload();
+    navigate("/dashboard", { replace: true });
   };
+
   const deleteAccount = (accountId) => {
     let updated = accounts.filter((a) => a.id !== accountId);
     localStorage.removeItem(`${accountId}_trades`);
     localStorage.removeItem(`${accountId}_notes`);
     localStorage.removeItem(`${accountId}_journals`);
     localStorage.removeItem(`dashboard_${accountId}`);
-    let newCurrentId = localStorage.getItem("currentAccountId");
-    if (newCurrentId === accountId || updated.length === 0) {
+    const currentId = localStorage.getItem("currentAccountId");
+
+    if (currentId === accountId || updated.length === 0) {
       localStorage.removeItem("currentAccountId");
       localStorage.setItem("accounts", JSON.stringify(updated));
-      window.location.href = "/";
+      navigate("/", { replace: true });
       return;
-    } else {
-      localStorage.setItem("accounts", JSON.stringify(updated));
     }
-    window.location.reload();
+
+    localStorage.setItem("accounts", JSON.stringify(updated));
+    navigate("/dashboard", { replace: true });
   };
+
   const resetAccount = (accountId) => {
     localStorage.setItem(`${accountId}_trades`, JSON.stringify([]));
     localStorage.setItem(`${accountId}_notes`, JSON.stringify([]));
     localStorage.setItem(`${accountId}_journals`, JSON.stringify([]));
     localStorage.setItem(`dashboard_${accountId}`, JSON.stringify({}));
-    window.location.reload();
+    navigate("/dashboard", { replace: true });
   };
+
   const renameAccount = (accountId, newName) => {
     const updated = accounts.map((a) =>
-      a.id === accountId ? { ...a, name: newName } : a,
+      a.id === accountId ? { ...a, name: newName } : a
     );
     localStorage.setItem("accounts", JSON.stringify(updated));
-    window.location.reload();
+    navigate("/dashboard", { replace: true });
   };
-  // Check login status to show/hide app UI
+
   const isLoggedIn = !!localStorage.getItem("currentAccountId");
+
   return (
     <ThemeProvider>
       <Router>
         <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-          {/* App UI (Topbar + Sidebar + main content) only when logged in */}
+          {/* Full protected app UI (sidebar + topbar + content) */}
           {isLoggedIn && (
             <>
               <div className="fixed top-0 left-0 right-0 h-12 z-50">
                 <Topbar />
               </div>
+
               <div className="flex flex-1 pt-12">
                 <Sidebar
                   open={open}
@@ -432,6 +448,7 @@ export default function App() {
                   onCreateAccount={createAccount}
                   onShowManage={() => setShowManageModal(true)}
                 />
+
                 <div
                   className="flex-1 min-w-0 transition-all duration-300"
                   style={{
@@ -453,10 +470,7 @@ export default function App() {
                       style={{ minHeight: "calc(100vh - 4.5rem)" }}
                     >
                       <Routes>
-                        <Route
-                          path="/dashboard"
-                          element={<Dashboard currentAccount={currentAccount} />}
-                        />
+                        <Route path="/dashboard" element={<Dashboard currentAccount={currentAccount} />} />
                         <Route path="/journal" element={<DailyJournal />} />
                         <Route path="/trades" element={<Trades />} />
                         <Route path="/notebook" element={<Notebook />} />
@@ -473,7 +487,9 @@ export default function App() {
                     </div>
                   </main>
                 </div>
+
                 <FloatingWidgets currentAccount={currentAccount} />
+
                 {showManageModal && (
                   <ManageAccountsModal
                     accounts={accounts}
@@ -487,15 +503,18 @@ export default function App() {
               </div>
             </>
           )}
-          {/* Public routes – no sidebar, no topbar */}
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="*" element={<Landing />} />
-          </Routes>
+
+          {/* Public pages - shown only when NOT logged in */}
+          {!isLoggedIn && (
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="*" element={<Landing />} />
+            </Routes>
+          )}
         </div>
       </Router>
     </ThemeProvider>
   );
-} 
+}
