@@ -13,7 +13,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // Sync Firebase user to local account system
+  // Sync Firebase user → local account system
   const syncFirebaseUserToLocalAccount = (user) => {
     const uid = user.uid;
     let accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
@@ -22,7 +22,7 @@ export default function Login() {
     if (!account) {
       account = {
         id: uid,
-        name: user.displayName || email.split('@')[0] || "Trader",
+        name: user.displayName || (email ? email.split('@')[0] : "Trader"),
         startingBalance: 10000,
         totalPnL: 0,
         createdAt: new Date().toISOString(),
@@ -30,7 +30,7 @@ export default function Login() {
       accounts.push(account);
       localStorage.setItem("accounts", JSON.stringify(accounts));
 
-      // Initialize empty data
+      // Empty initial data
       localStorage.setItem(`${uid}_trades`, JSON.stringify([]));
       localStorage.setItem(`${uid}_notes`, JSON.stringify([]));
       localStorage.setItem(`${uid}_journals`, JSON.stringify([]));
@@ -47,9 +47,9 @@ export default function Login() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       syncFirebaseUserToLocalAccount(userCredential.user);
-      navigate("/dashboard", { replace: true }); // ← Redirect to dashboard!
+      navigate("/dashboard", { replace: true }); // ← FIXED: go to dashboard
     } catch (err) {
-      setError(err.message || "Login failed. Check your credentials.");
+      setError(err.message || "Login failed. Please check your email and password.");
     }
   };
 
@@ -59,9 +59,9 @@ export default function Login() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       syncFirebaseUserToLocalAccount(result.user);
-      navigate("/dashboard", { replace: true }); // ← Redirect to dashboard!
+      navigate("/dashboard", { replace: true }); // ← FIXED: go to dashboard
     } catch (err) {
-      setError(err.message || "Google login failed.");
+      setError(err.message || "Google login failed. Try again.");
     }
   };
 
@@ -130,7 +130,7 @@ export default function Login() {
               d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.44-3.39-7.44-7.565s3.345-7.565 7.44-7.565c2.33 0 3.918.98 4.82 1.83l3.28-3.16C18.72 1.45 15.66 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.87 11.52-11.74 0-.79-.085-1.39-.185-1.99H12.24z"
             />
           </svg>
-          Sign in with Google
+          Continue with Google
         </Button>
 
         <p className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
@@ -140,7 +140,7 @@ export default function Login() {
             onClick={() => navigate('/register')}
             className="text-indigo-600 hover:underline font-medium"
           >
-            Create one
+            Sign up
           </button>
         </p>
       </div>
