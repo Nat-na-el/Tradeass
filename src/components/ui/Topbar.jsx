@@ -15,13 +15,16 @@ export default function Topbar() {
   const accountName = currentAccount ? currentAccount.name : "Guest";
 
   const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out?")) {
+    // Nice on-screen dialog (not console)
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    
+    if (confirmed) {
+      // Only remove login state - keep all data (accounts, trades, etc.)
       localStorage.removeItem("currentAccountId");
-      // Optional: clear more data if needed
-      // localStorage.removeItem("accounts");
+      
+      // Go to landing + force reload to instantly show clean public layout
       navigate("/", { replace: true });
-      // Force refresh to guarantee layout change
-      window.location.reload();
+      window.location.reload(); // prevents flash-back to dashboard
     }
   };
 
@@ -66,7 +69,7 @@ export default function Topbar() {
           Settings
         </Button>
 
-        {/* Logout - WORKING */}
+        {/* Logout - now with clean on-screen confirm */}
         <Button
           variant="destructive"
           onClick={handleLogout}
