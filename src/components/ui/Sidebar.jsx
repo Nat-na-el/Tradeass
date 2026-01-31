@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "../../Theme-provider";
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { auth } from '../../firebase'; // adjust path if needed
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,7 +90,7 @@ export default function Sidebar({
 
   if (loadingUser) {
     return (
-      <div className="fixed left-0 top-20 h-[calc(100vh-5rem)] bg-gray-900 dark:bg-gray-800 border-r border-gray-800 shadow-2xl z-40 w-16 flex items-center justify-center">
+      <div className="fixed left-0 top-[5.5rem] h-[calc(100vh-5.5rem)] bg-gray-900 dark:bg-gray-800 border-r border-gray-800 shadow-2xl z-40 w-16 flex items-center justify-center">
         <Skeleton className="h-8 w-8 rounded-full" />
       </div>
     );
