@@ -1,184 +1,122 @@
+
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { Sun, Moon, Settings, LogOut } from "lucide-react";
+import { Button } from "./button";
+import { useTheme } from "../../Theme-provider"; // ← Make sure this path is correct
+import { useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard,
-  BookOpen,
-  BarChart3,
-  Notebook as NotebookIcon,
-  LineChart,
-  Trophy,
-  Brain,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  PlusCircle,
-  Users,
-} from "lucide-react";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "./dialog";
 
-export default function Sidebar({
-  open,
-  setOpen,
-  accounts,
-  currentAccount,
-  onSwitchAccount,
-  onCreateAccount,
-  onShowManage,
-}) {
+export default function Topbar() {
+  const { theme, setTheme } = useTheme(); // This should now work if path is correct
+  const navigate = useNavigate();
+
+  // Get current account name safely
+  const currentId = localStorage.getItem("currentAccountId");
+  const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+  const currentAccount = accounts.find(acc => acc.id === currentId);
+  const accountName = currentAccount ? currentAccount.name : "Guest";
+
+  const [showLogoutDialog, setShowLogoutDialog] = React.useState(false);
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutDialog(false);
+    localStorage.removeItem("currentAccountId");
+
+    // Use direct browser navigation to bypass React Router race condition
+    window.location.href = "/"; // This forces clean landing without coming back
+
+    // Optional: fallback reload if needed (usually not required with window.location)
+    // window.location.reload();
+  };
+
   return (
-    <aside
-      className={`fixed top-12 left-0 h-[calc(100vh-3rem)] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 z-40 overflow-hidden ${
-        open ? "w-60" : "w-16" // ← balanced size: 240px open, 64px collapsed
-      }`}
-    >
-      <div className="flex flex-col h-full">
-        {/* Sidebar toggle */}
-        <button
-          onClick={() => setOpen(!open)}
-          className="absolute -right-3 top-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-full p-1.5 shadow-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-        >
-          {open ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-        </button>
+    <>
+      <header className="fixed top-4 left-4 right-4 z-50 h-16 flex items-center justify-between px-6 bg-white/70 dark:bg-gradient-to-r dark:from-slate-900 dark:to-slate-800 backdrop-blur-xl shadow-[0_4px_12px_rgba(75,94,170,0.3)] border border-gray-200/40 dark:border-gray-400/20 rounded-2xl transition-all duration-500">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-md bg-gradient-to-br from-indigo-600 to-indigo-400 flex items-center justify-center font-bold text-white">
+            TZ
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-gray-900 dark:text-white">
+              TRADEASS
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-300 -mt-0.5">
+              Trading Dashboard
+            </div>
+          </div>
+        </div>
 
-        {/* Navigation links */}
-        <nav className="flex-1 px-2 py-6 overflow-y-auto">
-          <ul className="space-y-1">
-            <li>
-              <NavLink
-                to="/dashboard"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                    isActive
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`
-                }
-              >
-                <LayoutDashboard size={20} />
-                {open && <span>Dashboard</span>}
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/journal"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                    isActive
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`
-                }
-              >
-                <BookOpen size={20} />
-                {open && <span>Daily Journal</span>}
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/trades"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                    isActive
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`
-                }
-              >
-                <BarChart3 size={20} />
-                {open && <span>Trades</span>}
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/notebook"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                    isActive
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`
-                }
-              >
-                <NotebookIcon size={20} />
-                {open && <span>Notebook</span>}
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/reports"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                    isActive
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`
-                }
-              >
-                <LineChart size={20} />
-                {open && <span>Reports</span>}
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/challenges"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                    isActive
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`
-                }
-              >
-                <Trophy size={20} />
-                {open && <span>Challenges</span>}
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/mentor"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                    isActive
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`
-                }
-              >
-                <Brain size={20} />
-                {open && <span>Mentor Mode</span>}
-              </NavLink>
-            </li>
-          </ul>
-        </nav>
+        <div className="flex items-center gap-3">
+          {/* Account name */}
+          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 px-3 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded-md">
+            {accountName}
+          </div>
 
-        {/* Bottom section - account actions */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+          {/* Theme toggle - now should work if import path is correct */}
           <button
-            onClick={onCreateAccount}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors ${
-              open
-                ? "bg-indigo-600 hover:bg-indigo-700 text-white"
-                : "bg-indigo-600 hover:bg-indigo-700 text-white p-2.5"
-            }`}
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-2 rounded-md hover:bg-gray-200/40 dark:hover:bg-indigo-600/30 transition"
+            aria-label="Toggle Theme"
           >
-            <PlusCircle size={18} />
-            {open && <span>New Account</span>}
+            {theme === "dark" ? (
+              <Sun className="h-5 w-5 text-indigo-400" />
+            ) : (
+              <Moon className="h-5 w-5 text-gray-900" />
+            )}
           </button>
 
-          {accounts.length > 0 && (
-            <button
-              onClick={onShowManage}
-              className={`w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors border ${
-                open
-                  ? "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700"
-                  : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 p-2.5 border-gray-300 dark:border-gray-700"
-              }`}
-            >
-              <Users size={18} />
-              {open && <span>Manage Accounts</span>}
-            </button>
-          )}
+          {/* Settings */}
+          <Button className="bg-gradient-to-r from-indigo-600 to-indigo-400 text-white font-medium rounded-md">
+            <Settings className="h-5 w-5 mr-2" />
+            Settings
+          </Button>
+
+          {/* Logout button */}
+          <Button
+            variant="destructive"
+            onClick={() => setShowLogoutDialog(true)}
+            className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium rounded-md"
+          >
+            <LogOut className="h-5 w-5 mr-2" />
+            Logout
+          </Button>
         </div>
-      </div>
-    </aside>
+      </header>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <DialogContent className="max-w-md bg-white text-slate-900 dark:bg-[#0f1724] dark:text-white border border-slate-300 dark:border-[#B78727]/20 rounded-2xl shadow-2xl p-6">
+          <DialogHeader>
+            <DialogTitle>Confirm Logout</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-slate-600 dark:text-slate-200">
+              Are you sure you want to log out?
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowLogoutDialog(false)}
+              className="border border-slate-400 dark:border-[#B78727]/20 text-slate-900 dark:text-white bg-white dark:bg-transparent"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleLogoutConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-lg"
+            >
+              Yes, Log Out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
