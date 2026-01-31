@@ -27,7 +27,6 @@ import Landing from "./pages/Landing";
 // FloatingWidgets — ONLY on dashboard
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
-  // Show ONLY when on /dashboard AND user is logged in
   const shouldShow = location.pathname === "/dashboard" && currentAccount;
   if (!shouldShow) return null;
 
@@ -211,7 +210,7 @@ function ManageAccountsModal({
   );
 }
 
-// EditBalancePNL (redirects to dashboard)
+// EditBalancePNL (unchanged)
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -336,7 +335,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// Inner App content
+// Main content
 function AppContent() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
