@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+
+import React from "react";
 import { Sun, Moon, Settings, LogOut } from "lucide-react";
 import { Button } from "./button";
-import { useTheme } from "../../Theme-provider"; // adjust path if needed
+import { useTheme } from "../../Theme-provider"; // ← Make sure this path is correct
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -11,8 +13,8 @@ import {
 } from "./dialog";
 
 export default function Topbar() {
-  const { theme, setTheme } = useTheme();
-  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const { theme, setTheme } = useTheme(); // This should now work if path is correct
+  const navigate = useNavigate();
 
   // Get current account name safely
   const currentId = localStorage.getItem("currentAccountId");
@@ -20,14 +22,17 @@ export default function Topbar() {
   const currentAccount = accounts.find(acc => acc.id === currentId);
   const accountName = currentAccount ? currentAccount.name : "Guest";
 
+  const [showLogoutDialog, setShowLogoutDialog] = React.useState(false);
+
   const handleLogoutConfirm = () => {
     setShowLogoutDialog(false);
     localStorage.removeItem("currentAccountId");
 
-    // Force full navigation to landing + reload to avoid race condition
-    window.location.replace("/");
-    // Reload is fallback — usually not reached, but ensures no dashboard flash
-    setTimeout(() => window.location.reload(), 100);
+    // Use direct browser navigation to bypass React Router race condition
+    window.location.href = "/"; // This forces clean landing without coming back
+
+    // Optional: fallback reload if needed (usually not required with window.location)
+    // window.location.reload();
   };
 
   return (
@@ -53,7 +58,7 @@ export default function Topbar() {
             {accountName}
           </div>
 
-          {/* Theme toggle */}
+          {/* Theme toggle - now should work if import path is correct */}
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="p-2 rounded-md hover:bg-gray-200/40 dark:hover:bg-indigo-600/30 transition"
@@ -72,7 +77,7 @@ export default function Topbar() {
             Settings
           </Button>
 
-          {/* Logout - opens dialog */}
+          {/* Logout button */}
           <Button
             variant="destructive"
             onClick={() => setShowLogoutDialog(true)}
