@@ -86,7 +86,7 @@ export default function Landing() {
               onClick={() => navigate('/register')}
               className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-lg md:text-xl px-10 md:px-14 py-6 md:py-8 rounded-2xl shadow-2xl group transition-all duration-300"
             >
-              Start Free — No Card Needed
+              Start Free No Card Needed
               <ArrowRight className="ml-3 h-6 w-6 transition-transform group-hover:translate-x-2" />
             </Button>
 
@@ -148,7 +148,7 @@ export default function Landing() {
               Built for Traders Who Want Results
             </h2>
             <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto">
-              Tradeass gives you everything modern traders need — from deep analytics to psychological reflection — in one clean, private app.
+              Tradeass gives you everything modern traders need from deep analytics to psychological reflection in one clean, private app.
             </p>
           </div>
 
@@ -173,7 +173,7 @@ export default function Landing() {
                 60+ Performance Reports
               </h3>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Win rate by setup/time/day, expectancy, R-multiple distribution, PNL curves, drawdown analysis, heatmaps, streak detection — exportable to CSV/PDF for deeper review.
+                Win rate by setup/time/day, expectancy, R-multiple distribution, PNL curves, drawdown analysis, heatmaps, streak detection exportable to CSV/PDF for deeper review.
               </p>
             </div>
 
@@ -221,7 +221,7 @@ export default function Landing() {
                 100% Private • Offline-First
               </h3>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                No servers, no tracking, no subscriptions. All data stored locally in your browser. Work offline, sync when online — your trading stays yours forever.
+                No servers, no tracking, no subscriptions. All data stored locally in your browser. Work offline, sync when online your trading stays yours forever.
               </p>
             </div>
           </div>
@@ -261,7 +261,7 @@ export default function Landing() {
                 Log Trades & Reflect
               </h3>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Record every detail. Write daily journals, attach screenshots, rate confidence, tag setups — build complete context.
+                Record every detail. Write daily journals, attach screenshots, rate confidence, tag setups build complete context.
               </p>
             </div>
 
@@ -273,7 +273,7 @@ export default function Landing() {
                 Analyze Deeply
               </h3>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Instant dashboards, 60+ reports, AI insights, pattern detection — uncover what really drives your results.
+                Instant dashboards, 60+ reports, AI insights, pattern detection uncover what really drives your results.
               </p>
             </div>
 
@@ -285,7 +285,7 @@ export default function Landing() {
                 Improve & Scale
               </h3>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Take challenges, run backtests, get mentor feedback, track progress — turn data into rules and consistent profits.
+                Take challenges, run backtests, get mentor feedback, track progress turn data into rules and consistent profits.
               </p>
             </div>
           </div>
@@ -312,7 +312,7 @@ export default function Landing() {
                 ))}
               </div>
               <p className="text-lg italic mb-6">
-                "Switched from spreadsheets to Tradeass — my win rate jumped 18% in 3 months. The AI insights are scary good."
+                "Switched from spreadsheets to Tradeass my win rate jumped 18% in 3 months. The AI insights are scary good."
               </p>
               <p className="font-semibold">Ryan P. • Futures Trader</p>
             </div>
@@ -351,7 +351,7 @@ export default function Landing() {
             Ready to Trade Smarter?
           </h2>
           <p className="text-2xl md:text-3xl opacity-90 max-w-4xl mx-auto">
-            Join thousands of traders using Tradeass to track, analyze, and win consistently. Start free today — no card required.
+            Join thousands of traders using Tradeass to track, analyze, and win consistently. Start free today no card required.
           </p>
           <Button
             size="xl"
