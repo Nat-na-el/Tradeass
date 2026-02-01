@@ -24,11 +24,11 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 
-// FloatingWidgets - now shows on dashboard & protected routes
+// FloatingWidgets - now visible on dashboard & all protected routes
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
 
-  // Show on all protected pages (dashboard, journal, etc.), hide on public
+  // Show on protected pages (dashboard, journal, etc.), hide on public
   const isPublic = ["/", "/login", "/register"].includes(location.pathname);
   const shouldShow = !isPublic && currentAccount;
 
@@ -214,7 +214,7 @@ function ManageAccountsModal({
   );
 }
 
-// EditBalancePNL (redirect to dashboard)
+// EditBalancePNL (unchanged - already redirects to dashboard)
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -339,7 +339,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// Inner content (hooks inside Router)
+// Inner content
 function AppContent() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -353,7 +353,6 @@ function AppContent() {
     initializeAccounts();
   }, []);
 
-  // Auth protection & redirects
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
     const isLoggedIn = !!currentId;
@@ -375,7 +374,9 @@ function AppContent() {
 
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0]?.id || null;
-      if (currentId) localStorage.setItem("currentAccountId", currentId);
+      if (currentId) {
+        localStorage.setItem("currentAccountId", currentId);
+      }
     }
 
     setAccounts(storedAccounts);
@@ -515,7 +516,6 @@ function AppContent() {
   );
 }
 
-// Top-level wrapper
 export default function App() {
   return (
     <ThemeProvider>
