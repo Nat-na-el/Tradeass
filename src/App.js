@@ -24,20 +24,32 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 
-// FloatingWidgets - now visible on dashboard & all protected routes
+// In-memory "storage" — data lost on refresh / tab close
+let inMemoryStorage = {
+  accounts: [],
+  currentAccountId: null,
+  tradesByAccount: {},     // { [accountId]: Trade[] }
+  journalsByAccount: {},   // { [accountId]: Journal[] }
+  notesByAccount: {},      // { [accountId]: Note[] }
+  dashboardByAccount: {},  // { [accountId]: {} }
+};
+
+// FloatingWidgets — ONLY on /dashboard
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
 
-  // Show on protected pages (dashboard, journal, etc.), hide on public
-  const isPublic = ["/", "/login", "/register"].includes(location.pathname);
-  const shouldShow = !isPublic && currentAccount;
+  // Strictly only dashboard
+  if (location.pathname !== "/dashboard") return null;
 
-  if (!shouldShow) return null;
+  if (!currentAccount) return null;
 
-  const currentId = localStorage.getItem("currentAccountId");
-  const trades = JSON.parse(localStorage.getItem(`${currentId}_trades`) || "[]");
-  const journals = JSON.parse(localStorage.getItem(`${currentId}_journals`) || "[]");
-  const notes = JSON.parse(localStorage.getItem(`${currentId}_notes`) || "[]");
+  const currentId = inMemoryStorage.currentAccountId;
+  if (!currentId) return null;
+
+  const trades = inMemoryStorage.tradesByAccount[currentId] || [];
+  const journals = inMemoryStorage.journalsByAccount[currentId] || [];
+  const notes = inMemoryStorage.notesByAccount[currentId] || [];
+
   const totalTrades = trades.length;
   const totalJournals = journals.length;
   const totalNotes = notes.length;
@@ -87,7 +99,7 @@ function FloatingWidgets({ currentAccount }) {
   );
 }
 
-// ManageAccountsModal (unchanged)
+// ManageAccountsModal — uses in-memory data
 function ManageAccountsModal({
   accounts,
   onClose,
@@ -124,9 +136,9 @@ function ManageAccountsModal({
         </div>
         <div className="space-y-3 mb-4">
           {accounts.map((account) => {
-            const trades = JSON.parse(localStorage.getItem(`${account.id}_trades`) || "[]");
-            const journals = JSON.parse(localStorage.getItem(`${account.id}_journals`) || "[]");
-            const notes = JSON.parse(localStorage.getItem(`${account.id}_notes`) || "[]");
+            const trades = inMemoryStorage.tradesByAccount[account.id] || [];
+            const journals = inMemoryStorage.journalsByAccount[account.id] || [];
+            const notes = inMemoryStorage.notesByAccount[account.id] || [];
             const totalTrades = trades.length;
             const totalJournals = journals.length;
             const totalNotes = notes.length;
@@ -214,7 +226,7 @@ function ManageAccountsModal({
   );
 }
 
-// EditBalancePNL (unchanged - already redirects to dashboard)
+// EditBalancePNL — creates in memory
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -224,8 +236,7 @@ function EditBalancePNL({ onSaved }) {
 
   useEffect(() => {
     if (location.state?.accountId) {
-      const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-      const account = accounts.find((a) => a.id === location.state.accountId);
+      const account = inMemoryStorage.accounts.find((a) => a.id === location.state.accountId);
       if (account) {
         setForm({
           name: account.name,
@@ -242,12 +253,10 @@ function EditBalancePNL({ onSaved }) {
     }
   }, [location]);
 
-  const saveAccount = async (e) => {
+  const saveAccount = (e) => {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
-
-    const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
 
     if (isNewAccount) {
       const newAccountId = `acc-${Date.now()}`;
@@ -258,22 +267,25 @@ function EditBalancePNL({ onSaved }) {
         totalPnL: 0,
         createdAt: new Date().toISOString(),
       };
-      accounts.unshift(newAccount);
 
-      localStorage.setItem(`${newAccountId}_trades`, JSON.stringify([]));
-      localStorage.setItem(`${newAccountId}_notes`, JSON.stringify([]));
-      localStorage.setItem(`${newAccountId}_journals`, JSON.stringify([]));
-      localStorage.setItem(`dashboard_${newAccountId}`, JSON.stringify({}));
-      localStorage.setItem("currentAccountId", newAccountId);
-      localStorage.setItem("accounts", JSON.stringify(accounts));
+      inMemoryStorage.accounts.unshift(newAccount);
+      inMemoryStorage.tradesByAccount[newAccountId] = [];
+      inMemoryStorage.journalsByAccount[newAccountId] = [];
+      inMemoryStorage.notesByAccount[newAccountId] = [];
+      inMemoryStorage.dashboardByAccount[newAccountId] = {};
+      inMemoryStorage.currentAccountId = newAccountId;
 
       navigate("/dashboard", { replace: true });
     } else {
-      const accountIndex = accounts.findIndex(
+      const accountIndex = inMemoryStorage.accounts.findIndex(
         (a) => a.id === location.state.accountId
       );
-      accounts[accountIndex] = { ...accounts[accountIndex], ...form };
-      localStorage.setItem("accounts", JSON.stringify(accounts));
+      if (accountIndex !== -1) {
+        inMemoryStorage.accounts[accountIndex] = {
+          ...inMemoryStorage.accounts[accountIndex],
+          ...form,
+        };
+      }
       navigate("/dashboard", { replace: true });
     }
 
@@ -339,7 +351,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// Inner content
+// AppContent — all localStorage replaced with inMemoryStorage
 function AppContent() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -354,33 +366,23 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    const currentId = localStorage.getItem("currentAccountId");
-    const isLoggedIn = !!currentId;
-
+    const isLoggedIn = !!inMemoryStorage.currentAccountId;
     const publicPaths = ["/", "/login", "/register"];
 
     if (isLoggedIn && publicPaths.includes(location.pathname)) {
       navigate("/dashboard", { replace: true });
     }
-
     if (!isLoggedIn && !publicPaths.includes(location.pathname)) {
       navigate("/login", { replace: true });
     }
   }, [location.pathname, navigate]);
 
   const initializeAccounts = () => {
-    let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-    let currentId = localStorage.getItem("currentAccountId");
+    // No persistence — start fresh every time
+    let currentId = inMemoryStorage.currentAccountId;
 
-    if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
-      currentId = storedAccounts[0]?.id || null;
-      if (currentId) {
-        localStorage.setItem("currentAccountId", currentId);
-      }
-    }
-
-    setAccounts(storedAccounts);
-    const current = storedAccounts.find((a) => a.id === currentId);
+    setAccounts(inMemoryStorage.accounts);
+    const current = inMemoryStorage.accounts.find((a) => a.id === currentId);
     setCurrentAccount(current);
   };
 
@@ -389,46 +391,44 @@ function AppContent() {
   };
 
   const switchAccount = (accountId) => {
-    localStorage.setItem("currentAccountId", accountId);
+    inMemoryStorage.currentAccountId = accountId;
     navigate("/dashboard", { replace: true });
   };
 
   const deleteAccount = (accountId) => {
-    let updated = accounts.filter((a) => a.id !== accountId);
-    localStorage.removeItem(`${accountId}_trades`);
-    localStorage.removeItem(`${accountId}_notes`);
-    localStorage.removeItem(`${accountId}_journals`);
-    localStorage.removeItem(`dashboard_${accountId}`);
-    const currentId = localStorage.getItem("currentAccountId");
+    inMemoryStorage.accounts = inMemoryStorage.accounts.filter((a) => a.id !== accountId);
+    delete inMemoryStorage.tradesByAccount[accountId];
+    delete inMemoryStorage.journalsByAccount[accountId];
+    delete inMemoryStorage.notesByAccount[accountId];
+    delete inMemoryStorage.dashboardByAccount[accountId];
 
-    if (currentId === accountId || updated.length === 0) {
-      localStorage.removeItem("currentAccountId");
-      localStorage.setItem("accounts", JSON.stringify(updated));
+    const currentId = inMemoryStorage.currentAccountId;
+
+    if (currentId === accountId || inMemoryStorage.accounts.length === 0) {
+      inMemoryStorage.currentAccountId = null;
       navigate("/", { replace: true });
       return;
     }
 
-    localStorage.setItem("accounts", JSON.stringify(updated));
     navigate("/dashboard", { replace: true });
   };
 
   const resetAccount = (accountId) => {
-    localStorage.setItem(`${accountId}_trades`, JSON.stringify([]));
-    localStorage.setItem(`${accountId}_notes`, JSON.stringify([]));
-    localStorage.setItem(`${accountId}_journals`, JSON.stringify([]));
-    localStorage.setItem(`dashboard_${accountId}`, JSON.stringify({}));
+    inMemoryStorage.tradesByAccount[accountId] = [];
+    inMemoryStorage.journalsByAccount[accountId] = [];
+    inMemoryStorage.notesByAccount[accountId] = [];
+    inMemoryStorage.dashboardByAccount[accountId] = {};
     navigate("/dashboard", { replace: true });
   };
 
   const renameAccount = (accountId, newName) => {
-    const updated = accounts.map((a) =>
+    inMemoryStorage.accounts = inMemoryStorage.accounts.map((a) =>
       a.id === accountId ? { ...a, name: newName } : a
     );
-    localStorage.setItem("accounts", JSON.stringify(updated));
     navigate("/dashboard", { replace: true });
   };
 
-  const isLoggedIn = !!localStorage.getItem("currentAccountId");
+  const isLoggedIn = !!inMemoryStorage.currentAccountId;
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
