@@ -1,37 +1,29 @@
-import React, { useState } from "react";
-import { Sun, Moon, Settings, LogOut } from "lucide-react";
-import { Button } from "./button";
-import { useTheme } from "../../Theme-provider"; // adjust path if needed
+import React, { useState } from 'react';
+import { Sun, Moon, Settings, LogOut } from 'lucide-react';
+import { Button } from './button';
+import { useTheme } from '../../Theme-provider';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "./dialog";
+} from './dialog';
+import { auth } from '../../firebase'; // adjust path
 
 export default function Topbar() {
   const { theme, setTheme } = useTheme();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false); // ← added to help prevent flash
 
   // Get current account name safely
-  const currentId = localStorage.getItem("currentAccountId");
-  const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-  const currentAccount = accounts.find((acc) => acc.id === currentId);
-  const accountName = currentAccount ? currentAccount.name : "Guest";
+  const currentId = localStorage.getItem('currentAccountId');
+  const accounts = JSON.parse(localStorage.getItem('accounts') || '[]');
+  const currentAccount = accounts.find((acc: any) => acc.id === currentId);
+  const accountName = currentAccount ? currentAccount.name : 'Guest';
 
   const handleLogoutConfirm = () => {
     setShowLogoutDialog(false);
-    setIsLoggingOut(true); // signal that logout has started
-
-    localStorage.removeItem("currentAccountId");
-
-    // Give React one microtask to re-render with isLoggingOut=true
-    // then navigate — this usually prevents the protected layout from flashing
-    setTimeout(() => {
-      window.location.replace("/");
-    }, 0);
+    auth.signOut(); // ← This is enough — ProtectedRoute will redirect
   };
 
   return (
@@ -42,9 +34,7 @@ export default function Topbar() {
             TZ
           </div>
           <div>
-            <div className="text-sm font-semibold text-gray-900 dark:text-white">
-              TRADEASS
-            </div>
+            <div className="text-sm font-semibold text-gray-900 dark:text-white">TRADEASS</div>
             <div className="text-xs text-gray-500 dark:text-gray-300 -mt-0.5">
               Trading Dashboard
             </div>
@@ -59,11 +49,11 @@ export default function Topbar() {
 
           {/* Theme toggle */}
           <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2 rounded-md hover:bg-gray-200/40 dark:hover:bg-indigo-600/30 transition"
             aria-label="Toggle Theme"
           >
-            {theme === "dark" ? (
+            {theme === 'dark' ? (
               <Sun className="h-5 w-5 text-indigo-400" />
             ) : (
               <Moon className="h-5 w-5 text-gray-900" />
@@ -76,12 +66,11 @@ export default function Topbar() {
             Settings
           </Button>
 
-          {/* Logout - opens dialog */}
+          {/* Logout */}
           <Button
             variant="destructive"
             onClick={() => setShowLogoutDialog(true)}
             className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium rounded-md"
-            disabled={isLoggingOut}
           >
             <LogOut className="h-5 w-5 mr-2" />
             Logout
@@ -105,14 +94,12 @@ export default function Topbar() {
               variant="outline"
               onClick={() => setShowLogoutDialog(false)}
               className="border border-slate-400 dark:border-[#B78727]/20 text-slate-900 dark:text-white bg-white dark:bg-transparent"
-              disabled={isLoggingOut}
             >
               Cancel
             </Button>
             <Button
               onClick={handleLogoutConfirm}
               className="bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-lg"
-              disabled={isLoggingOut}
             >
               Yes, Log Out
             </Button>
