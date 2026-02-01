@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
-import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,27 +12,44 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
-  const { user } = useAuth();
 
-  // If already logged in → go to dashboard
-  useEffect(() => {
-    if (user) {
-      navigate('/dashboard', { replace: true });
+  // Sync Firebase user → local account system
+  const syncFirebaseUserToLocalAccount = (user) => {
+    const uid = user.uid;
+    let accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+    let account = accounts.find(acc => acc.id === uid);
+
+    if (!account) {
+      account = {
+        id: uid,
+        name: user.displayName || (email ? email.split('@')[0] : "Trader"),
+        startingBalance: 10000,
+        totalPnL: 0,
+        createdAt: new Date().toISOString(),
+      };
+      accounts.push(account);
+      localStorage.setItem("accounts", JSON.stringify(accounts));
+      localStorage.setItem(`${uid}_trades`, JSON.stringify([]));
+      localStorage.setItem(`${uid}_notes`, JSON.stringify([]));
+      localStorage.setItem(`${uid}_journals`, JSON.stringify([]));
+      localStorage.setItem(`dashboard_${uid}`, JSON.stringify({}));
     }
-  }, [user, navigate]);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+    localStorage.setItem("currentAccountId", uid);
+  };
+
+  const handleEmailLogin = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will handle sync + redirect
-    } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      syncFirebaseUserToLocalAccount(userCredential.user);
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setError(err.message || "Login failed. Check your credentials.");
     } finally {
       setLoading(false);
     }
@@ -43,10 +60,11 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await signInWithPopup(auth, googleProvider);
-      // onAuthStateChanged will handle everything
-    } catch (err: any) {
-      setError(err.message || 'Google login failed. Please try again.');
+      const result = await signInWithPopup(auth, googleProvider);
+      syncFirebaseUserToLocalAccount(result.user);
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setError(err.message || "Google login failed. Try again.");
     } finally {
       setLoading(false);
     }
@@ -103,7 +121,7 @@ export default function Login() {
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-2"
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign in with Email'}
+            {loading ? "Signing in..." : "Sign in with Email"}
           </Button>
         </form>
 
@@ -115,14 +133,13 @@ export default function Login() {
           className="w-full flex items-center justify-center gap-3 border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
           disabled={loading}
         >
-          {/* Google icon */}
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
               fill="currentColor"
               d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.44-3.39-7.44-7.565s3.345-7.565 7.44-7.565c2.33 0 3.918.98 4.82 1.83l3.28-3.16C18.72 1.45 15.66 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.87 11.52-11.74 0-.79-.085-1.39-.185-1.99H12.24z"
             />
           </svg>
-          {loading ? 'Signing in...' : 'Continue with Google'}
+          {loading ? "Signing in..." : "Continue with Google"}
         </Button>
 
         <p className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
