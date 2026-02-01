@@ -23,14 +23,17 @@ import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
-// FloatingWidgets - now visible on dashboard & all protected routes
+
+// FloatingWidgets - visible ONLY on dashboard
 function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
-  // Show on protected pages (dashboard, journal, etc.), hide on public
-  const isPublic = ["/", "/login", "/register"].includes(location.pathname);
-  const shouldShow = !isPublic && currentAccount;
-  if (!shouldShow) return null;
+
+  // Show only on /dashboard
+  if (location.pathname !== "/dashboard") return null;
+
   const currentId = localStorage.getItem("currentAccountId");
+  if (!currentId || !currentAccount) return null;
+
   const trades = JSON.parse(localStorage.getItem(`${currentId}_trades`) || "[]");
   const journals = JSON.parse(localStorage.getItem(`${currentId}_journals`) || "[]");
   const notes = JSON.parse(localStorage.getItem(`${currentId}_notes`) || "[]");
@@ -39,6 +42,7 @@ function FloatingWidgets({ currentAccount }) {
   const totalNotes = notes.length;
   const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
   const currentBalance = currentAccount.startingBalance + totalPnL;
+
   return (
     <div
       className="fixed right-4 sm:right-8 flex flex-col gap-2 z-[9999] w-[90%] max-w-[260px] sm:w-[260px] opacity-90"
@@ -81,6 +85,7 @@ function FloatingWidgets({ currentAccount }) {
     </div>
   );
 }
+
 // ManageAccountsModal (unchanged)
 function ManageAccountsModal({
   accounts,
@@ -202,6 +207,7 @@ function ManageAccountsModal({
     </div>
   );
 }
+
 // EditBalancePNL (unchanged - already redirects to dashboard)
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
@@ -318,6 +324,7 @@ function EditBalancePNL({ onSaved }) {
     </div>
   );
 }
+
 // Inner content
 function AppContent() {
   const [open, setOpen] = useState(true);
@@ -471,6 +478,7 @@ function AppContent() {
     </div>
   );
 }
+
 export default function App() {
   return (
     <ThemeProvider>
