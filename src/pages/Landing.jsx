@@ -77,7 +77,7 @@ export default function Landing() {
           </h1>
 
           <p className="text-xl sm:text-2xl md:text-3xl text-gray-700 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed">
-            The most powerful, private, offline-first trading journal. Track every trade, reflect deeply, analyze with precision, and turn data into consistent profits — built for serious traders.
+            The most powerful, private, offline-first trading journal. Track every trade, reflect deeply, analyze with precision, and turn data into consistent profits built for serious traders.
           </p>
 
           <div className="pt-6 md:pt-10 flex flex-col sm:flex-row gap-5 justify-center">
