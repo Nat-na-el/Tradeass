@@ -1,4 +1,3 @@
-// src/pages/Login.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
@@ -14,7 +13,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Sync Firebase user to local account system
+  // Sync Firebase user → local account system
   const syncFirebaseUserToLocalAccount = (user) => {
     const uid = user.uid;
     let accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
@@ -30,7 +29,6 @@ export default function Login() {
       };
       accounts.push(account);
       localStorage.setItem("accounts", JSON.stringify(accounts));
-
       localStorage.setItem(`${uid}_trades`, JSON.stringify([]));
       localStorage.setItem(`${uid}_notes`, JSON.stringify([]));
       localStorage.setItem(`${uid}_journals`, JSON.stringify([]));
@@ -44,6 +42,7 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
+
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       syncFirebaseUserToLocalAccount(userCredential.user);
@@ -58,6 +57,7 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setError('');
     setLoading(true);
+
     try {
       const result = await signInWithPopup(auth, googleProvider);
       syncFirebaseUserToLocalAccount(result.user);
