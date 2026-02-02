@@ -24,13 +24,16 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 
-// Centralized state management using Context + Reducer
+// ────────────────────────────────────────────────
+// Centralized state management
+// ────────────────────────────────────────────────
+
 const AppContext = createContext();
 
 const initialState = {
   accounts: [],
   currentAccountId: null,
-  data: {}, // { [accountId]: { trades: [], journals: [], notes: [], dashboard: {} } }
+  data: {}, // { [accountId]: { trades, journals, notes, dashboard } }
   loading: true,
   error: null,
 };
@@ -64,9 +67,12 @@ const reducer = (state, action) => {
       );
       return { ...state, accounts: updatedAccounts };
     case "DELETE_ACCOUNT":
-      const { [action.payload]: deletedData, ...remainingData } = state.data;
+      const { [action.payload]: deleted, ...remainingData } = state.data;
       const filteredAccounts = state.accounts.filter((a) => a.id !== action.payload);
-      let newCurrentId = state.currentAccountId === action.payload ? filteredAccounts[0]?.id : state.currentAccountId;
+      const newCurrentId =
+        state.currentAccountId === action.payload
+          ? filteredAccounts[0]?.id ?? null
+          : state.currentAccountId;
       return {
         ...state,
         accounts: filteredAccounts,
@@ -83,49 +89,63 @@ const reducer = (state, action) => {
       };
     case "SWITCH_ACCOUNT":
       return { ...state, currentAccountId: action.payload };
-    // Add more actions for updating trades/journals/notes if needed in future
     default:
       return state;
   }
 };
 
 function useAppState() {
-  return useContext(AppContext);
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error("useAppState must be used within AppContext.Provider");
+  }
+  return context;
 }
 
-// Persistence helper
+// ────────────────────────────────────────────────
+// Persistence
+// ────────────────────────────────────────────────
+
 function persistState(state) {
   try {
     localStorage.setItem("accounts", JSON.stringify(state.accounts));
-    localStorage.setItem("currentAccountId", state.currentAccountId);
+    localStorage.setItem("currentAccountId", state.currentAccountId || "");
     Object.entries(state.data).forEach(([id, accountData]) => {
       localStorage.setItem(`${id}_trades`, JSON.stringify(accountData.trades));
       localStorage.setItem(`${id}_journals`, JSON.stringify(accountData.journals));
       localStorage.setItem(`${id}_notes`, JSON.stringify(accountData.notes));
       localStorage.setItem(`dashboard_${id}`, JSON.stringify(accountData.dashboard));
     });
-  } catch (error) {
-    console.error("Failed to persist state:", error);
+  } catch (err) {
+    console.error("Failed to save to localStorage:", err);
   }
 }
 
-// FloatingWidgets - now uses context
+// ────────────────────────────────────────────────
+// Floating Widgets (hooks before early return)
+// ────────────────────────────────────────────────
+
 function FloatingWidgets() {
   const { currentAccount, accountData } = useAppState();
   const location = useLocation();
-
-  const publicPaths = ["/", "/login", "/register"];
-  if (publicPaths.includes(location.pathname) || !currentAccount) {
-    return null;
-  }
 
   const { trades = [], journals = [], notes = [] } = accountData || {};
 
   const totalTrades = trades.length;
   const totalJournals = journals.length;
   const totalNotes = notes.length;
-  const totalPnL = useMemo(() => trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0), [trades]);
-  const currentBalance = currentAccount.startingBalance + totalPnL;
+
+  const totalPnL = useMemo(
+    () => trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0),
+    [trades]
+  );
+
+  const currentBalance = (currentAccount?.startingBalance || 0) + totalPnL;
+
+  const publicPaths = ["/", "/login", "/register"];
+  if (publicPaths.includes(location.pathname) || !currentAccount) {
+    return null;
+  }
 
   return (
     <div
@@ -142,26 +162,31 @@ function FloatingWidgets() {
           {currentAccount.name}
         </div>
       </div>
+
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-[10px] text-gray-700 dark:text-gray-300">Total P&L</div>
         <div className={`text-base font-bold ${totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}>
           ${totalPnL.toFixed(2)}
         </div>
       </div>
+
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-[10px] text-gray-700 dark:text-gray-300">Current Balance</div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">
           ${currentBalance.toFixed(2)}
         </div>
       </div>
+
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-[10px] text-gray-700 dark:text-gray-300">Trades</div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totalTrades}</div>
       </div>
+
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-[10px] text-gray-700 dark:text-gray-300">Journals</div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totalJournals}</div>
       </div>
+
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
         <div className="text-[10px] text-gray-700 dark:text-gray-300">Notes</div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totalNotes}</div>
@@ -170,8 +195,11 @@ function FloatingWidgets() {
   );
 }
 
-// ManageAccountsModal - now uses context and computes per account
-function ManageAccountsModal({ onClose }) {
+// ────────────────────────────────────────────────
+// Manage Accounts Modal
+// ────────────────────────────────────────────────
+
+function ManageAccountsModal({ onClose, navigate }) {
   const { accounts, dispatch, accountDataForAll } = useAppState();
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
@@ -197,10 +225,9 @@ function ManageAccountsModal({ onClose }) {
     setEditName("");
   };
 
-  const createAccount = () => {
+  const handleCreateAccount = () => {
     onClose();
-    // Navigate to create
-    useNavigate()("/edit-balance-pnl");
+    navigate("/edit-balance-pnl");
   };
 
   if (accounts.length === 0) return null;
@@ -219,14 +246,14 @@ function ManageAccountsModal({ onClose }) {
 
         <div className="space-y-3 mb-4">
           {accounts.map((account) => {
-            const accountData = accountDataForAll[account.id] || {};
-            const trades = accountData.trades || [];
-            const journals = accountData.journals || [];
-            const notes = accountData.notes || [];
+            const accData = accountDataForAll[account.id] || {};
+            const trades = accData.trades || [];
+            const journals = accData.journals || [];
+            const notes = accData.notes || [];
             const totalTrades = trades.length;
             const totalJournals = journals.length;
             const totalNotes = notes.length;
-            const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+            const totalPnL = trades.reduce((sum, t) => sum + (t.pnl || 0), 0);
 
             return (
               <div key={account.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
@@ -298,7 +325,7 @@ function ManageAccountsModal({ onClose }) {
         </div>
 
         <button
-          onClick={createAccount}
+          onClick={handleCreateAccount}
           className="w-full p-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm"
         >
           + Create New Account
@@ -308,18 +335,21 @@ function ManageAccountsModal({ onClose }) {
   );
 }
 
-// EditBalancePNL - updated to use dispatch
+// ────────────────────────────────────────────────
+// Edit Balance / PNL Modal
+// ────────────────────────────────────────────────
+
 function EditBalancePNL() {
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useAppState().dispatch; // Get dispatch from context
+  const { accounts, dispatch } = useAppState(); // moved to top level
+
   const [form, setForm] = useState({ name: "", startingBalance: 10000 });
   const [isNewAccount, setIsNewAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (location.state?.accountId) {
-      const { accounts } = useAppState();
       const account = accounts.find((a) => a.id === location.state.accountId);
       if (account) {
         setForm({
@@ -331,43 +361,47 @@ function EditBalancePNL() {
     } else {
       setIsNewAccount(true);
       setForm({
-        name: `Account ${Date.now().toString().slice(-4)}`, // Better uniqueness
+        name: `Account ${Date.now().toString().slice(-4)}`,
         startingBalance: 10000,
       });
     }
-  }, [location]);
+  }, [location.state?.accountId, accounts]);
 
   const saveAccount = (e) => {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    if (isNewAccount) {
-      const newAccountId = `acc-${Date.now()}`;
-      const newAccount = {
-        id: newAccountId,
-        name: form.name,
-        startingBalance: Number(form.startingBalance),
-        totalPnL: 0,
-        createdAt: new Date().toISOString(),
-      };
-      dispatch({ type: "CREATE_ACCOUNT", payload: { account: newAccount } });
-      navigate("/dashboard");
-    } else {
-      dispatch({
-        type: "UPDATE_ACCOUNT",
-        payload: {
-          id: location.state.accountId,
-          updates: {
-            name: form.name,
-            startingBalance: Number(form.startingBalance),
+    try {
+      if (isNewAccount) {
+        const newAccountId = `acc-${Date.now()}`;
+        const newAccount = {
+          id: newAccountId,
+          name: form.name.trim() || "New Account",
+          startingBalance: Number(form.startingBalance) || 10000,
+          totalPnL: 0,
+          createdAt: new Date().toISOString(),
+        };
+        dispatch({ type: "CREATE_ACCOUNT", payload: { account: newAccount } });
+        navigate("/dashboard", { replace: true });
+      } else if (location.state?.accountId) {
+        dispatch({
+          type: "UPDATE_ACCOUNT",
+          payload: {
+            id: location.state.accountId,
+            updates: {
+              name: form.name.trim() || "Unnamed Account",
+              startingBalance: Number(form.startingBalance) || 10000,
+            },
           },
-        },
-      });
-      navigate("/dashboard");
+        });
+        navigate("/dashboard", { replace: true });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
   return (
@@ -397,9 +431,7 @@ function EditBalancePNL() {
             <input
               type="number"
               value={form.startingBalance}
-              onChange={(e) =>
-                setForm({ ...form, startingBalance: Number(e.target.value) })
-              }
+              onChange={(e) => setForm({ ...form, startingBalance: Number(e.target.value) })}
               className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 p-2 bg-white dark:bg-gray-700"
               required
               disabled={isSubmitting}
@@ -408,7 +440,7 @@ function EditBalancePNL() {
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/dashboard", { replace: true })}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
               disabled={isSubmitting}
             >
@@ -428,80 +460,86 @@ function EditBalancePNL() {
   );
 }
 
-// AppContent
+// ────────────────────────────────────────────────
+// Main App Content
+// ────────────────────────────────────────────────
+
 function AppContent() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const [open, setOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showManageModal, setShowManageModal] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load data once
+  // Load data once on mount
   useEffect(() => {
-    function loadData() {
-      try {
-        const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-        let currentId = localStorage.getItem("currentAccountId");
-        if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
-          currentId = storedAccounts[0]?.id || null;
-          if (currentId) localStorage.setItem("currentAccountId", currentId);
-        }
+    try {
+      const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+      let currentId = localStorage.getItem("currentAccountId");
 
-        const data = {};
-        storedAccounts.forEach((account) => {
-          data[account.id] = {
-            trades: JSON.parse(localStorage.getItem(`${account.id}_trades`) || "[]"),
-            journals: JSON.parse(localStorage.getItem(`${account.id}_journals`) || "[]"),
-            notes: JSON.parse(localStorage.getItem(`${account.id}_notes`) || "[]"),
-            dashboard: JSON.parse(localStorage.getItem(`dashboard_${account.id}`) || "{}"),
-          };
-        });
-
-        dispatch({
-          type: "LOAD_DATA",
-          payload: { accounts: storedAccounts, currentAccountId: currentId, data },
-        });
-      } catch (error) {
-        console.error("Failed to load data:", error);
-        dispatch({ type: "SET_ERROR", payload: "Failed to load application data. Please try refreshing." });
+      if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
+        currentId = storedAccounts[0]?.id || null;
+        if (currentId) localStorage.setItem("currentAccountId", currentId);
       }
+
+      const data = {};
+      storedAccounts.forEach((acc) => {
+        data[acc.id] = {
+          trades: JSON.parse(localStorage.getItem(`${acc.id}_trades`) || "[]"),
+          journals: JSON.parse(localStorage.getItem(`${acc.id}_journals`) || "[]"),
+          notes: JSON.parse(localStorage.getItem(`${acc.id}_notes`) || "[]"),
+          dashboard: JSON.parse(localStorage.getItem(`dashboard_${acc.id}`) || "{}"),
+        };
+      });
+
+      dispatch({
+        type: "LOAD_DATA",
+        payload: { accounts: storedAccounts, currentAccountId: currentId, data },
+      });
+    } catch (err) {
+      console.error("Load error:", err);
+      dispatch({ type: "SET_ERROR", payload: "Failed to load your data. Please try refreshing." });
     }
-    loadData();
   }, []);
 
-  // Persist on state change (debounce for performance if needed in future)
+  // Save whenever state changes (after loading)
   useEffect(() => {
     if (!state.loading) {
       persistState(state);
     }
   }, [state]);
 
-  // Auth redirect
+  // Protected route redirection
   useEffect(() => {
     if (state.loading) return;
+
     const isLoggedIn = !!state.currentAccountId;
     const publicPaths = ["/", "/login", "/register"];
 
     if (isLoggedIn && publicPaths.includes(location.pathname)) {
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } else if (!isLoggedIn && !publicPaths.includes(location.pathname)) {
-      navigate("/login");
+      navigate("/login", { replace: true });
     }
   }, [location.pathname, navigate, state.loading, state.currentAccountId]);
 
-  const currentAccount = useMemo(() => state.accounts.find((a) => a.id === state.currentAccountId), [state.accounts, state.currentAccountId]);
-  const accountData = useMemo(() => state.data[state.currentAccountId], [state.data, state.currentAccountId]);
+  const currentAccount = useMemo(
+    () => state.accounts.find((a) => a.id === state.currentAccountId),
+    [state.accounts, state.currentAccountId]
+  );
 
-  // Compute accountDataForAll once
-  const accountDataForAll = state.data;
+  const accountData = useMemo(
+    () => state.data[state.currentAccountId] || {},
+    [state.data, state.currentAccountId]
+  );
 
   const value = {
     ...state,
     dispatch,
     currentAccount,
     accountData,
-    accountDataForAll,
+    accountDataForAll: state.data,
   };
 
   if (state.loading) {
@@ -525,8 +563,8 @@ function AppContent() {
 
             <div className="flex flex-1 pt-12">
               <Sidebar
-                open={open}
-                setOpen={setOpen}
+                open={sidebarOpen}
+                setOpen={setSidebarOpen}
                 accounts={state.accounts}
                 currentAccount={currentAccount}
                 onSwitchAccount={(id) => dispatch({ type: "SWITCH_ACCOUNT", payload: id })}
@@ -537,8 +575,8 @@ function AppContent() {
               <div
                 className="flex-1 min-w-0 transition-all duration-300"
                 style={{
-                  marginLeft: open ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
-                  maxWidth: open
+                  marginLeft: sidebarOpen ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
+                  maxWidth: sidebarOpen
                     ? "calc(100vw - 12rem - 8px)"
                     : "calc(100vw - 6rem - 8px)",
                 }}
@@ -578,6 +616,7 @@ function AppContent() {
               {showManageModal && (
                 <ManageAccountsModal
                   onClose={() => setShowManageModal(false)}
+                  navigate={navigate}
                 />
               )}
             </div>
@@ -596,6 +635,10 @@ function AppContent() {
     </AppContext.Provider>
   );
 }
+
+// ────────────────────────────────────────────────
+// Root
+// ────────────────────────────────────────────────
 
 export default function App() {
   return (
