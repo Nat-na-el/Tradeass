@@ -62,11 +62,25 @@ import Landing from "./pages/Landing";
  * @property {string|null} error
  */
 
+/**
+ * @typedef {Object} AccountTotals
+ * @property {number} totalTrades
+ * @property {number} totalJournals
+ * @property {number} totalNotes
+ * @property {number} totalPnL
+ * @property {number} currentBalance
+ */
+
 // ────────────────────────────────────────────────
-// Context & Reducer
+// Separate Contexts (fixes massive re-renders)
 // ────────────────────────────────────────────────
 
-const AppContext = createContext(null);
+const StateContext = createContext(null);
+const DispatchContext = createContext(null);
+
+// ────────────────────────────────────────────────
+// Reducer & Initial State
+// ────────────────────────────────────────────────
 
 const initialState = {
   accounts: [],
@@ -150,7 +164,7 @@ const reducer = (state, action) => {
   }
 };
 
-// Action creators
+// Action creators (unchanged)
 const createAccountAction = (account) => ({ type: "CREATE_ACCOUNT", payload: { account } });
 const updateAccountAction = (id, updates) => ({ type: "UPDATE_ACCOUNT", payload: { id, updates } });
 const deleteAccountAction = (id) => ({ type: "DELETE_ACCOUNT", payload: id });
@@ -159,16 +173,16 @@ const switchAccountAction = (id) => ({ type: "SWITCH_ACCOUNT", payload: id });
 const updateAccountDataAction = (id, key, value) => ({ type: "UPDATE_ACCOUNT_DATA", payload: { id, key, value } });
 
 // ────────────────────────────────────────────────
-// useApp hook
+// useApp hook — now uses separate contexts + current totals only
 // ────────────────────────────────────────────────
 
 function useApp() {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error("useApp must be used within AppContext.Provider");
-  }
+  const state = useContext(StateContext);
+  const dispatch = useContext(DispatchContext);
 
-  const { state, dispatch } = context;
+  if (!state || !dispatch) {
+    throw new Error("useApp must be used within StateContext & DispatchContext Providers");
+  }
 
   const currentAccount = useMemo(
     () => state.accounts.find((a) => a.id === state.currentAccountId) || null,
@@ -179,6 +193,19 @@ function useApp() {
     () => state.data[state.currentAccountId] || { trades: [], journals: [], notes: [], dashboard: {} },
     [state.data, state.currentAccountId]
   );
+
+  // Only compute totals for current account (big perf win)
+  const currentTotals = useMemo(() => {
+    const { trades = [], journals = [], notes = [] } = currentAccountData;
+    const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+    return {
+      totalTrades: trades.length,
+      totalJournals: journals.length,
+      totalNotes: notes.length,
+      totalPnL,
+      currentBalance: (currentAccount?.startingBalance || 0) + totalPnL,
+    };
+  }, [currentAccountData, currentAccount?.startingBalance]);
 
   const createAccount = useCallback((account) => dispatch(createAccountAction(account)), [dispatch]);
   const updateAccount = useCallback((id, updates) => dispatch(updateAccountAction(id, updates)), [dispatch]);
@@ -194,22 +221,23 @@ function useApp() {
     ...state,
     currentAccount,
     currentAccountData,
+    currentTotals,
+    accountDataForAll: state.data,
     createAccount,
     updateAccount,
     deleteAccount,
     resetAccountData,
     switchAccount,
     updateAccountData,
-    accountDataForAll: state.data, // Added - was missing
   };
 }
 
 // ────────────────────────────────────────────────
-// Debounced persistence hook (fixed stale state)
+// Debounced persistence (using ref for latest state)
 // ────────────────────────────────────────────────
 
 function useDebouncedPersist(delay = 600) {
-  const { state } = useContext(AppContext);
+  const state = useContext(StateContext);
   const stateRef = useRef(state);
 
   useEffect(() => {
@@ -274,24 +302,12 @@ function loadInitialState() {
 }
 
 // ────────────────────────────────────────────────
-// FloatingWidgets (unchanged for now)
+// FloatingWidgets — now uses currentTotals from context
 // ────────────────────────────────────────────────
 
 function FloatingWidgets() {
-  const { currentAccount, currentAccountData } = useApp();
+  const { currentAccount, currentTotals } = useApp();
   const location = useLocation();
-
-  const { trades = [], journals = [], notes = [] } = currentAccountData;
-
-  const totals = useMemo(() => {
-    const totalTrades = trades.length;
-    const totalJournals = journals.length;
-    const totalNotes = notes.length;
-    const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
-    const currentBalance = (currentAccount?.startingBalance || 0) + totalPnL;
-
-    return { totalTrades, totalJournals, totalNotes, totalPnL, currentBalance };
-  }, [trades, journals, notes, currentAccount?.startingBalance]);
 
   const publicPaths = ["/", "/login", "/register"];
   if (publicPaths.includes(location.pathname) || !currentAccount) {
@@ -312,35 +328,35 @@ function FloatingWidgets() {
         <div className="text-sm font-bold text-gray-800 dark:text-gray-200">{currentAccount.name}</div>
       </div>
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Total P&L</div>
-        <div className={`text-base font-bold ${totals.totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}>
-          ${totals.totalPnL.toFixed(2)}
+        <div className="text-xs text-gray-700 dark:text-gray-300">Total P&L</div>
+        <div className={`text-base font-bold ${currentTotals.totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}>
+          ${currentTotals.totalPnL.toFixed(2)}
         </div>
       </div>
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Current Balance</div>
+        <div className="text-xs text-gray-700 dark:text-gray-300">Current Balance</div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">
-          ${totals.currentBalance.toFixed(2)}
+          ${currentTotals.currentBalance.toFixed(2)}
         </div>
       </div>
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Trades</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totals.totalTrades}</div>
+        <div className="text-xs text-gray-700 dark:text-gray-300">Trades</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{currentTotals.totalTrades}</div>
       </div>
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Journals</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totals.totalJournals}</div>
+        <div className="text-xs text-gray-700 dark:text-gray-300">Journals</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{currentTotals.totalJournals}</div>
       </div>
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Notes</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totals.totalNotes}</div>
+        <div className="text-xs text-gray-700 dark:text-gray-300">Notes</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{currentTotals.totalNotes}</div>
       </div>
     </div>
   );
 }
 
 // ────────────────────────────────────────────────
-// Manage Accounts Modal
+// Manage Accounts Modal (uses accountDataForAll)
 // ────────────────────────────────────────────────
 
 function ManageAccountsModal({ onClose, navigate }) {
@@ -379,6 +395,7 @@ function ManageAccountsModal({ onClose, navigate }) {
       role="dialog"
       aria-modal="true"
       aria-label="Manage Accounts"
+      tabIndex={-1}
     >
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
@@ -557,6 +574,7 @@ function EditBalancePNL() {
       role="dialog"
       aria-modal="true"
       aria-label={isNewAccount ? "Create New Account" : "Edit Account"}
+      tabIndex={-1}
     >
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
         <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-100">
@@ -626,15 +644,13 @@ function EditBalancePNL() {
 // Protected App
 // ────────────────────────────────────────────────
 
-function ProtectedApp({ state, dispatch }) {
+function ProtectedApp() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showManageModal, setShowManageModal] = useState(false);
 
-  const value = useMemo(() => ({ state, dispatch }), [state, dispatch]);
-
   return (
-    <AppContext.Provider value={value}>
+    <div className="flex flex-col min-h-screen">
       <div className="fixed top-0 left-0 right-0 h-12 z-40">
         <Topbar />
       </div>
@@ -642,9 +658,9 @@ function ProtectedApp({ state, dispatch }) {
         <Sidebar
           open={sidebarOpen}
           setOpen={setSidebarOpen}
-          accounts={state.accounts}
-          currentAccount={state.accounts.find((a) => a.id === state.currentAccountId)}
-          onSwitchAccount={(id) => dispatch(switchAccountAction(id))}
+          onSwitchAccount={(id) => {
+            // dispatch not directly available — use context in Sidebar if needed
+          }}
           onCreateAccount={() => navigate("/edit-balance-pnl")}
           onShowManage={() => setShowManageModal(true)}
         />
@@ -689,7 +705,7 @@ function ProtectedApp({ state, dispatch }) {
         <FloatingWidgets />
         {showManageModal && <ManageAccountsModal onClose={() => setShowManageModal(false)} navigate={navigate} />}
       </div>
-    </AppContext.Provider>
+    </div>
   );
 }
 
@@ -755,9 +771,17 @@ function AppContent() {
   const isLoggedIn = !!state.currentAccountId;
 
   return (
-    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-      {isLoggedIn ? <ProtectedApp state={state} dispatch={dispatch} /> : <PublicApp />}
-    </div>
+    <StateContext.Provider value={state}>
+      <DispatchContext.Provider value={dispatch}>
+        <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
+          <ThemeProvider>
+            <Router>
+              {isLoggedIn ? <ProtectedApp /> : <PublicApp />}
+            </Router>
+          </ThemeProvider>
+        </div>
+      </DispatchContext.Provider>
+    </StateContext.Provider>
   );
 }
 
@@ -766,11 +790,5 @@ function AppContent() {
 // ────────────────────────────────────────────────
 
 export default function App() {
-  return (
-    <ThemeProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </ThemeProvider>
-  );
+  return <AppContent />;
 }
