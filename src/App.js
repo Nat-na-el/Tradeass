@@ -72,7 +72,7 @@ import Landing from "./pages/Landing";
  */
 
 // ────────────────────────────────────────────────
-// Separate Contexts (fixes massive re-renders)
+// Contexts
 // ────────────────────────────────────────────────
 
 const StateContext = createContext(null);
@@ -127,6 +127,11 @@ const reducer = (state, action) => {
       const filteredAccounts = state.accounts.filter((a) => a.id !== id);
       const newCurrentId =
         state.currentAccountId === id ? filteredAccounts[0]?.id ?? null : state.currentAccountId;
+      // Cleanup localStorage keys
+      localStorage.removeItem(`${id}_trades`);
+      localStorage.removeItem(`${id}_journals`);
+      localStorage.removeItem(`${id}_notes`);
+      localStorage.removeItem(`dashboard_${id}`);
       return {
         ...state,
         accounts: filteredAccounts,
@@ -164,7 +169,7 @@ const reducer = (state, action) => {
   }
 };
 
-// Action creators (unchanged)
+// Action creators
 const createAccountAction = (account) => ({ type: "CREATE_ACCOUNT", payload: { account } });
 const updateAccountAction = (id, updates) => ({ type: "UPDATE_ACCOUNT", payload: { id, updates } });
 const deleteAccountAction = (id) => ({ type: "DELETE_ACCOUNT", payload: id });
@@ -173,7 +178,7 @@ const switchAccountAction = (id) => ({ type: "SWITCH_ACCOUNT", payload: id });
 const updateAccountDataAction = (id, key, value) => ({ type: "UPDATE_ACCOUNT_DATA", payload: { id, key, value } });
 
 // ────────────────────────────────────────────────
-// useApp hook — now uses separate contexts + current totals only
+// useApp hook
 // ────────────────────────────────────────────────
 
 function useApp() {
@@ -194,7 +199,6 @@ function useApp() {
     [state.data, state.currentAccountId]
   );
 
-  // Only compute totals for current account (big perf win)
   const currentTotals = useMemo(() => {
     const { trades = [], journals = [], notes = [] } = currentAccountData;
     const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
@@ -233,7 +237,7 @@ function useApp() {
 }
 
 // ────────────────────────────────────────────────
-// Debounced persistence (using ref for latest state)
+// Debounced persistence
 // ────────────────────────────────────────────────
 
 function useDebouncedPersist(delay = 600) {
@@ -302,7 +306,7 @@ function loadInitialState() {
 }
 
 // ────────────────────────────────────────────────
-// FloatingWidgets — now uses currentTotals from context
+// FloatingWidgets
 // ────────────────────────────────────────────────
 
 function FloatingWidgets() {
@@ -356,7 +360,7 @@ function FloatingWidgets() {
 }
 
 // ────────────────────────────────────────────────
-// Manage Accounts Modal (uses accountDataForAll)
+// Manage Accounts Modal
 // ────────────────────────────────────────────────
 
 function ManageAccountsModal({ onClose, navigate }) {
@@ -582,10 +586,7 @@ function EditBalancePNL() {
         </h3>
         <form onSubmit={handleSave}>
           <div className="mb-4">
-            <label
-              htmlFor="account-name"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
+            <label htmlFor="account-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Account Name
             </label>
             <input
@@ -599,10 +600,7 @@ function EditBalancePNL() {
             />
           </div>
           <div className="mb-4">
-            <label
-              htmlFor="starting-balance"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
+            <label htmlFor="starting-balance" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Starting Balance
             </label>
             <input
@@ -650,7 +648,7 @@ function ProtectedApp() {
   const [showManageModal, setShowManageModal] = useState(false);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
       <div className="fixed top-0 left-0 right-0 h-12 z-40">
         <Topbar />
       </div>
@@ -659,7 +657,8 @@ function ProtectedApp() {
           open={sidebarOpen}
           setOpen={setSidebarOpen}
           onSwitchAccount={(id) => {
-            // dispatch not directly available — use context in Sidebar if needed
+            // Assuming Sidebar will be updated to use DispatchContext or receive dispatch as prop
+            // For now, placeholder comment
           }}
           onCreateAccount={() => navigate("/edit-balance-pnl")}
           onShowManage={() => setShowManageModal(true)}
@@ -668,9 +667,7 @@ function ProtectedApp() {
           className="flex-1 min-w-0 transition-all duration-300"
           style={{
             marginLeft: sidebarOpen ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
-            maxWidth: sidebarOpen
-              ? "calc(100vw - 12rem - 8px)"
-              : "calc(100vw - 6rem - 8px)",
+            maxWidth: sidebarOpen ? "calc(100vw - 12rem - 8px)" : "calc(100vw - 6rem - 8px)",
           }}
         >
           <main
@@ -685,7 +682,10 @@ function ProtectedApp() {
               style={{ minHeight: "calc(100vh - 4.5rem)" }}
             >
               <Routes>
-                <Route path="/dashboard" element={<Dashboard />} />
+                <Route
+                  path="/dashboard"
+                  element={<Dashboard currentAccount={useApp().currentAccount} currentTotals={useApp().currentTotals} />}
+                />
                 <Route path="/journal" element={<DailyJournal />} />
                 <Route path="/trades" element={<Trades />} />
                 <Route path="/notebook" element={<Notebook />} />
@@ -697,7 +697,7 @@ function ProtectedApp() {
                 <Route path="/quantitative-analysis" element={<QuantitativeAnalysis />} />
                 <Route path="/edit-balance-pnl" element={<EditBalancePNL />} />
                 <Route path="/trades/new" element={<AddTrade />} />
-                <Route path="*" element={<Dashboard />} />
+                <Route path="*" element={<Dashboard currentAccount={useApp().currentAccount} currentTotals={useApp().currentTotals} />} />
               </Routes>
             </div>
           </main>
@@ -725,7 +725,7 @@ function PublicApp() {
 }
 
 // ────────────────────────────────────────────────
-// AppContent - Root layout
+// AppContent
 // ────────────────────────────────────────────────
 
 function AppContent() {
@@ -733,7 +733,6 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load data once on mount
   useEffect(() => {
     try {
       const { accounts, currentAccountId, data } = loadInitialState();
@@ -743,10 +742,8 @@ function AppContent() {
     }
   }, []);
 
-  // Save changes (debounced)
   useDebouncedPersist(600);
 
-  // Handle auth-like redirect
   useEffect(() => {
     if (state.loading) return;
 
@@ -768,18 +765,10 @@ function AppContent() {
     return <div className="flex items-center justify-center min-h-screen text-red-500">{state.error}</div>;
   }
 
-  const isLoggedIn = !!state.currentAccountId;
-
   return (
     <StateContext.Provider value={state}>
       <DispatchContext.Provider value={dispatch}>
-        <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-          <ThemeProvider>
-            <Router>
-              {isLoggedIn ? <ProtectedApp /> : <PublicApp />}
-            </Router>
-          </ThemeProvider>
-        </div>
+        {state.currentAccountId ? <ProtectedApp /> : <PublicApp />}
       </DispatchContext.Provider>
     </StateContext.Provider>
   );
@@ -790,5 +779,11 @@ function AppContent() {
 // ────────────────────────────────────────────────
 
 export default function App() {
-  return <AppContent />;
+  return (
+    <ThemeProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </ThemeProvider>
+  );
 }
