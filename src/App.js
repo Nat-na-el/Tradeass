@@ -34,7 +34,7 @@ import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 
 // ────────────────────────────────────────────────
-// Types (JSDoc for better DX in JS)
+// Types (JSDoc)
 // ────────────────────────────────────────────────
 
 /**
@@ -54,15 +54,6 @@ import Landing from "./pages/Landing";
  */
 
 /**
- * @typedef {Object} AccountTotals
- * @property {number} totalTrades
- * @property {number} totalJournals
- * @property {number} totalNotes
- * @property {number} totalPnL
- * @property {number} currentBalance
- */
-
-/**
  * @typedef {Object} AppState
  * @property {Array<Account>} accounts
  * @property {string|null} currentAccountId
@@ -72,16 +63,15 @@ import Landing from "./pages/Landing";
  */
 
 // ────────────────────────────────────────────────
-// Centralized state management
+// Context & Reducer
 // ────────────────────────────────────────────────
 
-const StateContext = createContext(null);
-const DispatchContext = createContext(null);
+const AppContext = createContext(null);
 
 const initialState = {
   accounts: [],
   currentAccountId: null,
-  data: {}, // { [accountId]: { trades: [], journals: [], notes: [], dashboard: {} } }
+  data: {},
   loading: true,
   error: null,
 };
@@ -160,86 +150,26 @@ const reducer = (state, action) => {
   }
 };
 
-// ────────────────────────────────────────────────
-// Custom hook for accounts CRUD (extracted logic)
-// ────────────────────────────────────────────────
-
-function useAccounts() {
-  const dispatch = useContext(DispatchContext);
-  const createAccount = useCallback(
-    (name, startingBalance) => {
-      const id = `acc-${Date.now()}`;
-      const account = {
-        id,
-        name: name.trim() || "New Account",
-        startingBalance: Number(startingBalance) || 10000,
-        createdAt: new Date().toISOString(),
-      };
-      dispatch({ type: "CREATE_ACCOUNT", payload: { account } });
-      return id;
-    },
-    [dispatch]
-  );
-
-  const updateAccount = useCallback(
-    (id, updates) => {
-      dispatch({ type: "UPDATE_ACCOUNT", payload: { id, updates } });
-    },
-    [dispatch]
-  );
-
-  const deleteAccount = useCallback(
-    (id) => {
-      dispatch({ type: "DELETE_ACCOUNT", payload: id });
-      // Clean localStorage
-      localStorage.removeItem(`${id}_trades`);
-      localStorage.removeItem(`${id}_journals`);
-      localStorage.removeItem(`${id}_notes`);
-      localStorage.removeItem(`dashboard_${id}`);
-    },
-    [dispatch]
-  );
-
-  const resetAccountData = useCallback(
-    (id) => {
-      dispatch({ type: "RESET_ACCOUNT_DATA", payload: id });
-    },
-    [dispatch]
-  );
-
-  const switchAccount = useCallback(
-    (id) => {
-      dispatch({ type: "SWITCH_ACCOUNT", payload: id });
-    },
-    [dispatch]
-  );
-
-  const updateAccountData = useCallback(
-    (id, key, value) => {
-      dispatch({ type: "UPDATE_ACCOUNT_DATA", payload: { id, key, value } });
-    },
-    [dispatch]
-  );
-
-  return {
-    createAccount,
-    updateAccount,
-    deleteAccount,
-    resetAccountData,
-    switchAccount,
-    updateAccountData,
-  };
-}
+// Action creators
+const createAccountAction = (account) => ({ type: "CREATE_ACCOUNT", payload: { account } });
+const updateAccountAction = (id, updates) => ({ type: "UPDATE_ACCOUNT", payload: { id, updates } });
+const deleteAccountAction = (id) => ({ type: "DELETE_ACCOUNT", payload: id });
+const resetAccountDataAction = (id) => ({ type: "RESET_ACCOUNT_DATA", payload: id });
+const switchAccountAction = (id) => ({ type: "SWITCH_ACCOUNT", payload: id });
+const updateAccountDataAction = (id, key, value) => ({ type: "UPDATE_ACCOUNT_DATA", payload: { id, key, value } });
 
 // ────────────────────────────────────────────────
-// Custom hook for app state
+// useApp hook
 // ────────────────────────────────────────────────
 
 function useApp() {
-  const state = useContext(StateContext);
-  const accountsCrud = useAccounts();
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error("useApp must be used within AppContext.Provider");
+  }
 
-  // Memoized derived values
+  const { state, dispatch } = context;
+
   const currentAccount = useMemo(
     () => state.accounts.find((a) => a.id === state.currentAccountId) || null,
     [state.accounts, state.currentAccountId]
@@ -250,48 +180,50 @@ function useApp() {
     [state.data, state.currentAccountId]
   );
 
-  // Centralized totals computation (only for current)
-  const currentTotals = useMemo(() => {
-    const { trades = [], journals = [], notes = [] } = currentAccountData;
-    const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
-    return {
-      totalTrades: trades.length,
-      totalJournals: journals.length,
-      totalNotes: notes.length,
-      totalPnL,
-      currentBalance: (currentAccount?.startingBalance || 0) + totalPnL,
-    };
-  }, [currentAccountData, currentAccount?.startingBalance]);
+  const createAccount = useCallback((account) => dispatch(createAccountAction(account)), [dispatch]);
+  const updateAccount = useCallback((id, updates) => dispatch(updateAccountAction(id, updates)), [dispatch]);
+  const deleteAccount = useCallback((id) => dispatch(deleteAccountAction(id)), [dispatch]);
+  const resetAccountData = useCallback((id) => dispatch(resetAccountDataAction(id)), [dispatch]);
+  const switchAccount = useCallback((id) => dispatch(switchAccountAction(id)), [dispatch]);
+  const updateAccountData = useCallback(
+    (id, key, value) => dispatch(updateAccountDataAction(id, key, value)),
+    [dispatch]
+  );
 
   return {
     ...state,
-    ...accountsCrud,
     currentAccount,
     currentAccountData,
-    currentTotals,
-    accountDataForAll: state.data,
+    createAccount,
+    updateAccount,
+    deleteAccount,
+    resetAccountData,
+    switchAccount,
+    updateAccountData,
+    accountDataForAll: state.data, // Added - was missing
   };
 }
 
 // ────────────────────────────────────────────────
-// Persistence (debounced, with ref for latest state)
+// Debounced persistence hook (fixed stale state)
 // ────────────────────────────────────────────────
 
-function useDebouncedPersist(delay = 1000) {
-  const state = useContext(StateContext);
+function useDebouncedPersist(delay = 600) {
+  const { state } = useContext(AppContext);
   const stateRef = useRef(state);
+
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
   const persist = useCallback(() => {
-    const currentState = stateRef.current;
-    if (currentState.loading || currentState.error || currentState.accounts.length === 0) return;
+    const current = stateRef.current;
+    if (current.loading || current.error) return;
 
     try {
-      localStorage.setItem("accounts", JSON.stringify(currentState.accounts));
-      localStorage.setItem("currentAccountId", currentState.currentAccountId || "");
-      Object.entries(currentState.data).forEach(([id, { trades, journals, notes, dashboard }]) => {
+      localStorage.setItem("accounts", JSON.stringify(current.accounts));
+      localStorage.setItem("currentAccountId", current.currentAccountId || "");
+      Object.entries(current.data).forEach(([id, { trades, journals, notes, dashboard }]) => {
         localStorage.setItem(`${id}_trades`, JSON.stringify(trades));
         localStorage.setItem(`${id}_journals`, JSON.stringify(journals));
         localStorage.setItem(`${id}_notes`, JSON.stringify(notes));
@@ -305,20 +237,13 @@ function useDebouncedPersist(delay = 1000) {
   useEffect(() => {
     if (state.loading || state.error) return;
 
-    const timeout = setTimeout(persist, delay);
-    return () => clearTimeout(timeout);
+    const timer = setTimeout(persist, delay);
+    return () => clearTimeout(timer);
   }, [state, persist, delay]);
-
-  // Force save on unload
-  useEffect(() => {
-    const handleUnload = () => persist();
-    window.addEventListener("beforeunload", handleUnload);
-    return () => window.removeEventListener("beforeunload", handleUnload);
-  }, [persist]);
 }
 
 // ────────────────────────────────────────────────
-// Load logic (extracted)
+// Load initial state
 // ────────────────────────────────────────────────
 
 function loadInitialState() {
@@ -349,12 +274,24 @@ function loadInitialState() {
 }
 
 // ────────────────────────────────────────────────
-// Floating Widgets
+// FloatingWidgets (unchanged for now)
 // ────────────────────────────────────────────────
 
 function FloatingWidgets() {
-  const { currentAccount, currentTotals } = useApp();
+  const { currentAccount, currentAccountData } = useApp();
   const location = useLocation();
+
+  const { trades = [], journals = [], notes = [] } = currentAccountData;
+
+  const totals = useMemo(() => {
+    const totalTrades = trades.length;
+    const totalJournals = journals.length;
+    const totalNotes = notes.length;
+    const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+    const currentBalance = (currentAccount?.startingBalance || 0) + totalPnL;
+
+    return { totalTrades, totalJournals, totalNotes, totalPnL, currentBalance };
+  }, [trades, journals, notes, currentAccount?.startingBalance]);
 
   const publicPaths = ["/", "/login", "/register"];
   if (publicPaths.includes(location.pathname) || !currentAccount) {
@@ -375,28 +312,28 @@ function FloatingWidgets() {
         <div className="text-sm font-bold text-gray-800 dark:text-gray-200">{currentAccount.name}</div>
       </div>
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-sm text-gray-700 dark:text-gray-300">Total P&L</div>
-        <div className={`text-base font-bold ${currentTotals.totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}>
-          ${currentTotals.totalPnL.toFixed(2)}
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Total P&L</div>
+        <div className={`text-base font-bold ${totals.totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}>
+          ${totals.totalPnL.toFixed(2)}
         </div>
       </div>
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-sm text-gray-700 dark:text-gray-300">Current Balance</div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Current Balance</div>
         <div className="text-base font-bold text-gray-800 dark:text-gray-200">
-          ${currentTotals.currentBalance.toFixed(2)}
+          ${totals.currentBalance.toFixed(2)}
         </div>
       </div>
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-sm text-gray-700 dark:text-gray-300">Trades</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{currentTotals.totalTrades}</div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Trades</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totals.totalTrades}</div>
       </div>
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-sm text-gray-700 dark:text-gray-300">Journals</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{currentTotals.totalJournals}</div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Journals</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totals.totalJournals}</div>
       </div>
       <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-sm text-gray-700 dark:text-gray-300">Notes</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{currentTotals.totalNotes}</div>
+        <div className="text-[10px] text-gray-700 dark:text-gray-300">Notes</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totals.totalNotes}</div>
       </div>
     </div>
   );
@@ -410,19 +347,6 @@ function ManageAccountsModal({ onClose, navigate }) {
   const { accounts, accountDataForAll, deleteAccount, resetAccountData, updateAccount } = useApp();
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
-  const modalRef = useRef(null);
-
-  // Basic focus trap and Esc close
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleEsc);
-
-    modalRef.current?.focus();
-
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
 
   const handleDelete = (id) => {
     if (!window.confirm("Delete this account? All data will be lost!")) return;
@@ -455,8 +379,6 @@ function ManageAccountsModal({ onClose, navigate }) {
       role="dialog"
       aria-modal="true"
       aria-label="Manage Accounts"
-      tabIndex={-1}
-      ref={modalRef}
     >
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
@@ -472,13 +394,12 @@ function ManageAccountsModal({ onClose, navigate }) {
         <div className="space-y-3 mb-4">
           {accounts.map((account) => {
             const accData = accountDataForAll[account.id] || {};
-            const trades = accData.trades || [];
-            const journals = accData.journals || [];
-            const notes = accData.notes || [];
-            const totalTrades = trades.length;
-            const totalJournals = journals.length;
-            const totalNotes = notes.length;
-            const totalPnL = trades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+            const totals = {
+              totalTrades: (accData.trades || []).length,
+              totalJournals: (accData.journals || []).length,
+              totalNotes: (accData.notes || []).length,
+              totalPnL: (accData.trades || []).reduce((sum, t) => sum + (t.pnl || 0), 0),
+            };
 
             return (
               <div key={account.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
@@ -511,10 +432,10 @@ function ManageAccountsModal({ onClose, navigate }) {
                           <span className="font-medium block">{account.name}</span>
                           <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
                             <div>
-                              {totalTrades} trades • ${totalPnL.toFixed(2)} P&L
+                              {totals.totalTrades} trades • ${totals.totalPnL.toFixed(2)} P&L
                             </div>
                             <div>
-                              {totalJournals} journals • {totalNotes} notes
+                              {totals.totalJournals} journals • {totals.totalNotes} notes
                             </div>
                           </div>
                         </div>
@@ -567,34 +488,228 @@ function ManageAccountsModal({ onClose, navigate }) {
 }
 
 // ────────────────────────────────────────────────
-// Edit Balance PNL Modal
+// Edit Balance / PNL Modal
 // ────────────────────────────────────────────────
 
 function EditBalancePNL() {
-  // Unchanged, as per previous
-  // ...
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { accounts, createAccount, updateAccount } = useApp();
+
+  const [form, setForm] = useState({ name: "", startingBalance: 10000 });
+  const [isNewAccount, setIsNewAccount] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const accountId = location.state?.accountId;
+    if (accountId) {
+      const account = accounts.find((a) => a.id === accountId);
+      if (account) {
+        setForm({
+          name: account.name,
+          startingBalance: account.startingBalance,
+        });
+        setIsNewAccount(false);
+      }
+    } else {
+      setForm({
+        name: `Account ${Date.now().toString().slice(-4)}`,
+        startingBalance: 10000,
+      });
+      setIsNewAccount(true);
+    }
+  }, [location.state, accounts]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const trimmedName = form.name.trim() || (isNewAccount ? "New Account" : "Unnamed Account");
+      const balance = Number(form.startingBalance) || 10000;
+
+      if (isNewAccount) {
+        const newAccount = {
+          id: `acc-${Date.now()}`,
+          name: trimmedName,
+          startingBalance: balance,
+          createdAt: new Date().toISOString(),
+        };
+        createAccount(newAccount);
+      } else {
+        const accountId = location.state?.accountId;
+        if (accountId) {
+          updateAccount(accountId, { name: trimmedName, startingBalance: balance });
+        }
+      }
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      console.error("Save error:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-label={isNewAccount ? "Create New Account" : "Edit Account"}
+    >
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-100">
+          {isNewAccount ? "New Account" : "Edit Account"}
+        </h3>
+        <form onSubmit={handleSave}>
+          <div className="mb-4">
+            <label
+              htmlFor="account-name"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Account Name
+            </label>
+            <input
+              id="account-name"
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 p-2 bg-white dark:bg-gray-700"
+              required
+              disabled={isSubmitting}
+            />
+          </div>
+          <div className="mb-4">
+            <label
+              htmlFor="starting-balance"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Starting Balance
+            </label>
+            <input
+              id="starting-balance"
+              type="number"
+              value={form.startingBalance}
+              onChange={(e) => setForm({ ...form, startingBalance: Number(e.target.value) })}
+              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 p-2 bg-white dark:bg-gray-700"
+              required
+              disabled={isSubmitting}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard", { replace: true })}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+              disabled={isSubmitting}
+              aria-label="Cancel"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md disabled:opacity-50"
+              aria-label={isNewAccount ? "Create" : "Save"}
+            >
+              {isSubmitting ? "Saving..." : isNewAccount ? "Create" : "Save"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 // ────────────────────────────────────────────────
-// Protected App (logged in)
+// Protected App
 // ────────────────────────────────────────────────
 
-function ProtectedApp() {
-  // Unchanged, but now uses split contexts
-  // ...
+function ProtectedApp({ state, dispatch }) {
+  const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showManageModal, setShowManageModal] = useState(false);
+
+  const value = useMemo(() => ({ state, dispatch }), [state, dispatch]);
+
+  return (
+    <AppContext.Provider value={value}>
+      <div className="fixed top-0 left-0 right-0 h-12 z-40">
+        <Topbar />
+      </div>
+      <div className="flex flex-1 pt-12">
+        <Sidebar
+          open={sidebarOpen}
+          setOpen={setSidebarOpen}
+          accounts={state.accounts}
+          currentAccount={state.accounts.find((a) => a.id === state.currentAccountId)}
+          onSwitchAccount={(id) => dispatch(switchAccountAction(id))}
+          onCreateAccount={() => navigate("/edit-balance-pnl")}
+          onShowManage={() => setShowManageModal(true)}
+        />
+        <div
+          className="flex-1 min-w-0 transition-all duration-300"
+          style={{
+            marginLeft: sidebarOpen ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
+            maxWidth: sidebarOpen
+              ? "calc(100vw - 12rem - 8px)"
+              : "calc(100vw - 6rem - 8px)",
+          }}
+        >
+          <main
+            className="overflow-y-auto overflow-x-hidden relative"
+            style={{
+              height: "calc(100vh - 3rem)",
+              paddingTop: "1.5rem",
+            }}
+          >
+            <div
+              className="bg-transparent border-none p-3 sm:p-3 mx-1 sm:mx-2 mb-0"
+              style={{ minHeight: "calc(100vh - 4.5rem)" }}
+            >
+              <Routes>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/journal" element={<DailyJournal />} />
+                <Route path="/trades" element={<Trades />} />
+                <Route path="/notebook" element={<Notebook />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/challenges" element={<Challenges />} />
+                <Route path="/mentor" element={<MentorMode />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/backtest" element={<BacktestJournal />} />
+                <Route path="/quantitative-analysis" element={<QuantitativeAnalysis />} />
+                <Route path="/edit-balance-pnl" element={<EditBalancePNL />} />
+                <Route path="/trades/new" element={<AddTrade />} />
+                <Route path="*" element={<Dashboard />} />
+              </Routes>
+            </div>
+          </main>
+        </div>
+        <FloatingWidgets />
+        {showManageModal && <ManageAccountsModal onClose={() => setShowManageModal(false)} navigate={navigate} />}
+      </div>
+    </AppContext.Provider>
+  );
 }
 
 // ────────────────────────────────────────────────
-// Public App (not logged in)
+// Public App
 // ────────────────────────────────────────────────
 
 function PublicApp() {
-  // Unchanged
-  // ...
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="*" element={<Landing />} />
+    </Routes>
+  );
 }
 
 // ────────────────────────────────────────────────
-// Main App Content
+// AppContent - Root layout
 // ────────────────────────────────────────────────
 
 function AppContent() {
@@ -602,7 +717,7 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load on mount
+  // Load data once on mount
   useEffect(() => {
     try {
       const { accounts, currentAccountId, data } = loadInitialState();
@@ -612,11 +727,21 @@ function AppContent() {
     }
   }, []);
 
-  useDebouncedPersist();  // Called as hook
+  // Save changes (debounced)
+  useDebouncedPersist(600);
 
-  // Redirect based on auth
+  // Handle auth-like redirect
   useEffect(() => {
-    // Unchanged
+    if (state.loading) return;
+
+    const isLoggedIn = !!state.currentAccountId;
+    const publicPaths = ["/", "/login", "/register"];
+
+    if (isLoggedIn && publicPaths.includes(location.pathname)) {
+      navigate("/dashboard", { replace: true });
+    } else if (!isLoggedIn && !publicPaths.includes(location.pathname)) {
+      navigate("/login", { replace: true });
+    }
   }, [location.pathname, navigate, state.loading, state.currentAccountId]);
 
   if (state.loading) {
@@ -630,13 +755,9 @@ function AppContent() {
   const isLoggedIn = !!state.currentAccountId;
 
   return (
-    <StateContext.Provider value={state}>
-      <DispatchContext.Provider value={dispatch}>
-        <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-          {isLoggedIn ? <ProtectedApp /> : <PublicApp />}
-        </div>
-      </DispatchContext.Provider>
-    </StateContext.Provider>
+    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
+      {isLoggedIn ? <ProtectedApp state={state} dispatch={dispatch} /> : <PublicApp />}
+    </div>
   );
 }
 
