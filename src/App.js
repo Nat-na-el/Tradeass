@@ -127,7 +127,7 @@ const reducer = (state, action) => {
       const filteredAccounts = state.accounts.filter((a) => a.id !== id);
       const newCurrentId =
         state.currentAccountId === id ? filteredAccounts[0]?.id ?? null : state.currentAccountId;
-      // Cleanup localStorage keys
+      // Cleanup localStorage keys for deleted account
       localStorage.removeItem(`${id}_trades`);
       localStorage.removeItem(`${id}_journals`);
       localStorage.removeItem(`${id}_notes`);
@@ -178,7 +178,7 @@ const switchAccountAction = (id) => ({ type: "SWITCH_ACCOUNT", payload: id });
 const updateAccountDataAction = (id, key, value) => ({ type: "UPDATE_ACCOUNT_DATA", payload: { id, key, value } });
 
 // ────────────────────────────────────────────────
-// useApp hook
+// useApp hook with null safety
 // ────────────────────────────────────────────────
 
 function useApp() {
@@ -186,7 +186,7 @@ function useApp() {
   const dispatch = useContext(DispatchContext);
 
   if (!state || !dispatch) {
-    throw new Error("useApp must be used within StateContext & DispatchContext Providers");
+    throw new Error("useApp must be used inside <StateContext.Provider> and <DispatchContext.Provider>");
   }
 
   const currentAccount = useMemo(
@@ -657,8 +657,8 @@ function ProtectedApp() {
           open={sidebarOpen}
           setOpen={setSidebarOpen}
           onSwitchAccount={(id) => {
-            // Assuming Sidebar will be updated to use DispatchContext or receive dispatch as prop
-            // For now, placeholder comment
+            // If Sidebar needs to switch accounts, it should use DispatchContext directly
+            // For now placeholder comment — update Sidebar to use useContext(DispatchContext)
           }}
           onCreateAccount={() => navigate("/edit-balance-pnl")}
           onShowManage={() => setShowManageModal(true)}
@@ -725,7 +725,7 @@ function PublicApp() {
 }
 
 // ────────────────────────────────────────────────
-// AppContent
+// AppContent - Root layout
 // ────────────────────────────────────────────────
 
 function AppContent() {
