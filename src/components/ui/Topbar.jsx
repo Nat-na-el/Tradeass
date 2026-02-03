@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Sun, Moon, Settings, LogOut } from 'lucide-react';
 import { Button } from './button';
-import { useTheme } from '../../Theme-provider';
+import { useTheme } from '../../Theme-provider'; // make sure this path is correct
+import { useNavigate } from 'react-router-dom'; // ← added for navigation
 import {
   Dialog,
   DialogContent,
@@ -9,11 +10,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from './dialog';
-import { auth } from '../../firebase'; // adjust path
+import { auth } from '../../firebase';
 
 export default function Topbar() {
   const { theme, setTheme } = useTheme();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const navigate = useNavigate();
 
   // Get current account name safely
   const currentId = localStorage.getItem('currentAccountId');
@@ -23,7 +25,11 @@ export default function Topbar() {
 
   const handleLogoutConfirm = () => {
     setShowLogoutDialog(false);
-    auth.signOut(); // ← This is enough — ProtectedRoute will redirect
+    auth.signOut(); // Firebase sign out → ProtectedRoute will redirect
+  };
+
+  const handleSettingsClick = () => {
+    navigate('/settings'); // or open a modal, or whatever you prefer
   };
 
   return (
@@ -47,21 +53,28 @@ export default function Topbar() {
             {accountName}
           </div>
 
-          {/* Theme toggle */}
+          {/* Theme toggle - improved */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-md hover:bg-gray-200/40 dark:hover:bg-indigo-600/30 transition"
-            aria-label="Toggle Theme"
+            className={`
+              p-2 rounded-md transition-all
+              hover:bg-gray-200/60 dark:hover:bg-indigo-600/30
+              focus:outline-none focus:ring-2 focus:ring-indigo-500/40
+            `}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           >
             {theme === 'dark' ? (
-              <Sun className="h-5 w-5 text-indigo-400" />
+              <Sun className="h-5 w-5 text-yellow-400" />
             ) : (
-              <Moon className="h-5 w-5 text-gray-900" />
+              <Moon className="h-5 w-5 text-indigo-700" />
             )}
           </button>
 
-          {/* Settings */}
-          <Button className="bg-gradient-to-r from-indigo-600 to-indigo-400 text-white font-medium rounded-md">
+          {/* Settings - now functional */}
+          <Button
+            onClick={handleSettingsClick}
+            className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white font-medium rounded-md transition-all shadow-sm hover:shadow-md"
+          >
             <Settings className="h-5 w-5 mr-2" />
             Settings
           </Button>
@@ -70,7 +83,7 @@ export default function Topbar() {
           <Button
             variant="destructive"
             onClick={() => setShowLogoutDialog(true)}
-            className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium rounded-md"
+            className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium rounded-md transition-all shadow-sm hover:shadow-md"
           >
             <LogOut className="h-5 w-5 mr-2" />
             Logout
@@ -80,26 +93,26 @@ export default function Topbar() {
 
       {/* Logout Confirmation Dialog */}
       <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
-        <DialogContent className="max-w-md bg-white text-slate-900 dark:bg-[#0f1724] dark:text-white border border-slate-300 dark:border-[#B78727]/20 rounded-2xl shadow-2xl p-6">
+        <DialogContent className="max-w-md bg-white text-slate-900 dark:bg-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-6">
           <DialogHeader>
             <DialogTitle>Confirm Logout</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-slate-600 dark:text-slate-200">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
               Are you sure you want to log out?
             </p>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-3">
             <Button
               variant="outline"
               onClick={() => setShowLogoutDialog(false)}
-              className="border border-slate-400 dark:border-[#B78727]/20 text-slate-900 dark:text-white bg-white dark:bg-transparent"
+              className="border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               Cancel
             </Button>
             <Button
               onClick={handleLogoutConfirm}
-              className="bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-lg"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               Yes, Log Out
             </Button>
