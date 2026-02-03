@@ -1,7 +1,11 @@
-// Theme-provider.jsx
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-const ThemeContext = createContext(undefined);
+// Fixed: safe default value (prevents undefined + hook mismatch)
+const ThemeContext = createContext({
+  theme: "dark",
+  setTheme: () => {},
+  toggleTheme: () => {},
+});
 
 export function ThemeProvider({
   children,
@@ -10,25 +14,20 @@ export function ThemeProvider({
 }) {
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem(storageKey);
-
     if (savedTheme && (savedTheme === "light" || savedTheme === "dark")) {
       return savedTheme;
     }
-
     if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
       return "dark";
     }
-
     return defaultTheme;
   });
 
   useEffect(() => {
     const root = window.document.documentElement;
-
     // Remove both classes first to prevent conflicts
     root.classList.remove("light", "dark");
     root.classList.add(theme);
-
     // Save preference
     localStorage.setItem(storageKey, theme);
   }, [theme, storageKey]);
@@ -52,10 +51,8 @@ export function ThemeProvider({
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-
-  if (context === undefined) {
+  if (context === null) {  // ← changed from undefined to null
     throw new Error("useTheme must be used within a ThemeProvider");
   }
-
   return context;
 }
