@@ -2,13 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tradeass</title>
+    <!-- Improved mobile viewport – prevents unwanted zooming/shrinking -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- Better title for mobile home screen / bookmarks -->
+    <title>Tradeass – Trading Journal</title>
+    <!-- Basic favicon (add your own later if needed) -->
+    <link rel="icon" href="/favicon.ico" />
+    <!-- Prevent iOS from adding phone number detection etc. -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- iOS/Android full-screen feel when added to home screen -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
   </head>
-  <body>
+  <body class="antialiased">
     <div id="root"></div>
 
-    <!-- REQUIRED for Vite -->
+    <!-- Vite entry point – do not change -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
