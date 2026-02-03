@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, createContext, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -25,140 +25,23 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 
-// ────────────────────────────────────────────────
-// Context + Centralized State
-// ────────────────────────────────────────────────
-
-const AppContext = createContext();
-
-function useAppContext() {
-  return useContext(AppContext);
-}
-
-function AppProvider({ children }) {
-  const [accounts, setAccounts] = useState([]);
-  const [currentAccountId, setCurrentAccountId] = useState(null);
-  const [tradesByAccount, setTradesByAccount] = useState({});
-  const [journalsByAccount, setJournalsByAccount] = useState({});
-  const [notesByAccount, setNotesByAccount] = useState({});
-  const [dashboardByAccount, setDashboardByAccount] = useState({});
-
-  // Helper to get current account object
-  const currentAccount = accounts.find(a => a.id === currentAccountId) || null;
-
-  const initialize = useCallback(() => {
-    // For now we still start fresh — later can load from localStorage/indexedDB
-    setAccounts([]);
-    setCurrentAccountId(null);
-    setTradesByAccount({});
-    setJournalsByAccount({});
-    setNotesByAccount({});
-    setDashboardByAccount({});
-  }, []);
-
-  const createAccount = useCallback((newAccount) => {
-    setAccounts(prev => [newAccount, ...prev]);
-    setTradesByAccount(prev => ({ ...prev, [newAccount.id]: [] }));
-    setJournalsByAccount(prev => ({ ...prev, [newAccount.id]: [] }));
-    setNotesByAccount(prev => ({ ...prev, [newAccount.id]: [] }));
-    setDashboardByAccount(prev => ({ ...prev, [newAccount.id]: {} }));
-    setCurrentAccountId(newAccount.id);
-  }, []);
-
-  const updateAccount = useCallback((accountId, updates) => {
-    setAccounts(prev =>
-      prev.map(acc => (acc.id === accountId ? { ...acc, ...updates } : acc))
-    );
-  }, []);
-
-  const deleteAccount = useCallback((accountId) => {
-    setAccounts(prev => prev.filter(a => a.id !== accountId));
-    setTradesByAccount(prev => {
-      const copy = { ...prev };
-      delete copy[accountId];
-      return copy;
-    });
-    setJournalsByAccount(prev => {
-      const copy = { ...prev };
-      delete copy[accountId];
-      return copy;
-    });
-    setNotesByAccount(prev => {
-      const copy = { ...prev };
-      delete copy[accountId];
-      return copy;
-    });
-    setDashboardByAccount(prev => {
-      const copy = { ...prev };
-      delete copy[accountId];
-      return copy;
-    });
-
-    if (currentAccountId === accountId) {
-      setCurrentAccountId(accounts.length > 1 ? accounts[0]?.id : null);
-    }
-  }, [currentAccountId, accounts]);
-
-  const resetAccount = useCallback((accountId) => {
-    setTradesByAccount(prev => ({ ...prev, [accountId]: [] }));
-    setJournalsByAccount(prev => ({ ...prev, [accountId]: [] }));
-    setNotesByAccount(prev => ({ ...prev, [accountId]: [] }));
-    setDashboardByAccount(prev => ({ ...prev, [accountId]: {} }));
-  }, []);
-
-  const renameAccount = useCallback((accountId, newName) => {
-    updateAccount(accountId, { name: newName });
-  }, [updateAccount]);
-
-  const addTrade = useCallback((accountId, trade) => {
-    setTradesByAccount(prev => ({
-      ...prev,
-      [accountId]: [...(prev[accountId] || []), trade],
-    }));
-  }, []);
-
-  // You can add similar helpers for journals, notes, etc.
-
-  const value = {
-    accounts,
-    currentAccount,
-    currentAccountId,
-    tradesByAccount,
-    journalsByAccount,
-    notesByAccount,
-    dashboardByAccount,
-    setCurrentAccountId,
-    createAccount,
-    updateAccount,
-    deleteAccount,
-    resetAccount,
-    renameAccount,
-    addTrade,
-    initialize,
-  };
-
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
-}
-
-// ────────────────────────────────────────────────
-// Floating Widgets (now uses context)
-// ────────────────────────────────────────────────
-
-function FloatingWidgets() {
-  const { currentAccount, tradesByAccount, journalsByAccount, notesByAccount } = useAppContext();
+// FloatingWidgets - visible ONLY on dashboard
+function FloatingWidgets({ currentAccount }) {
   const location = useLocation();
 
+  // Show only on /dashboard
   if (location.pathname !== "/dashboard") return null;
-  if (!currentAccount) return null;
 
-  const trades = tradesByAccount[currentAccount.id] || [];
-  const journals = journalsByAccount[currentAccount.id] || [];
-  const notes = notesByAccount[currentAccount.id] || [];
+  const currentId = localStorage.getItem("currentAccountId");
+  if (!currentId || !currentAccount) return null;
 
+  const trades = JSON.parse(localStorage.getItem(`${currentId}_trades`) || "[]");
+  const journals = JSON.parse(localStorage.getItem(`${currentId}_journals`) || "[]");
+  const notes = JSON.parse(localStorage.getItem(`${currentId}_notes`) || "[]");
   const totalTrades = trades.length;
   const totalJournals = journals.length;
   const totalNotes = notes.length;
-  const totalPnL = trades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+  const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
   const currentBalance = currentAccount.startingBalance + totalPnL;
 
   return (
@@ -204,46 +87,26 @@ function FloatingWidgets() {
   );
 }
 
-// ────────────────────────────────────────────────
-// Manage Accounts Modal (now uses context)
-// ────────────────────────────────────────────────
-
-function ManageAccountsModal({ onClose }) {
-  const {
-    accounts,
-    deleteAccount,
-    resetAccount,
-    renameAccount,
-    createAccount: triggerCreate,
-  } = useAppContext();
-
+// ManageAccountsModal (unchanged)
+function ManageAccountsModal({
+  accounts,
+  onClose,
+  onDeleteAccount,
+  onResetAccount,
+  onRenameAccount,
+  onCreateAccount,
+}) {
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
-
-  const handleDelete = (id) => {
+  const deleteAccount = (accountId) => {
     if (!window.confirm("Delete this account? All data will be lost!")) return;
-    deleteAccount(id);
+    onDeleteAccount(accountId);
   };
-
-  const handleReset = (id) => {
+  const resetAccount = (accountId) => {
     if (!window.confirm("Reset all trades/notes/journals for this account?")) return;
-    resetAccount(id);
+    onResetAccount(accountId);
   };
-
-  const handleRename = (id) => {
-    if (!editName.trim()) return;
-    renameAccount(id, editName);
-    setEditingId(null);
-    setEditName("");
-  };
-
-  const handleCreate = () => {
-    onClose();
-    triggerCreate();
-  };
-
   if (accounts.length === 0) return null;
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
@@ -255,14 +118,15 @@ function ManageAccountsModal({ onClose }) {
             ✕
           </button>
         </div>
-
         <div className="space-y-3 mb-4">
           {accounts.map((account) => {
-            const trades = tradesByAccount[account.id] || [];
-            const journals = journalsByAccount[account.id] || [];
-            const notes = notesByAccount[account.id] || [];
-            const totalPnL = trades.reduce((sum, t) => sum + (t.pnl || 0), 0);
-
+            const trades = JSON.parse(localStorage.getItem(`${account.id}_trades`) || "[]");
+            const journals = JSON.parse(localStorage.getItem(`${account.id}_journals`) || "[]");
+            const notes = JSON.parse(localStorage.getItem(`${account.id}_notes`) || "[]");
+            const totalTrades = trades.length;
+            const totalJournals = journals.length;
+            const totalNotes = notes.length;
+            const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
             return (
               <div key={account.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
                 <div className="flex justify-between items-start">
@@ -277,7 +141,11 @@ function ManageAccountsModal({ onClose }) {
                           autoFocus
                         />
                         <button
-                          onClick={() => handleRename(account.id)}
+                          onClick={() => {
+                            onRenameAccount(account.id, editName || account.name);
+                            setEditingId(null);
+                            setEditName("");
+                          }}
                           className="px-2 py-1 bg-gray-500 text-white rounded text-xs"
                         >
                           Save
@@ -293,14 +161,13 @@ function ManageAccountsModal({ onClose }) {
                         <div>
                           <span className="font-medium block">{account.name}</span>
                           <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-                            <div>{trades.length} trades • ${totalPnL.toFixed(2)} P&L</div>
-                            <div>{journals.length} journals • {notes.length} notes</div>
+                            <div>{totalTrades} trades • ${totalPnL.toFixed(2)} P&L</div>
+                            <div>{totalJournals} journals • {totalNotes} notes</div>
                           </div>
                         </div>
                       </div>
                     )}
                   </div>
-
                   <div className="flex gap-1 ml-2">
                     <button
                       onClick={() => {
@@ -312,14 +179,14 @@ function ManageAccountsModal({ onClose }) {
                       ✏️
                     </button>
                     <button
-                      onClick={() => handleReset(account.id)}
+                      onClick={() => resetAccount(account.id)}
                       className="p-1 text-gray-600 hover:bg-gray-100 rounded"
                     >
                       🔄
                     </button>
                     {accounts.length > 1 && (
                       <button
-                        onClick={() => handleDelete(account.id)}
+                        onClick={() => deleteAccount(account.id)}
                         className="p-1 text-gray-600 hover:bg-gray-100 rounded"
                       >
                         🗑️
@@ -331,9 +198,8 @@ function ManageAccountsModal({ onClose }) {
             );
           })}
         </div>
-
         <button
-          onClick={handleCreate}
+          onClick={onCreateAccount}
           className="w-full p-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm"
         >
           + Create New Account
@@ -343,74 +209,72 @@ function ManageAccountsModal({ onClose }) {
   );
 }
 
-// ────────────────────────────────────────────────
-// Edit Balance / Create Account Modal
-// ────────────────────────────────────────────────
-
-function EditBalancePNL() {
+// EditBalancePNL (unchanged - already redirects to dashboard)
+function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { createAccount, updateAccount, accounts } = useAppContext();
-
   const [form, setForm] = useState({ name: "", startingBalance: 10000 });
-  const [isNew, setIsNew] = useState(true);
+  const [isNewAccount, setIsNewAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   useEffect(() => {
     if (location.state?.accountId) {
-      const acc = accounts.find(a => a.id === location.state.accountId);
-      if (acc) {
+      const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+      const account = accounts.find((a) => a.id === location.state.accountId);
+      if (account) {
         setForm({
-          name: acc.name,
-          startingBalance: acc.startingBalance,
+          name: account.name,
+          startingBalance: account.startingBalance,
         });
-        setIsNew(false);
+        setIsNewAccount(false);
       }
     } else {
-      setIsNew(true);
+      setIsNewAccount(true);
       setForm({
-        name: `Account ${Date.now().toString().slice(-4)}`,
+        name: `Account ${Date.now().toString().slice(-3)}`,
         startingBalance: 10000,
       });
     }
-  }, [location.state?.accountId, accounts]);
-
-  const handleSubmit = (e) => {
+  }, [location]);
+  const saveAccount = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
-
-    const data = {
-      name: form.name.trim() || "Unnamed",
-      startingBalance: Number(form.startingBalance) || 0,
-    };
-
-    if (isNew) {
-      const id = `acc-${Date.now()}`;
-      const newAcc = {
-        id,
-        ...data,
+    const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+    if (isNewAccount) {
+      const newAccountId = `acc-${Date.now()}`;
+      const newAccount = {
+        id: newAccountId,
+        name: form.name,
+        startingBalance: Number(form.startingBalance),
         totalPnL: 0,
         createdAt: new Date().toISOString(),
       };
-      createAccount(newAcc);
+      accounts.unshift(newAccount);
+      localStorage.setItem(`${newAccountId}_trades`, JSON.stringify([]));
+      localStorage.setItem(`${newAccountId}_notes`, JSON.stringify([]));
+      localStorage.setItem(`${newAccountId}_journals`, JSON.stringify([]));
+      localStorage.setItem(`dashboard_${newAccountId}`, JSON.stringify({}));
+      localStorage.setItem("currentAccountId", newAccountId);
+      localStorage.setItem("accounts", JSON.stringify(accounts));
       navigate("/dashboard", { replace: true });
-    } else if (location.state?.accountId) {
-      updateAccount(location.state.accountId, data);
+    } else {
+      const accountIndex = accounts.findIndex(
+        (a) => a.id === location.state.accountId
+      );
+      accounts[accountIndex] = { ...accounts[accountIndex], ...form };
+      localStorage.setItem("accounts", JSON.stringify(accounts));
       navigate("/dashboard", { replace: true });
     }
-
     setIsSubmitting(false);
+    if (onSaved) onSaved();
   };
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
         <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-100">
-          {isNew ? "New Account" : "Edit Account"}
+          {isNewAccount ? "New Account" : "Edit Account"}
         </h3>
-
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={saveAccount}>
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Account Name
@@ -424,7 +288,6 @@ function EditBalancePNL() {
               disabled={isSubmitting}
             />
           </div>
-
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Starting Balance
@@ -432,13 +295,14 @@ function EditBalancePNL() {
             <input
               type="number"
               value={form.startingBalance}
-              onChange={(e) => setForm({ ...form, startingBalance: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, startingBalance: Number(e.target.value) })
+              }
               className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 p-2 bg-white dark:bg-gray-700"
               required
               disabled={isSubmitting}
             />
           </div>
-
           <div className="flex justify-end gap-2">
             <button
               type="button"
@@ -453,7 +317,7 @@ function EditBalancePNL() {
               disabled={isSubmitting}
               className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md disabled:opacity-50"
             >
-              {isSubmitting ? "Saving..." : isNew ? "Create" : "Save"}
+              {isSubmitting ? "Creating..." : isNewAccount ? "Create" : "Save"}
             </button>
           </div>
         </form>
@@ -462,80 +326,101 @@ function EditBalancePNL() {
   );
 }
 
-// ────────────────────────────────────────────────
-// Main App Content
-// ────────────────────────────────────────────────
-
+// Inner content
 function AppContent() {
-  const {
-    accounts,
-    currentAccount,
-    currentAccountId,
-    setCurrentAccountId,
-    initialize,
-    createAccount: triggerCreateAccount,
-    deleteAccount,
-    resetAccount,
-    renameAccount,
-  } = useAppContext();
-
+  const [open, setOpen] = useState(true);
+  const [currentAccount, setCurrentAccount] = useState(null);
+  const [accounts, setAccounts] = useState([]);
+  const [showManageModal, setShowManageModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showManageModal, setShowManageModal] = useState(false);
-
-  // Initialize on mount
   useEffect(() => {
-    initialize();
-  }, [initialize]);
-
-  // Simple "auth" guard + redirect logic
+    initializeAccounts();
+  }, []);
   useEffect(() => {
-    const isLoggedIn = !!currentAccountId;
-    const publicPaths = ["/", "/login", "/register", "/landing"];
-
+    const currentId = localStorage.getItem("currentAccountId");
+    const isLoggedIn = !!currentId;
+    const publicPaths = ["/", "/login", "/register"];
     if (isLoggedIn && publicPaths.includes(location.pathname)) {
       navigate("/dashboard", { replace: true });
     }
-
     if (!isLoggedIn && !publicPaths.includes(location.pathname)) {
       navigate("/login", { replace: true });
     }
-  }, [location.pathname, currentAccountId, navigate]);
-
-  const switchAccount = useCallback((accountId) => {
-    setCurrentAccountId(accountId);
-    navigate("/dashboard", { replace: true });
-  }, [setCurrentAccountId, navigate]);
-
-  const handleCreateAccount = useCallback(() => {
+  }, [location.pathname, navigate]);
+  const initializeAccounts = () => {
+    let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+    let currentId = localStorage.getItem("currentAccountId");
+    if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
+      currentId = storedAccounts[0]?.id || null;
+      if (currentId) {
+        localStorage.setItem("currentAccountId", currentId);
+      }
+    }
+    setAccounts(storedAccounts);
+    const current = storedAccounts.find((a) => a.id === currentId);
+    setCurrentAccount(current);
+  };
+  const createAccount = () => {
     navigate("/edit-balance-pnl");
-  }, [navigate]);
-
+  };
+  const switchAccount = (accountId) => {
+    localStorage.setItem("currentAccountId", accountId);
+    navigate("/dashboard", { replace: true });
+  };
+  const deleteAccount = (accountId) => {
+    let updated = accounts.filter((a) => a.id !== accountId);
+    localStorage.removeItem(`${accountId}_trades`);
+    localStorage.removeItem(`${accountId}_notes`);
+    localStorage.removeItem(`${accountId}_journals`);
+    localStorage.removeItem(`dashboard_${accountId}`);
+    const currentId = localStorage.getItem("currentAccountId");
+    if (currentId === accountId || updated.length === 0) {
+      localStorage.removeItem("currentAccountId");
+      localStorage.setItem("accounts", JSON.stringify(updated));
+      navigate("/", { replace: true });
+      return;
+    }
+    localStorage.setItem("accounts", JSON.stringify(updated));
+    navigate("/dashboard", { replace: true });
+  };
+  const resetAccount = (accountId) => {
+    localStorage.setItem(`${accountId}_trades`, JSON.stringify([]));
+    localStorage.setItem(`${accountId}_notes`, JSON.stringify([]));
+    localStorage.setItem(`${accountId}_journals`, JSON.stringify([]));
+    localStorage.setItem(`dashboard_${accountId}`, JSON.stringify({}));
+    navigate("/dashboard", { replace: true });
+  };
+  const renameAccount = (accountId, newName) => {
+    const updated = accounts.map((a) =>
+      a.id === accountId ? { ...a, name: newName } : a
+    );
+    localStorage.setItem("accounts", JSON.stringify(updated));
+    navigate("/dashboard", { replace: true });
+  };
+  const isLoggedIn = !!localStorage.getItem("currentAccountId");
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
-      {currentAccountId ? (
+      {isLoggedIn && (
         <>
           <div className="fixed top-0 left-0 right-0 h-12 z-50">
             <Topbar />
           </div>
-
           <div className="flex flex-1 pt-12">
             <Sidebar
-              open={sidebarOpen}
-              setOpen={setSidebarOpen}
+              open={open}
+              setOpen={setOpen}
               accounts={accounts}
               currentAccount={currentAccount}
               onSwitchAccount={switchAccount}
-              onCreateAccount={handleCreateAccount}
+              onCreateAccount={createAccount}
               onShowManage={() => setShowManageModal(true)}
             />
-
             <div
               className="flex-1 min-w-0 transition-all duration-300"
               style={{
-                marginLeft: sidebarOpen ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
-                maxWidth: sidebarOpen
+                marginLeft: open ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
+                maxWidth: open
                   ? "calc(100vw - 12rem - 8px)"
                   : "calc(100vw - 6rem - 8px)",
               }}
@@ -562,22 +447,28 @@ function AppContent() {
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/backtest" element={<BacktestJournal />} />
                     <Route path="/quantitative-analysis" element={<QuantitativeAnalysis />} />
-                    <Route path="/edit-balance-pnl" element={<EditBalancePNL />} />
+                    <Route path="/edit-balance-pnl" element={<EditBalancePNL onSaved={() => {}} />} />
                     <Route path="/trades/new" element={<AddTrade />} />
                     <Route path="*" element={<Dashboard currentAccount={currentAccount} />} />
                   </Routes>
                 </div>
               </main>
             </div>
-
-            <FloatingWidgets />
+            <FloatingWidgets currentAccount={currentAccount} />
+            {showManageModal && (
+              <ManageAccountsModal
+                accounts={accounts}
+                onClose={() => setShowManageModal(false)}
+                onDeleteAccount={deleteAccount}
+                onResetAccount={resetAccount}
+                onRenameAccount={renameAccount}
+                onCreateAccount={createAccount}
+              />
+            )}
           </div>
-
-          {showManageModal && (
-            <ManageAccountsModal onClose={() => setShowManageModal(false)} />
-          )}
         </>
-      ) : (
+      )}
+      {!isLoggedIn && (
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
@@ -589,17 +480,11 @@ function AppContent() {
   );
 }
 
-// ────────────────────────────────────────────────
-// Root
-// ────────────────────────────────────────────────
-
 export default function App() {
   return (
     <ThemeProvider>
       <Router>
-        <AppProvider>
-          <AppContent />
-        </AppProvider>
+        <AppContent />
       </Router>
     </ThemeProvider>
   );
