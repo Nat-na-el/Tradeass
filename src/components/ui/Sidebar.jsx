@@ -1,1008 +1,190 @@
-import React, { useEffect, useMemo, useState } from "react";
+
+import React, { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
-  addMonths,
-  subMonths,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-  format,
-  isSameMonth,
-} from "date-fns";
-import { Card } from "../components/ui/card";
-import { useNavigate } from "react-router-dom";
-import { useTheme } from "../Theme-provider";
-import {
-  TrendingUp,
-  Activity,
-  Percent,
-  Zap,
-  BarChart3,
-  DollarSign,
+  Menu,
   X,
-  Lightbulb,
-  AlertCircle,
-  CheckCircle,
-  ChevronRight,
-  ArrowUpRight,
-  ArrowDownRight,
+  Home,
+  BookOpen,
+  Activity,
+  FileText,
+  BarChart3,
+  Trophy,
+  Users,
+  Settings,
+  Calculator,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
+import { useTheme } from "../../Theme-provider";
 
-// ────────────────────────────────────────────────
-//  Animated number component - used for smooth counting effect
-// ────────────────────────────────────────────────
-const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    const start = performance.now();
-    const step = (timestamp) => {
-      const progress = Math.min((timestamp - start) / duration, 1);
-      setDisplay(value * progress);
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [value, duration]);
-
-  return <>{Number(display).toFixed(decimals)}</>;
-};
-
-// ────────────────────────────────────────────────
-//  Main Dashboard Component
-// ────────────────────────────────────────────────
-export default function Dashboard({ currentAccount }) {
-  // ─── Theme & UI state ────────────────────────────────────────
+export default function Sidebar({
+  open,
+  setOpen,
+  accounts,
+  currentAccount,
+  onSwitchAccount,
+  onCreateAccount,
+  onShowManage,
+}) {
   const { theme } = useTheme();
-  const isDark = theme === "dark";
   const navigate = useNavigate();
+  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
 
-  // ─── Local state ─────────────────────────────────────────────
-  const [trades, setTrades] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [viewDate, setViewDate] = useState(new Date());
-  const [showQuickAnalysis, setShowQuickAnalysis] = useState(false);
+  const toggleSidebar = () => {
+    setOpen((prev) => !prev);
+    setIsAccountDropdownOpen(false);
+  };
 
-  // ─── Fetch trades from backend ───────────────────────────────
-  const refreshTrades = async () => {
-    setLoading(true);
-    try {
-      const currentId = localStorage.getItem("currentAccountId") || "default";
-      const res = await fetch(
-        `https://tradeass-backend.onrender.com/api/trades?accountId=${currentId}`
-      );
-      const data = await res.json();
-      setTrades(data || []);
-    } catch (err) {
-      console.error("Dashboard fetch error:", err);
-      setTrades([]);
-    } finally {
-      setLoading(false);
+  const toggleAccountDropdown = () => {
+    if (open) {
+      setIsAccountDropdownOpen(!isAccountDropdownOpen);
     }
   };
 
-  useEffect(() => {
-    refreshTrades();
-    const interval = setInterval(refreshTrades, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // ─── Calendar month navigation ───────────────────────────────
-  const prevMonth = () => setViewDate((d) => subMonths(d, 1));
-  const nextMonth = () => setViewDate((d) => addMonths(d, 1));
-  const jumpTo = (y, m) => setViewDate(new Date(y, m - 1, 1));
-
-  const monthStart = startOfMonth(viewDate);
-  const monthEnd = endOfMonth(viewDate);
-
-  // ─── Monthly trades filtering & sorting ─────────────────────
-  const monthlyTrades = useMemo(() => {
-    return trades
-      .filter((t) => {
-        const td = new Date(t.date);
-        return td >= monthStart && td <= monthEnd;
-      })
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [trades, viewDate]);
-
-  // ─── Weekly trades for streak calculation ────────────────────
-  const weeklyTrades = useMemo(() => {
-    const ws = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const we = endOfWeek(new Date(), { weekStartsOn: 1 });
-    return trades
-      .filter((t) => {
-        const td = new Date(t.date);
-        return td >= ws && td <= we;
-      })
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [trades]);
-
-  // ─── Current streak calculation ──────────────────────────────
-  const currentStreak = useMemo(() => {
-    let streak = { type: "None", count: 0 };
-    let current = null;
-
-    for (const trade of [...weeklyTrades].reverse()) {
-      const pnl = Number(trade.pnl) || 0;
-      if (pnl === 0) continue;
-
-      if (current === null) {
-        current = pnl > 0 ? "Win" : "Loss";
-        streak = { type: current, count: 1 };
-      } else if (
-        (pnl > 0 && current === "Win") ||
-        (pnl < 0 && current === "Loss")
-      ) {
-        streak.count += 1;
-      } else {
-        break;
-      }
-    }
-
-    return streak;
-  }, [weeklyTrades]);
-
-  // ─── Monthly stats calculation (core metrics) ────────────────
-  const monthlyStats = useMemo(() => {
-    if (!monthlyTrades.length) {
-      return {
-        totalPnL: 0,
-        winRate: "0.0",
-        profitFactor: "—",
-        expectancy: "0.00",
-        winCount: 0,
-        lossCount: 0,
-        totalTrades: 0,
-        avgPnL: "0.00",
-        bestDayPnL: 0,
-        bestDayDate: "—",
-        worstDayPnL: 0,
-        worstDayDate: "—",
-        avgRR: "0.00",
-      };
-    }
-
-    const profits = monthlyTrades
-      .filter((t) => t.pnl > 0)
-      .reduce((a, b) => a + Number(b.pnl), 0);
-
-    const losses = monthlyTrades
-      .filter((t) => t.pnl < 0)
-      .reduce((a, b) => a + Math.abs(Number(b.pnl)), 0);
-
-    const profitFactor = losses ? (profits / losses).toFixed(2) : "∞";
-
-    const wins = monthlyTrades.filter((t) => t.pnl > 0).length;
-    const total = monthlyTrades.length;
-    const winRate = ((wins / total) * 100).toFixed(1);
-
-    const expectancy = (
-      monthlyTrades.reduce((a, b) => a + Number(b.pnl), 0) / total
-    ).toFixed(2);
-
-    const dailyPnL = {};
-    monthlyTrades.forEach((t) => {
-      const day = format(new Date(t.date), "yyyy-MM-dd");
-      dailyPnL[day] = (dailyPnL[day] || 0) + Number(t.pnl || 0);
-    });
-
-    let bestDayPnL = 0;
-    let bestDayDate = "—";
-    let worstDayPnL = 0;
-    let worstDayDate = "—";
-
-    if (Object.keys(dailyPnL).length > 0) {
-      const entries = Object.entries(dailyPnL);
-      const bestEntry = entries.reduce((max, curr) =>
-        curr[1] > max[1] ? curr : max
-      );
-      const worstEntry = entries.reduce((min, curr) =>
-        curr[1] < min[1] ? curr : min
-      );
-
-      bestDayPnL = bestEntry[1].toFixed(2);
-      bestDayDate = format(new Date(bestEntry[0]), "dd MMM");
-      worstDayPnL = worstEntry[1].toFixed(2);
-      worstDayDate = format(new Date(worstEntry[0]), "dd MMM");
-    }
-
-    const totalRR = monthlyTrades.reduce(
-      (sum, t) => sum + (Number(t.rr) || 0),
-      0
-    );
-    const avgRR = total ? (totalRR / total).toFixed(2) : "0.00";
-
-    return {
-      totalPnL: (profits - losses).toFixed(2),
-      winRate,
-      profitFactor,
-      expectancy,
-      winCount: wins,
-      lossCount: total - wins,
-      totalTrades: total,
-      avgPnL: (
-        monthlyTrades.reduce((a, b) => a + Number(b.pnl), 0) / total
-      ).toFixed(2),
-      bestDayPnL,
-      bestDayDate,
-      worstDayPnL,
-      worstDayDate,
-      avgRR,
-    };
-  }, [monthlyTrades]);
-
-  // ─── Consistency Score = (Best daily win rate / Overall win rate) × 100 ──────
-  const consistencyScore = useMemo(() => {
-    if (!monthlyTrades.length) return 0;
-
-    const dailyWinRates = {};
-
-    monthlyTrades.forEach((t) => {
-      const day = format(new Date(t.date), "yyyy-MM-dd");
-      if (!dailyWinRates[day]) {
-        dailyWinRates[day] = { wins: 0, total: 0 };
-      }
-      dailyWinRates[day].total += 1;
-      if (t.pnl > 0) dailyWinRates[day].wins += 1;
-    });
-
-    let bestDailyWinRate = 0;
-
-    Object.values(dailyWinRates).forEach(({ wins, total }) => {
-      const rate = total > 0 ? (wins / total) * 100 : 0;
-      if (rate > bestDailyWinRate) bestDailyWinRate = rate;
-    });
-
-    const overallWinRate = Number(monthlyStats.winRate);
-    if (overallWinRate === 0) return 0;
-
-    const score = Math.min(100, Math.round((bestDailyWinRate / overallWinRate) * 100));
-    return score;
-  }, [monthlyTrades, monthlyStats.winRate]);
-
-  // ─── Trades grouped by date for calendar ─────────────────────
-  const tradesByDate = useMemo(() => {
-    return monthlyTrades.reduce((acc, t) => {
-      const d = t.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
-      if (!acc[d]) acc[d] = [];
-      acc[d].push(t);
-      return acc;
-    }, {});
-  }, [monthlyTrades]);
-
-  // ─── Day summary helper ──────────────────────────────────────
-  function daySummary(dateObj) {
-    const key = format(dateObj, "yyyy-MM-dd");
-    const list = tradesByDate[key] || [];
-    if (!list.length) return null;
-
-    const pnl = list.reduce((s, t) => s + Number(t.pnl || 0), 0);
-    const count = list.length;
-    const wins = list.filter((t) => t.pnl > 0).length;
-    const winRate = Math.round((wins / count) * 100) || 0;
-    const rrAvg = list.reduce((s, t) => s + (Number(t.rr) || 0), 0) / count || 0;
-
-    return { date: key, pnl, count, winRate, rrAvg };
-  }
-
-  // ─── Week summary helper ─────────────────────────────────────
-  function weekSummary(weekArray) {
-    const sums = weekArray.reduce(
-      (acc, d) => {
-        const ds = daySummary(d);
-        if (!ds) return acc;
-        acc.count += ds.count;
-        acc.pnl += ds.pnl;
-        acc.wins += Math.round((ds.winRate / 100) * ds.count);
-        return acc;
-      },
-      { pnl: 0, count: 0, wins: 0 }
-    );
-
-    const winRate = sums.count ? Math.round((sums.wins / sums.count) * 100) : 0;
-    return { pnl: +sums.pnl.toFixed(2), count: sums.count, winRate };
-  }
-
-  // ─── Calendar weeks generation ───────────────────────────────
-  const calendarWeeks = useMemo(() => {
-    const start = startOfWeek(startOfMonth(viewDate), { weekStartsOn: 1 });
-    const end = endOfWeek(endOfMonth(viewDate), { weekStartsOn: 1 });
-    const days = eachDayOfInterval({ start, end });
-    const weeks = [];
-    for (let i = 0; i < days.length; i += 7) {
-      weeks.push(days.slice(i, i + 7));
-    }
-    return weeks;
-  }, [viewDate]);
-
-  // ─── Open day detail ─────────────────────────────────────────
-  const openDay = (dayObj) => {
-    const formattedDate = format(dayObj, "yyyy-MM-dd");
-    navigate("/trades?date=" + formattedDate);
-  };
-
-  // ─── Recent trades preview ───────────────────────────────────
-  const recentTrades = useMemo(() => {
-    return [...trades]
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 5);
-  }, [trades]);
-
-  // ─── All-time total PnL (not monthly) ────────────────────────
-  const allTimePnL = useMemo(() => {
-    if (!trades.length) return 0;
-    return trades.reduce((sum, t) => sum + Number(t.pnl || 0), 0).toFixed(2);
-  }, [trades]);
-
-  // ─── Placeholder account info ────────────────────────────────
-  // In real app you should store these values when account is created
-  const initialBalance = 10000; // ← replace with real value from account data
-  const accountCreatedAt = currentAccount?.createdAt || new Date("2024-01-01");
-
-  // ─── Account growth percentage ───────────────────────────────
-  const accountGrowth = useMemo(() => {
-    if (initialBalance <= 0) return 0;
-    return ((allTimePnL / initialBalance) * 100).toFixed(1);
-  }, [allTimePnL]);
-
-  // ─── Quick Analysis Modal Content ────────────────────────────
-  const quickAnalysisContent = () => {
-    if (!monthlyTrades.length) {
-      return (
-        <div className="text-center py-10 px-4">
-          <AlertCircle size={64} className="mx-auto text-indigo-400 mb-6 opacity-80" />
-          <h3 className="text-2xl font-semibold mb-4 text-gray-200">
-            No trades recorded this month
-          </h3>
-          <p className="text-gray-400 max-w-lg mx-auto leading-relaxed">
-            Add some trades to unlock real-time performance insights, pattern detection,
-            and personalized trading suggestions.
-          </p>
-          <button
-            onClick={() => {
-              setShowQuickAnalysis(false);
-              navigate("/trades/new");
-            }}
-            className="mt-8 px-6 py-3 bg-gradient-to-r from-indigo-700 to-purple-800 hover:from-indigo-800 hover:to-purple-900 text-white rounded-xl shadow-lg transition-all"
-          >
-            Add Your First Trade
-          </button>
-        </div>
-      );
-    }
-
-    const winRate = Number(monthlyStats.winRate);
-    const totalPnL = Number(monthlyStats.totalPnL);
-    const avgRR = Number(monthlyStats.avgRR);
-    const totalTrades = monthlyStats.totalTrades;
-
-    return (
-      <div className="space-y-8">
-        {/* Performance Snapshot */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="p-6 bg-gray-900/70 rounded-2xl border border-gray-700 shadow-inner">
-            <div className="text-sm text-gray-400 mb-2">Win Rate</div>
-            <div className="text-4xl font-bold text-indigo-300">{winRate}%</div>
-            <div className="mt-3 text-sm opacity-80 flex items-center gap-2">
-              {winRate >= 60 ? (
-                <CheckCircle className="text-emerald-400" size={18} />
-              ) : winRate >= 45 ? (
-                <AlertCircle className="text-amber-400" size={18} />
-              ) : (
-                <AlertCircle className="text-rose-400" size={18} />
-              )}
-              {winRate >= 60
-                ? "Strong performance — protect your edge"
-                : winRate >= 45
-                ? "Solid base — improve reward:risk"
-                : "Needs attention — focus on high-probability entries"}
-            </div>
-          </div>
-
-          <div className="p-6 bg-gray-900/70 rounded-2xl border border-gray-700 shadow-inner">
-            <div className="text-sm text-gray-400 mb-2">Net Result</div>
-            <div
-              className={`text-4xl font-bold ${
-                totalPnL >= 0 ? "text-emerald-400" : "text-rose-400"
-              }`}
-            >
-              {totalPnL >= 0 ? "+" : ""}${Math.abs(totalPnL).toFixed(2)}
-            </div>
-            <div className="mt-3 text-sm opacity-80 flex items-center gap-2">
-              {totalPnL >= 0 ? (
-                <ArrowUpRight className="text-emerald-400" size={18} />
-              ) : (
-                <ArrowDownRight className="text-rose-400" size={18} />
-              )}
-              {totalPnL >= 0 ? "Positive month — manage greed" : "Drawdown — tighten risk now"}
-            </div>
-          </div>
-
-          <div className="p-6 bg-gray-900/70 rounded-2xl border border-gray-700 shadow-inner">
-            <div className="text-sm text-gray-400 mb-2">Average R:R</div>
-            <div className="text-4xl font-bold text-purple-300">{avgRR}</div>
-            <div className="mt-3 text-sm opacity-80 flex items-center gap-2">
-              {avgRR >= 2.5 ? (
-                <CheckCircle className="text-emerald-400" size={18} />
-              ) : (
-                <AlertCircle className="text-amber-400" size={18} />
-              )}
-              {avgRR >= 2.5
-                ? "Excellent asymmetry — keep hunting"
-                : "Can improve — aim for 1:3+ setups"}
-            </div>
-          </div>
-        </div>
-
-        {/* Personalized Suggestions */}
-        <div className="p-6 bg-gradient-to-br from-gray-950 to-gray-900 rounded-2xl border border-gray-700 shadow-inner">
-          <h4 className="text-xl font-semibold mb-5 flex items-center gap-3 text-gray-200">
-            <Lightbulb size={22} className="text-yellow-400" />
-            Instant Coaching Insights
-          </h4>
-
-          <div className="space-y-4 text-gray-300 text-sm leading-relaxed">
-            {totalTrades < 15 && (
-              <div className="flex items-start gap-3">
-                <AlertCircle className="text-amber-400 mt-1 shrink-0" size={18} />
-                <p>
-                  Sample size still small ({totalTrades} trades). Aim for at least 20–30 trades before drawing strong conclusions about strategy effectiveness.
-                </p>
-              </div>
-            )}
-
-            {winRate < 50 && (
-              <div className="flex items-start gap-3">
-                <AlertCircle className="text-rose-400 mt-1 shrink-0" size={18} />
-                <p>
-                  Win rate below 50% — be extra selective this week. Only take A+ setups that match your proven edge. Avoid revenge or FOMO trades.
-                </p>
-              </div>
-            )}
-
-            {avgRR < 2 && (
-              <div className="flex items-start gap-3">
-                <AlertCircle className="text-amber-400 mt-1 shrink-0" size={18} />
-                <p>
-                  Average reward:risk is low ({avgRR}). Focus on trades with minimum 1:2.5 or better. Avoid break-even or 1:1 targets unless extremely high probability.
-                </p>
-              </div>
-            )}
-
-            <div className="flex items-start gap-3">
-              <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
-              <p>
-                Review your last 5 losing trades in detail. Look for one repeating mistake (entry timing, sizing, stop placement, emotion). Fix that pattern first.
-              </p>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
-              <p>
-                Maintain risk at ≤1% per trade until win rate consistently exceeds 55%. Protect capital while you refine your edge.
-              </p>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
-              <p>
-                Journal every trade’s emotion and confidence level (1–10). Patterns in psychology often explain results more than technicals.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-950">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
-          <p className="mt-4 text-gray-400">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  const navItems = [
+    { to: "/", icon: Home, label: "Dashboard" },
+    { to: "/journal", icon: BookOpen, label: "Daily Journal" },
+    { to: "/trades", icon: Activity, label: "Trades" },
+    { to: "/notebook", icon: FileText, label: "Notebook" },
+    { to: "/reports", icon: BarChart3, label: "Reports" },
+    { to: "/challenges", icon: Trophy, label: "Challenges" },
+    { to: "/mentor", icon: Users, label: "Mentor Mode" },
+    { to: "/settings", icon: Settings, label: "Settings" },
+    { to: "/backtest", icon: Calculator, label: "Backtest" },
+  ];
 
   return (
-    <>
-      {/* Subtle striped background */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-gray-950">
-          {/* Diagonal faint stripes */}
+    <div
+      className={`fixed left-8 top-20 h-[calc(100vh-2.5rem)] 
+        bg-amber-50 dark:bg-gray-900 
+        border-r border-amber-200/80 dark:border-gray-800 
+        shadow-2xl transition-all duration-300 z-[1000] ${
+          open ? "w-48" : "w-16"
+        } ${theme === "dark" ? "dark" : ""}`}
+      style={{
+        minWidth: open ? "12rem" : "4rem",
+        boxShadow: "4px 0 10px rgba(0, 0, 0, 0.3)",
+      }}
+    >
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-end p-3 pt-2">
+          <button
+            onClick={toggleSidebar}
+            className="p-2 rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 transition-all duration-300 flex items-center justify-center"
+          >
+            {open ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+
+        {/* ACCOUNT SECTION */}
+        <div className="p-3 border-b border-amber-200/80 dark:border-gray-700">
           <div
-            className="absolute inset-0 opacity-[0.04]"
-            style={{
-              backgroundImage: `
-                linear-gradient(45deg, transparent 25%, rgba(79,70,229,0.08) 25%, rgba(79,70,229,0.08) 50%, transparent 50%, transparent 75%, rgba(79,70,229,0.08) 75%, rgba(79,70,229,0.08) 100%),
-                linear-gradient(-45deg, transparent 25%, rgba(139,92,246,0.06) 25%, rgba(139,92,246,0.06) 50%, transparent 50%, transparent 75%, rgba(139,92,246,0.06) 75%, rgba(139,92,246,0.06) 100%)
-              `,
-              backgroundSize: "60px 60px",
-            }}
-          />
-        </div>
-      </div>
-
-      <div className={`relative min-h-screen w-full p-4 sm:p-6 lg:p-8 overflow-y-auto ${isDark ? "text-gray-200 bg-transparent" : "text-gray-900 bg-gray-50"}`}>
-        {/* Header + Account Details */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div>
-              <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
-                Dashboard
-              </h1>
-              <p className={`mt-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                {format(viewDate, "MMMM yyyy")} • {currentAccount?.name || "Account"}
-              </p>
+            className={`flex items-center gap-2 p-2 rounded cursor-pointer ${
+              open ? "justify-between" : "justify-center"
+            }`}
+            onClick={toggleAccountDropdown}
+          >
+            <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-bold">
+                {currentAccount?.name?.charAt(0) || "A"}
+              </span>
             </div>
-
-            <button
-              onClick={() => setShowQuickAnalysis(true)}
-              className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 font-medium transform hover:scale-[1.03] active:scale-95 ${
-                isDark
-                  ? "bg-gradient-to-r from-indigo-700 to-purple-800 hover:from-indigo-800 hover:to-purple-900 text-white"
-                  : "bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
-              }`}
-            >
-              <Zap size={18} />
-              Quick Analysis
-            </button>
-          </div>
-
-          {/* Account Details Card */}
-          <Card className={`p-6 rounded-2xl shadow-xl border ${isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"}`}>
-            <h3 className={`text-lg font-semibold mb-5 flex items-center gap-2 ${isDark ? "text-gray-100" : "text-gray-900"}`}>
-              <DollarSign className="h-5 w-5 text-indigo-400" />
-              Account Overview
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div>
-                <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>Total PnL (All Time)</div>
-                <div className={`text-2xl font-bold mt-1 ${allTimePnL >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                  {allTimePnL >= 0 ? "+" : ""}${Math.abs(allTimePnL)}
-                </div>
-              </div>
-
-              <div>
-                <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>Initial Balance</div>
-                <div className="text-2xl font-bold text-indigo-300 mt-1">
-                  ${initialBalance.toLocaleString()}
-                </div>
-              </div>
-
-              <div>
-                <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>Account Growth</div>
-                <div className={`text-2xl font-bold mt-1 ${accountGrowth >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                  {accountGrowth}%
-                </div>
-              </div>
-
-              <div>
-                <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>Created</div>
-                <div className="text-xl font-medium text-gray-300 mt-1">
-                  {format(new Date(accountCreatedAt), "dd MMM yyyy")}
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-6 mb-10">
-          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
-            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
-                  Monthly P&L
-                </div>
-                <TrendingUp className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
-              </div>
-              <div className={`text-3xl font-extrabold ${monthlyStats.totalPnL >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                {monthlyStats.totalPnL >= 0 ? "+" : "-"}${Math.abs(monthlyStats.totalPnL)}
-              </div>
-            </div>
-          </Card>
-
-          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
-            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
-                  Win Rate
-                </div>
-                <Percent className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
-              </div>
-              <div className="text-3xl font-extrabold text-indigo-300">
-                <AnimatedNumber value={Number(monthlyStats.winRate)} decimals={1} />%
-              </div>
-            </div>
-          </Card>
-
-          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
-            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
-                  Profit Factor
-                </div>
-                <Activity className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
-              </div>
-              <div className="text-3xl font-extrabold text-cyan-300">
-                {monthlyStats.profitFactor}
-              </div>
-            </div>
-          </Card>
-
-          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
-            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
-                  Consistency Score
-                </div>
-                <Zap className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
-              </div>
-              <div className="text-3xl font-extrabold text-violet-300">
-                {consistencyScore}/100
-              </div>
-            </div>
-          </Card>
-
-          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
-            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
-                  Total Trades
-                </div>
-                <BarChart3 className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
-              </div>
-              <div className="text-3xl font-extrabold text-violet-300">
-                <AnimatedNumber value={monthlyStats.totalTrades} decimals={0} />
-              </div>
-            </div>
-          </Card>
-
-          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
-            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
-                  Expectancy
-                </div>
-                <DollarSign className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
-              </div>
-              <div className="text-3xl font-extrabold text-teal-300">
-                ${monthlyStats.expectancy}
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Recent Trades + Highlights */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-          <Card className={`lg:col-span-2 backdrop-blur-md rounded-2xl shadow-lg p-5 lg:p-6 hover:shadow-2xl transition-all duration-300 ${
-            isDark ? "bg-gray-900/70 border-indigo-500/20" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className={`text-lg font-semibold flex items-center gap-2 ${isDark ? "text-gray-100" : "text-gray-900"}`}>
-                <Activity className="h-5 w-5 text-indigo-400" />
-                Recent Trades
-              </h3>
-              <button
-                onClick={() => navigate("/trades")}
-                className={`text-sm flex items-center gap-1 transition-colors ${
-                  isDark ? "text-indigo-400 hover:text-indigo-300" : "text-indigo-600 hover:text-indigo-700"
-                }`}
-              >
-                View All →
-              </button>
-            </div>
-
-            {recentTrades.length === 0 ? (
-              <div className={`text-center py-12 rounded-xl ${isDark ? "text-gray-400 bg-gray-800/30" : "text-gray-600 bg-gray-100/50"}`}>
-                No recent trades yet
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentTrades.map((trade, i) => (
-                  <div
-                    key={i}
-                    onClick={() => navigate(`/trades?date=${format(new Date(trade.date), "yyyy-MM-dd")}`)}
-                    className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
-                      isDark
-                        ? "bg-gray-800/40 border-gray-700 hover:bg-gray-700/60"
-                        : "bg-gray-50 border-gray-200 hover:bg-gray-100"
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold shadow-sm ${
-                          trade.pnl >= 0
-                            ? "bg-emerald-900/40 text-emerald-300"
-                            : "bg-rose-900/40 text-rose-300"
-                        }`}
-                      >
-                        {trade.pair?.slice(0, 2) || "T"}
-                      </div>
-                      <div>
-                        <div className={`font-semibold ${isDark ? "text-gray-100" : "text-gray-900"}`}>
-                          {trade.pair} {trade.direction}
-                        </div>
-                        <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                          {format(new Date(trade.date), "dd MMM yyyy • HH:mm")}
-                        </div>
-                      </div>
-                    </div>
-                    <div
-                      className={`font-bold text-lg ${
-                        trade.pnl >= 0 ? "text-emerald-400" : "text-rose-400"
-                      }`}
-                    >
-                      {trade.pnl >= 0 ? "+" : ""}${Math.abs(Number(trade.pnl || 0)).toFixed(2)}
-                    </div>
+            {open && (
+              <>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium text-gray-200">
+                    {currentAccount?.name || "Account"}
                   </div>
-                ))}
-              </div>
+                </div>
+                <div className="flex items-center">
+                  {isAccountDropdownOpen ? (
+                    <ChevronUp size={14} className="text-gray-400" />
+                  ) : (
+                    <ChevronDown size={14} className="text-gray-400" />
+                  )}
+                </div>
+              </>
             )}
-          </Card>
-
-          {/* Monthly Highlights */}
-          <Card className={`backdrop-blur-md rounded-2xl shadow-lg p-5 lg:p-6 ${isDark ? "bg-gray-900/70 border-indigo-500/20" : "bg-white/90 border-gray-200"}`}>
-            <h3 className={`text-lg font-semibold mb-5 flex items-center gap-2 ${isDark ? "text-gray-100" : "text-gray-900"}`}>
-              <BarChart3 className="h-5 w-5 text-indigo-400" />
-              Monthly Highlights
-            </h3>
-
-            <div className="space-y-5">
-              <div className="flex justify-between items-center">
-                <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Best Day</span>
-                <div className="text-right">
-                  <div className="font-bold text-emerald-400">
-                    +${monthlyStats.bestDayPnL}
-                  </div>
-                  <div className={`text-xs ${isDark ? "text-gray-500" : "text-gray-500"}`}>
-                    {monthlyStats.bestDayDate}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Worst Day</span>
-                <div className="text-right">
-                  <div className="font-bold text-rose-400">
-                    ${monthlyStats.worstDayPnL}
-                  </div>
-                  <div className={`text-xs ${isDark ? "text-gray-500" : "text-gray-500"}`}>
-                    {monthlyStats.worstDayDate}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Avg R:R</span>
-                <span className="font-bold text-purple-300">
-                  {monthlyStats.avgRR}
-                </span>
-              </div>
-
-              <div className="pt-4 border-t border-gray-800">
-                <div className="flex justify-between items-center mb-2">
-                  <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Win Rate</span>
-                  <span className="text-xl font-bold text-indigo-300">
-                    <AnimatedNumber value={Number(monthlyStats.winRate)} decimals={1} />%
-                  </span>
-                </div>
-                <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-1000 ease-out"
-                    style={{ width: `${monthlyStats.winRate}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Calendar */}
-        <Card className={`backdrop-blur-md rounded-2xl shadow-lg p-5 lg:p-6 ${isDark ? "bg-gray-900/70 border-indigo-500/20" : "bg-white/90 border-gray-200"}`}>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={prevMonth}
-                className={`p-3 rounded-xl transition-all shadow-sm hover:shadow-md ${
-                  isDark ? "bg-gray-800 text-gray-300 hover:bg-gray-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                ◀
-              </button>
-              <button
-                onClick={() => {
-                  const res = prompt("Enter month (YYYY-MM)");
-                  if (res && /^\d{4}-\d{2}$/.test(res)) {
-                    const [y, m] = res.split("-").map(Number);
-                    jumpTo(y, m);
-                  }
-                }}
-                className={`px-5 py-3 rounded-xl border transition-all shadow-sm hover:shadow-md ${
-                  isDark ? "bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700" : "bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {format(viewDate, "MMMM yyyy")}
-              </button>
-              <button
-                onClick={nextMonth}
-                className={`p-3 rounded-xl transition-all shadow-sm hover:shadow-md ${
-                  isDark ? "bg-gray-800 text-gray-300 hover:bg-gray-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                ▶
-              </button>
-            </div>
-            <span className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-              Tap a day to view trades
-            </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <div className="grid grid-cols-8 min-w-[640px] gap-1.5 sm:gap-2">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Wk"].map((d) => (
-                <div
-                  key={d}
-                  className={`text-xs font-medium text-center py-3 ${isDark ? "text-gray-400" : "text-gray-600"}`}
+          {/* ACCOUNT DROPDOWN */}
+          {open && isAccountDropdownOpen && (
+            <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+              {accounts.map((account) => (
+                <button
+                  key={account.id}
+                  onClick={() => {
+                    onSwitchAccount(account.id);
+                    setIsAccountDropdownOpen(false);
+                  }}
+                  className={`w-full text-left p-2 rounded text-xs font-normal ${
+                    currentAccount?.id === account.id
+                      ? "bg-gray-700 text-white border-l-2 border-gray-300"
+                      : "text-gray-400 hover:bg-gray-700 hover:text-white"
+                  }`}
                 >
-                  {d}
-                </div>
+                  {account.name}
+                </button>
               ))}
 
-              {calendarWeeks.map((week, wi) => {
-                const wSum = weekSummary(week);
-                return (
-                  <React.Fragment key={wi}>
-                    {week.map((dayObj, di) => {
-                      const ds = daySummary(dayObj);
-                      const isCur = isSameMonth(dayObj, viewDate);
-                      const pnl = ds?.pnl || 0;
-                      const intensity = Math.min(Math.abs(pnl) / 1500, 0.6);
-
-                      return (
-                        <div
-                          key={di}
-                          onClick={() => openDay(dayObj)}
-                          className={`
-                            cursor-pointer aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-between border transition-all duration-300
-                            ${isCur
-                              ? isDark
-                                ? "bg-gray-900/70 border-indigo-500/30"
-                                : "bg-white/80 border-gray-200"
-                              : isDark
-                              ? "bg-transparent border-dashed border-gray-700/40"
-                              : "bg-transparent border-dashed border-gray-300"}
-                            hover:shadow-xl hover:scale-[1.03] hover:border-indigo-400
-                          `}
-                          style={{
-                            backgroundColor: pnl > 0
-                              ? `rgba(34, 197, 94, ${intensity})`
-                              : pnl < 0
-                              ? `rgba(239, 68, 68, ${intensity})`
-                              : undefined,
-                          }}
-                        >
-                          <div className={`text-xs text-center ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                            {format(dayObj, "d")}
-                          </div>
-                          <div className="flex-1 flex flex-col items-center justify-center text-center">
-                            {ds ? (
-                              <>
-                                <div
-                                  className={`font-bold text-xs sm:text-sm ${
-                                    pnl >= 0
-                                      ? "text-emerald-400"
-                                      : "text-rose-400"
-                                  }`}
-                                >
-                                  {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toFixed(2)}
-                                </div>
-                                <div className={`text-[10px] ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                                  {ds.count}t • {ds.winRate}%
-                                </div>
-                              </>
-                            ) : (
-                              <div className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>—</div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {/* Weekly Summary */}
-                    <div className={`aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-center items-center border ${
-                      isDark ? "bg-gray-800/50 border-gray-700" : "bg-gray-100/50 border-gray-200"
-                    }`}>
-                      <div className={`text-xs mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                        W{wi + 1}
-                      </div>
-                      <div
-                        className={`text-sm font-bold ${
-                          wSum.pnl >= 0
-                            ? "text-emerald-400"
-                            : "text-rose-400"
-                        }`}
-                      >
-                        {wSum.pnl >= 0 ? "+" : ""}${Math.abs(wSum.pnl).toFixed(2)}
-                      </div>
-                      <div className={`text-[10px] ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                        {wSum.count}t • {wSum.winRate}%
-                      </div>
-                    </div>
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          </div>
-        </Card>
-
-        {/* Floating Quick Add Button */}
-        <button
-          onClick={() => navigate("/trades/new")}
-          className={`fixed bottom-6 right-6 z-[1000] w-14 h-14 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center transform hover:scale-110 active:scale-95 ${
-            isDark
-              ? "bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white hover:shadow-purple-500/40"
-              : "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white hover:shadow-indigo-500/40"
-          }`}
-          aria-label="Add New Trade"
-        >
-          <span className="text-3xl font-bold leading-none">+</span>
-        </button>
-
-        {/* Quick Analysis Modal */}
-        {showQuickAnalysis && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[2000] p-4 backdrop-blur-md">
-            <div className={`border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
-              isDark ? "bg-gray-900/95 border-indigo-500/30" : "bg-white/95 border-gray-200"
-            }`}>
-              <div className="p-6 sm:p-8">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                    Quick Analysis
-                  </h2>
-                  <button
-                    onClick={() => setShowQuickAnalysis(false)}
-                    className={`p-2 rounded-full transition-colors ${
-                      isDark ? "text-gray-400 hover:text-white hover:bg-gray-800" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                    }`}
-                  >
-                    <X size={28} />
-                  </button>
-                </div>
-
-                {quickAnalysisContent()}
-
-                <div className="mt-8 pt-6 border-t flex justify-end">
-                  <button
-                    onClick={() => setShowQuickAnalysis(false)}
-                    className={`px-6 py-3 rounded-xl transition-all ${
-                      isDark ? "bg-gray-800 hover:bg-gray-700 border-gray-700" : "bg-gray-100 hover:bg-gray-50 border-gray-200"
-                    }`}
-                  >
-                    Close
-                  </button>
-                </div>
+              <div className="pt-2 border-t border-gray-600 space-y-1">
+                <button
+                  onClick={() => {
+                    onCreateAccount();
+                    setIsAccountDropdownOpen(false);
+                  }}
+                  className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
+                >
+                  + New Account
+                </button>
+                <button
+                  onClick={() => {
+                    onShowManage();
+                    setIsAccountDropdownOpen(false);
+                  }}
+                  className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
+                >
+                  Manage Accounts
+                </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* NAVIGATION ITEMS */}
+        <nav className="flex-1 flex flex-col gap-1 p-3 overflow-y-auto">
+          {navItems.map((item, index) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `flex items-center gap-3 p-2 rounded-lg text-sm transition-all duration-300 ${
+                  isActive
+                    ? "bg-gray-700 text-white shadow-inner"
+                    : "text-gray-400 hover:bg-gray-700 hover:text-white"
+                } ${
+                  open ? "justify-start pl-3" : "justify-center items-center"
+                }`.trim()
+              }
+              style={{
+                marginBottom: index < navItems.length - 1 ? "2px" : "0",
+                minHeight: "48px",
+              }}
+            >
+              <item.icon
+                size={open ? 20 : 24}
+                className={`flex-shrink-0 ${open ? "mr-3" : "mx-auto"}`}
+              />
+              {open && (
+                <span className="whitespace-nowrap overflow-hidden text-ellipsis font-medium">
+                  {item.label}
+                </span>
+              )}
+            </NavLink>
+          ))}
+        </nav>
       </div>
-    </>
+    </div>
   );
 }
