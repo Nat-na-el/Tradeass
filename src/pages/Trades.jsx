@@ -14,6 +14,10 @@ import {
   X,
   Calendar,
   FileText,
+  Edit,
+  Plus,
+  Check,
+  AlertCircle,
 } from "lucide-react";
 import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
 
@@ -28,10 +32,24 @@ export default function Trades() {
 
   const selectedDate = searchParams.get("date");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("date-desc"); // date-desc, date-asc, pnl-desc, pnl-asc, pair
+  const [sortBy, setSortBy] = useState("date-desc");
   const [selectedTrade, setSelectedTrade] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingTrade, setEditingTrade] = useState(null);
+  const [editForm, setEditForm] = useState({
+    pair: "",
+    direction: "",
+    entry: "",
+    exit: "",
+    stopLoss: "",
+    takeProfit: "",
+    rr: "",
+    pnl: "",
+    notes: "",
+  });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tradeToDelete, setTradeToDelete] = useState(null);
+  const [message, setMessage] = useState({ text: "", type: "success" }); // feedback
 
   // Fetch trades
   const refreshTrades = async () => {
@@ -41,7 +59,7 @@ export default function Trades() {
       const res = await fetch(
         `https://tradeass-backend.onrender.com/api/trades?accountId=${currentId}`
       );
-      if (!res.ok) throw new Error("Failed to fetch");
+      if (!res.ok) throw new Error("Failed to fetch trades");
       const data = await res.json();
       setTrades(data || []);
     } catch (err) {
@@ -60,12 +78,10 @@ export default function Trades() {
   const filteredTrades = useMemo(() => {
     let result = trades;
 
-    // Date filter
     if (selectedDate) {
       result = result.filter((t) => t.date?.startsWith(selectedDate));
     }
 
-    // Search filter (pair or notes)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -76,7 +92,6 @@ export default function Trades() {
       );
     }
 
-    // Sorting
     result = [...result].sort((a, b) => {
       if (sortBy === "date-desc") return new Date(b.date) - new Date(a.date);
       if (sortBy === "date-asc") return new Date(a.date) - new Date(b.date);
@@ -89,12 +104,9 @@ export default function Trades() {
     return result;
   }, [trades, selectedDate, searchQuery, sortBy]);
 
-  // Quick stats
+  // Stats
   const stats = useMemo(() => {
-    if (!filteredTrades.length) {
-      return { totalPnL: 0, winRate: 0, totalTrades: 0, avgRR: 0 };
-    }
-
+    if (!filteredTrades.length) return { totalPnL: 0, winRate: 0, totalTrades: 0, avgRR: 0 };
     const total = filteredTrades.length;
     const wins = filteredTrades.filter((t) => Number(t.pnl || 0) > 0).length;
     const totalPnL = filteredTrades.reduce((sum, t) => sum + Number(t.pnl || 0), 0);
@@ -107,6 +119,56 @@ export default function Trades() {
       avgRR: total ? (totalRR / total).toFixed(2) : 0,
     };
   }, [filteredTrades]);
+
+  // Open edit modal
+  const openEdit = (trade) => {
+    setEditingTrade(trade);
+    setEditForm({
+      pair: trade.pair || "",
+      direction: trade.direction || "Long",
+      entry: trade.entry || "",
+      exit: trade.exit || "",
+      stopLoss: trade.stopLoss || "",
+      takeProfit: trade.takeProfit || "",
+      rr: trade.rr || "",
+      pnl: trade.pnl || "",
+      notes: trade.notes || "",
+    });
+    setEditModalOpen(true);
+  };
+
+  // Save edited trade
+  const saveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingTrade) return;
+
+    try {
+      const currentId = localStorage.getItem("currentAccountId") || "default";
+      const res = await fetch(
+        `https://tradeass-backend.onrender.com/api/trades/${editingTrade.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...editForm,
+            accountId: currentId,
+            date: editingTrade.date, // keep original date
+          }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to update trade");
+
+      setMessage({ text: "Trade updated successfully!", type: "success" });
+      setTimeout(() => setMessage({ text: "", type: "success" }), 4000);
+
+      setEditModalOpen(false);
+      setEditingTrade(null);
+      await refreshTrades();
+    } catch (err) {
+      setMessage({ text: "Error updating trade: " + err.message, type: "error" });
+    }
+  };
 
   const deleteTrade = async (id) => {
     try {
@@ -157,20 +219,9 @@ export default function Trades() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `trades-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.download = `trades-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[70vh]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
-          <p className="text-lg opacity-70">Loading trades...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -186,7 +237,7 @@ export default function Trades() {
             Trade History
           </h1>
           <p className="text-sm sm:text-base mt-1 opacity-80">
-            View, filter, and analyze all your executed trades
+            View, analyze, and edit your executed trades
           </p>
         </div>
 
@@ -245,7 +296,6 @@ export default function Trades() {
 
       {/* Filters */}
       <div className="flex flex-col lg:flex-row gap-4 mb-8">
-        {/* Date Picker */}
         <div className="flex-1 max-w-xs">
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
             <Calendar size={16} /> Filter by Date
@@ -263,14 +313,10 @@ export default function Trades() {
                   : "bg-white/80 border-gray-300 text-gray-900"
               } focus:ring-2 focus:ring-indigo-500 outline-none`}
             />
-            <Calendar
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              size={18}
-            />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           </div>
         </div>
 
-        {/* Search */}
         <div className="flex-1">
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
             <Search size={16} /> Search Pair / Notes
@@ -278,7 +324,7 @@ export default function Trades() {
           <div className="relative">
             <input
               type="text"
-              placeholder="EURUSD, psychology, revenge..."
+              placeholder="EURUSD, revenge trade, FOMO..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`w-full p-3 pl-10 rounded-xl border ${
@@ -287,10 +333,7 @@ export default function Trades() {
                   : "bg-white/80 border-gray-300 text-gray-900"
               } focus:ring-2 focus:ring-indigo-500 outline-none`}
             />
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              size={18}
-            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
@@ -302,7 +345,6 @@ export default function Trades() {
           </div>
         </div>
 
-        {/* Sort */}
         <div className="w-full lg:w-48">
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
             <SortAsc size={16} /> Sort By
@@ -325,15 +367,35 @@ export default function Trades() {
         </div>
       </div>
 
-      {/* Trade List */}
+      {/* Feedback message */}
+      {message.text && (
+        <div
+          className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
+            message.type === "success"
+              ? "bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/50"
+              : "bg-rose-100/80 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800/50"
+          }`}
+        >
+          {message.type === "success" ? <Check size={20} /> : <AlertCircle size={20} />}
+          {message.text}
+        </div>
+      )}
+
+      {/* Trades List */}
       {filteredTrades.length === 0 ? (
         <Card className="p-10 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
           <p className="text-xl font-medium opacity-70 mb-2">No trades found</p>
-          <p className="opacity-60">
+          <p className="opacity-60 mb-6">
             {searchQuery || selectedDate
               ? "Try adjusting your filters"
               : "Add your first trade to get started"}
           </p>
+          <Button
+            onClick={() => navigate("/trades/new")}
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
+            <Plus size={18} className="mr-2" /> Add Trade
+          </Button>
         </Card>
       ) : (
         <div className="space-y-4">
@@ -368,14 +430,12 @@ export default function Trades() {
                     </div>
                   </div>
 
-                  <div className="text-sm opacity-80 mt-1">
-                    {trade.notes && (
-                      <span className="line-clamp-2">
-                        <FileText size={14} className="inline mr-1" />
-                        {trade.notes}
-                      </span>
-                    )}
-                  </div>
+                  {trade.notes && (
+                    <div className="text-sm opacity-80 line-clamp-2 mt-1">
+                      <FileText size={14} className="inline mr-1" />
+                      {trade.notes}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-6 sm:gap-10">
@@ -390,15 +450,13 @@ export default function Trades() {
                       {Number(trade.pnl || 0) >= 0 ? "+" : ""}$
                       {Math.abs(Number(trade.pnl || 0)).toFixed(2)}
                     </div>
-                    {trade.rr && (
-                      <div className="text-xs opacity-70">R:R {trade.rr}</div>
-                    )}
+                    {trade.rr && <div className="text-xs opacity-70">R:R {trade.rr}</div>}
                   </div>
 
                   <div className="flex gap-2">
                     <Button
-                      variant="outline"
                       size="icon"
+                      variant="outline"
                       onClick={() => setSelectedTrade(trade)}
                       className="h-10 w-10 rounded-lg"
                     >
@@ -406,8 +464,17 @@ export default function Trades() {
                     </Button>
 
                     <Button
-                      variant="destructive"
                       size="icon"
+                      variant="outline"
+                      onClick={() => openEdit(trade)}
+                      className="h-10 w-10 rounded-lg"
+                    >
+                      <Edit size={18} />
+                    </Button>
+
+                    <Button
+                      size="icon"
+                      variant="destructive"
                       onClick={() => {
                         setTradeToDelete(trade.id);
                         setDeleteModalOpen(true);
@@ -424,7 +491,7 @@ export default function Trades() {
         </div>
       )}
 
-      {/* Trade Details Modal */}
+      {/* View Details Modal */}
       {selectedTrade && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4">
           <div
@@ -523,12 +590,173 @@ export default function Trades() {
             </div>
 
             <div className="p-5 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-4">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedTrade(null)}
-              >
+              <Button variant="outline" onClick={() => openEdit(selectedTrade)}>
+                <Edit size={16} className="mr-2" /> Edit Trade
+              </Button>
+              <Button variant="outline" onClick={() => setSelectedTrade(null)}>
                 Close
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editModalOpen && editingTrade && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4">
+          <div
+            className={`w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border backdrop-blur-md
+              ${isDark ? "bg-gray-900/95 border-gray-700/60" : "bg-white/95 border-gray-200/60"}`}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+                  Edit Trade
+                </h2>
+                <Button variant="ghost" size="icon" onClick={() => setEditModalOpen(false)}>
+                  <X size={24} />
+                </Button>
+              </div>
+
+              <form onSubmit={saveEdit} className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Pair</label>
+                    <input
+                      value={editForm.pair}
+                      onChange={(e) => setEditForm({ ...editForm, pair: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Direction</label>
+                    <select
+                      value={editForm.direction}
+                      onChange={(e) => setEditForm({ ...editForm, direction: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    >
+                      <option value="Long">Long</option>
+                      <option value="Short">Short</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Entry</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={editForm.entry}
+                      onChange={(e) => setEditForm({ ...editForm, entry: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Exit</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={editForm.exit}
+                      onChange={(e) => setEditForm({ ...editForm, exit: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">PnL</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editForm.pnl}
+                      onChange={(e) => setEditForm({ ...editForm, pnl: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Stop Loss</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={editForm.stopLoss}
+                      onChange={(e) => setEditForm({ ...editForm, stopLoss: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Take Profit</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={editForm.takeProfit}
+                      onChange={(e) => setEditForm({ ...editForm, takeProfit: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">R:R</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={editForm.rr}
+                      onChange={(e) => setEditForm({ ...editForm, rr: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Notes</label>
+                  <textarea
+                    value={editForm.notes}
+                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                    className={`w-full p-3 rounded-xl border min-h-[100px] ${
+                      isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                    } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    placeholder="What did you learn from this trade?"
+                  />
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    Save Changes
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setEditModalOpen(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
