@@ -1,705 +1,793 @@
-// src/pages/Landing.jsx
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useReducer,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import {
-  BarChart3,
-  BookOpen,
-  LineChart,
-  Zap,
-  ArrowRight,
-  TrendingUp,
-  Target,
-  ShieldCheck,
-  Calendar,
-  Brain,
-  Trophy,
-  Users,
-  Globe,
-  Lock,
-  Sparkles,
-  CheckCircle2,
-  Star,
-  DollarSign,
-  Clock,
-  Infinity,
-  ChevronRight,
-  ChartLine,
-  NotebookPen,
-  Lightbulb,
-  Mail,
-  MessageSquare,
-  Twitter,
-  Linkedin,
-  Github,
-} from 'lucide-react';
-export default function Landing() {
-  const navigate = useNavigate();
-  useEffect(() => {
-    // Initialize flipping counter logic (adapted from CodePen)
-    function Counter(selector, settings) {
-      this.settings = Object.assign({
-        digits: 5,
-        delay: 250,
-        direction: ''
-      }, settings || {});
-    
-      this.DOM = {};
-      this.build(selector);
-    
-      this.DOM.scope.addEventListener('transitionend', e => {
-        if (e.pseudoElement === "::before" && e.propertyName == 'margin-top') {
-          e.target.classList.remove('blur');
-        }
-      });
-    
-      this.count();
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+import { ThemeProvider } from "./Theme-provider";
+import Sidebar from "./components/ui/Sidebar";
+import Topbar from "./components/ui/Topbar";
+import Dashboard from "./pages/Dashboard";
+import DailyJournal from "./pages/DailyJournal";
+import Trades from "./pages/Trades";
+import Notebook from "./pages/Notebook";
+import Reports from "./pages/Reports";
+import Challenges from "./pages/Challenges";
+import MentorMode from "./pages/MentorMode";
+import SettingsPage from "./pages/SettingsPage";
+import BacktestJournal from "./pages/BacktestJournal";
+import AddTrade from "./components/ui/AddTrade";
+import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Landing from "./pages/Landing";
+
+// ────────────────────────────────────────────────
+// Types (JSDoc)
+// ────────────────────────────────────────────────
+
+/**
+ * @typedef {Object} Account
+ * @property {string} id
+ * @property {string} name
+ * @property {number} startingBalance
+ * @property {string} createdAt
+ */
+
+/**
+ * @typedef {Object} AccountData
+ * @property {Array<Object>} trades
+ * @property {Array<Object>} journals
+ * @property {Array<Object>} notes
+ * @property {Object} dashboard
+ */
+
+/**
+ * @typedef {Object} AppState
+ * @property {Array<Account>} accounts
+ * @property {string|null} currentAccountId
+ * @property {Object.<string, AccountData>} data
+ * @property {boolean} loading
+ * @property {string|null} error
+ */
+
+/**
+ * @typedef {Object} AccountTotals
+ * @property {number} totalTrades
+ * @property {number} totalJournals
+ * @property {number} totalNotes
+ * @property {number} totalPnL
+ * @property {number} currentBalance
+ */
+
+// ────────────────────────────────────────────────
+// Contexts
+// ────────────────────────────────────────────────
+
+const StateContext = createContext(null);
+const DispatchContext = createContext(null);
+
+// ────────────────────────────────────────────────
+// Reducer & Initial State
+// ────────────────────────────────────────────────
+
+const initialState = {
+  accounts: [],
+  currentAccountId: null,
+  data: {},
+  loading: true,
+  error: null,
+};
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "LOAD_DATA":
+      return {
+        ...state,
+        accounts: action.payload.accounts,
+        currentAccountId: action.payload.currentAccountId,
+        data: action.payload.data,
+        loading: false,
+      };
+    case "SET_ERROR":
+      return { ...state, error: action.payload, loading: false };
+    case "CREATE_ACCOUNT": {
+      const { account } = action.payload;
+      return {
+        ...state,
+        accounts: [account, ...state.accounts],
+        data: {
+          ...state.data,
+          [account.id]: { trades: [], journals: [], notes: [], dashboard: {} },
+        },
+        currentAccountId: account.id,
+      };
     }
-    Counter.prototype = {
-      build: function(selector) {
-        var scopeElm = typeof selector == 'string'
-              ? document.querySelector(selector)
-              : selector
-                ? selector
-                : this.DOM.scope;
-      
-        scopeElm.innerHTML = Array(this.settings.digits + 1)
-            .join('<div><b data-value="0"></b></div>');
-      
-        this.DOM = {
-          scope: scopeElm,
-          digits: scopeElm.querySelectorAll('b')
-        };
-      },
-    
-      count: function(newVal) {
-        var countTo, className,
-            settings = this.settings,
-            digitsElms = this.DOM.digits;
-        this.value = newVal || this.DOM.scope.dataset.value | 0;
-        if (!this.value) return;
-        countTo = (this.value + '').split('');
-        if (settings.direction == 'rtl') {
-          countTo = countTo.reverse();
-          digitsElms = [].slice.call(digitsElms).reverse();
-        }
-        digitsElms.forEach(function(item, i) {
-          if (+item.dataset.value != countTo[i] && countTo[i] >= 0) {
-            setTimeout(function(j) {
-              var diff = Math.abs(countTo[j] - +item.dataset.value);
-              item.dataset.value = countTo[j];
-              if (diff > 3) item.className = 'blur';
-            }, i * settings.delay, i);
-          }
-        });
-      }
+    case "UPDATE_ACCOUNT": {
+      const { id, updates } = action.payload;
+      return {
+        ...state,
+        accounts: state.accounts.map((a) => (a.id === id ? { ...a, ...updates } : a)),
+      };
+    }
+    case "DELETE_ACCOUNT": {
+      const id = action.payload;
+      const { [id]: deleted, ...remainingData } = state.data;
+      const filteredAccounts = state.accounts.filter((a) => a.id !== id);
+      const newCurrentId =
+        state.currentAccountId === id ? filteredAccounts[0]?.id ?? null : state.currentAccountId;
+      // Cleanup localStorage keys
+      localStorage.removeItem(`${id}_trades`);
+      localStorage.removeItem(`${id}_journals`);
+      localStorage.removeItem(`${id}_notes`);
+      localStorage.removeItem(`dashboard_${id}`);
+      return {
+        ...state,
+        accounts: filteredAccounts,
+        data: remainingData,
+        currentAccountId: newCurrentId,
+      };
+    }
+    case "RESET_ACCOUNT_DATA": {
+      const id = action.payload;
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          [id]: { trades: [], journals: [], notes: [], dashboard: {} },
+        },
+      };
+    }
+    case "SWITCH_ACCOUNT":
+      return { ...state, currentAccountId: action.payload };
+    case "UPDATE_ACCOUNT_DATA": {
+      const { id, key, value } = action.payload;
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          [id]: {
+            ...state.data[id],
+            [key]: value,
+          },
+        },
+      };
+    }
+    default:
+      return state;
+  }
+};
+
+// Action creators (unchanged)
+const createAccountAction = (account) => ({ type: "CREATE_ACCOUNT", payload: { account } });
+const updateAccountAction = (id, updates) => ({ type: "UPDATE_ACCOUNT", payload: { id, updates } });
+const deleteAccountAction = (id) => ({ type: "DELETE_ACCOUNT", payload: id });
+const resetAccountDataAction = (id) => ({ type: "RESET_ACCOUNT_DATA", payload: id });
+const switchAccountAction = (id) => ({ type: "SWITCH_ACCOUNT", payload: id });
+const updateAccountDataAction = (id, key, value) => ({ type: "UPDATE_ACCOUNT_DATA", payload: { id, key, value } });
+
+// ────────────────────────────────────────────────
+// useApp hook with null safety
+// ────────────────────────────────────────────────
+
+function useApp() {
+  const state = useContext(StateContext);
+  const dispatch = useContext(DispatchContext);
+
+  // Safety guard — prevents null crashes in development
+  if (!state || !dispatch) {
+    throw new Error("useApp must be used inside StateContext & DispatchContext Providers");
+  }
+
+  const currentAccount = useMemo(
+    () => state.accounts.find((a) => a.id === state.currentAccountId) || null,
+    [state.accounts, state.currentAccountId]
+  );
+
+  const currentAccountData = useMemo(
+    () => state.data[state.currentAccountId] || { trades: [], journals: [], notes: [], dashboard: {} },
+    [state.data, state.currentAccountId]
+  );
+
+  const currentTotals = useMemo(() => {
+    const { trades = [], journals = [], notes = [] } = currentAccountData;
+    const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+    return {
+      totalTrades: trades.length,
+      totalJournals: journals.length,
+      totalNotes: notes.length,
+      totalPnL,
+      currentBalance: (currentAccount?.startingBalance || 0) + totalPnL,
     };
-    // Create counters for background
-    new Counter('.stock-counter1', { digits: 6, direction: 'rtl', delay: 200 });
-    new Counter('.stock-counter2', { digits: 5, direction: 'rtl', delay: 150 });
-    new Counter('.stock-counter3', { digits: 7, direction: 'rtl', delay: 250 });
-    // Randomly update counters every few seconds
-    const randomCount = () => {
-      document.querySelector('.stock-counter1').dataset.value = Math.floor(Math.random() * 1000000) + 100000;
-      document.querySelector('.stock-counter2').dataset.value = Math.floor(Math.random() * 100000) + 10000;
-      document.querySelector('.stock-counter3').dataset.value = Math.floor(Math.random() * 10000000) + 1000000;
-    };
-    randomCount();
-    const interval = setInterval(randomCount, 4000);
-    return () => clearInterval(interval);
+  }, [currentAccountData, currentAccount?.startingBalance]);
+
+  const createAccount = useCallback((account) => dispatch(createAccountAction(account)), [dispatch]);
+  const updateAccount = useCallback((id, updates) => dispatch(updateAccountAction(id, updates)), [dispatch]);
+  const deleteAccount = useCallback((id) => dispatch(deleteAccountAction(id)), [dispatch]);
+  const resetAccountData = useCallback((id) => dispatch(resetAccountDataAction(id)), [dispatch]);
+  const switchAccount = useCallback((id) => dispatch(switchAccountAction(id)), [dispatch]);
+  const updateAccountData = useCallback(
+    (id, key, value) => dispatch(updateAccountDataAction(id, key, value)),
+    [dispatch]
+  );
+
+  return {
+    ...state,
+    currentAccount,
+    currentAccountData,
+    currentTotals,
+    accountDataForAll: state.data,
+    createAccount,
+    updateAccount,
+    deleteAccount,
+    resetAccountData,
+    switchAccount,
+    updateAccountData,
+  };
+}
+
+// ────────────────────────────────────────────────
+// Debounced persistence
+// ────────────────────────────────────────────────
+
+function useDebouncedPersist(delay = 600) {
+  const state = useContext(StateContext);
+  const stateRef = useRef(state);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const persist = useCallback(() => {
+    const current = stateRef.current;
+    if (current.loading || current.error) return;
+
+    try {
+      localStorage.setItem("accounts", JSON.stringify(current.accounts));
+      localStorage.setItem("currentAccountId", current.currentAccountId || "");
+      Object.entries(current.data).forEach(([id, { trades, journals, notes, dashboard }]) => {
+        localStorage.setItem(`${id}_trades`, JSON.stringify(trades));
+        localStorage.setItem(`${id}_journals`, JSON.stringify(journals));
+        localStorage.setItem(`${id}_notes`, JSON.stringify(notes));
+        localStorage.setItem(`dashboard_${id}`, JSON.stringify(dashboard));
+      });
+    } catch (err) {
+      console.error("Persistence error:", err);
+    }
   }, []);
+
+  useEffect(() => {
+    if (state.loading || state.error) return;
+
+    const timer = setTimeout(persist, delay);
+    return () => clearTimeout(timer);
+  }, [state, persist, delay]);
+}
+
+// ────────────────────────────────────────────────
+// Load initial state
+// ────────────────────────────────────────────────
+
+function loadInitialState() {
+  try {
+    const storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+    let currentId = localStorage.getItem("currentAccountId");
+
+    if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
+      currentId = storedAccounts[0]?.id || null;
+      if (currentId) localStorage.setItem("currentAccountId", currentId);
+    }
+
+    const data = {};
+    storedAccounts.forEach((acc) => {
+      data[acc.id] = {
+        trades: JSON.parse(localStorage.getItem(`${acc.id}_trades`) || "[]"),
+        journals: JSON.parse(localStorage.getItem(`${acc.id}_journals`) || "[]"),
+        notes: JSON.parse(localStorage.getItem(`${acc.id}_notes`) || "[]"),
+        dashboard: JSON.parse(localStorage.getItem(`dashboard_${acc.id}`) || "{}"),
+      };
+    });
+
+    return { accounts: storedAccounts, currentAccountId: currentId, data };
+  } catch (err) {
+    console.error("Load error:", err);
+    throw err;
+  }
+}
+
+// ────────────────────────────────────────────────
+// FloatingWidgets
+// ────────────────────────────────────────────────
+
+function FloatingWidgets() {
+  const { currentAccount, currentTotals } = useApp();
+  const location = useLocation();
+
+  const publicPaths = ["/", "/login", "/register"];
+  if (publicPaths.includes(location.pathname) || !currentAccount) {
+    return null;
+  }
+
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-800">
-      {/* Animated Trading-Themed Background – creative & visible */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        {/* Base dark gradient for depth */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-950/90 via-teal-950 to-gray-950" />
-        {/* Moving chart grid – like stock exchange board */}
-        <div className="absolute inset-0 opacity-12 dark:opacity-15">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(6,182,212,0.1)_1px,transparent_1px),linear_gradient(to_bottom,rgba(6,182,212,0.1)_1px,transparent_1px)] bg-[size:50px_50px] animate-grid-move" />
-        </div>
-        {/* Rising/falling candlestick bars – more prominent */}
-        <div className="absolute inset-0 flex justify-around items-end opacity-25 md:opacity-20 pointer-events-none">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="w-4 sm:w-6 md:w-8 lg:w-12 bg-gradient-to-t from-transparent via-emerald-500/80 to-emerald-400/40 rounded-t-md animate-candle-rise"
-              style={{
-                height: `${40 + Math.sin(i * 0.6) * 50 + 50}%`,
-                animationDelay: `${i * 0.6}s`,
-                animationDuration: `${10 + i * 1.4}s`,
-              }}
-            />
-          ))}
-          {[...Array(18)].map((_, i) => (
-            <div
-              key={`red-${i}`}
-              className="w-4 sm:w-6 md:w-8 lg:w-12 bg-gradient-to-b from-transparent via-red-500/70 to-red-400/30 rounded-b-md animate-candle-fall"
-              style={{
-                height: `${35 + Math.cos(i * 0.8) * 45 + 40}%`,
-                animationDelay: `${i * 0.8 + 4}s`,
-                animationDuration: `${12 + i * 1.8}s`,
-              }}
-            />
-          ))}
-        </div>
-        {/* Floating orbs with glow – representing market bubbles */}
-        <div className="absolute inset-0">
-          <div className="absolute w-[800px] sm:w-[1200px] md:w-[1600px] h-[800px] sm:h-[1200px] md:h-[1600px] bg-gradient-to-br from-blue-700/30 via-blue-600/20 to-transparent rounded-full blur-4xl animate-float-slow left-[-30%] sm:left-[-20%] top-[-20%] animate-pulse-glow" />
-          <div className="absolute w-[1000px] sm:w-[1500px] md:w-[2000px] h-[1000px] sm:h-[1500px] md:h-[2000px] bg-gradient-to-br from-cyan-700/25 via-teal-600/15 to-transparent rounded-full blur-4xl animate-float-medium right-[-35%] sm:right-[-25%] bottom-[-25%] animate-pulse-glow" style={{ animationDelay: '6s' }} />
-          <div className="absolute w-[700px] sm:w-[1000px] md:w-[1400px] h-[700px] sm:h-[1000px] md:h-[1400px] bg-gradient-to-br from-emerald-600/22 via-cyan-500/12 to-transparent rounded-full blur-4xl animate-float-fast left-[5%] sm:left-[15%] bottom-[0%] animate-pulse-glow" style={{ animationDelay: '10s' }} />
-        </div>
-        {/* Diagonal trend lines – simulating market trends */}
-        <div className="absolute inset-0 opacity-12 dark:opacity-15">
-          <div className="absolute inset-0 bg-[linear_gradient(135deg,transparent_35%,rgba(34,197,94,0.15)_45%,transparent_55%)] animate-trend-move" />
-          <div className="absolute inset-0 bg-[linear_gradient(-135deg,transparent_35%,rgba(239,68,68,0.12)_45%,transparent_55%)] animate-trend-move-reverse" style={{ animationDelay: '8s' }} />
-        </div>
-        {/* Flipping stock price counters – scattered in background (adapted from CodePen) */}
-        <div className="absolute top-20 left-10 opacity-50">
-          <div className="numCounter stock-counter1" data-value="123456"></div>
-        </div>
-        <div className="absolute top-40 right-20 opacity-50">
-          <div className="numCounter stock-counter2" data-value="78901"></div>
-        </div>
-        <div className="absolute bottom-32 left-1/3 opacity-50">
-          <div className="numCounter stock-counter3" data-value="2345678"></div>
-        </div>
-        {/* Floating currency symbols for creative touch */}
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute text-4xl md:text-6xl font-bold text-green-400/30 animate-float-slow animate-pulse-glow"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${i * 2}s`,
-                animationDuration: `${15 + i * 3}s`,
-              }}
-            >
-              $
-            </div>
-          ))}
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={`euro-${i}`}
-              className="absolute text-4xl md:text-6xl font-bold text-blue-400/30 animate-float-medium animate-pulse-glow"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${i * 2.5 + 3}s`,
-                animationDuration: `${18 + i * 4}s`,
-              }}
-            >
-              €
-            </div>
-          ))}
-        </div>
-      </div>
-      {/* Fixed Header - Logo + Auth */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-              T
-            </div>
-            <span className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Tradeass
-            </span>
-          </div>
-          {/* Auth Buttons */}
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/login')}
-              className="hidden sm:inline-flex text-blue-700 dark:text-cyan-300 hover:bg-blue-100/50 dark:hover:bg-cyan-900/30"
-            >
-              Sign In
-            </Button>
-            <Button
-              onClick={() => navigate('/register')}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md transition-all"
-            >
-              Get Started Free
-            </Button>
-          </div>
-        </div>
-      </header>
-      {/* Hero - Full bleed, centered */}
-      <section className="pt-40 pb-32 px-6 md:px-12 lg:px-20 text-center relative overflow-hidden">
-        {/* Background gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-100/30 via-transparent to-cyan-100/20 dark:from-blue-950/30 dark:to-cyan-950/20 pointer-events-none" />
-        <div className="max-w-6xl mx-auto relative z-10 space-y-10 md:space-y-12">
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-none animate-fade-in">
-            Your Personal Trading Edge
-          </h1>
-          <p className="text-xl sm:text-2xl md:text-3xl text-gray-700 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed">
-            The most powerful, private, offline-first trading journal. Track every trade, reflect deeply, analyze with precision, and turn data into consistent profits built for serious traders.
-          </p>
-          <div className="pt-6 md:pt-10 flex flex-col sm:flex-row gap-5 justify-center">
-            <Button
-              size="xl"
-              onClick={() => navigate('/register')}
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-lg md:text-xl px-10 md:px-14 py-6 md:py-8 rounded-2xl shadow-2xl group transition-all duration-300"
-            >
-              Start Free No Card Needed
-              <ArrowRight className="ml-3 h-6 w-6 transition-transform group-hover:translate-x-2" />
-            </Button>
-            <Button
-              size="xl"
-              variant="outline"
-              onClick={() => navigate('/login')}
-              className="text-lg md:text-xl px-10 md:px-14 py-6 md:py-8 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-cyan-950/30 rounded-2xl"
-            >
-              Sign In to Your Journal
-            </Button>
-          </div>
-          {/* Trust signals */}
-          <div className="pt-12 flex flex-wrap justify-center gap-6 md:gap-12 text-sm md:text-base text-gray-600 dark:text-gray-400">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 md:h-6 md:w-6 text-green-500" />
-              <span>100% Private • No Servers</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Infinity className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
-              <span>Unlimited Trades & Journals</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 md:h-6 md:w-6 text-cyan-500" />
-              <span>Instant Setup • Offline Ready</span>
-            </div>
-          </div>
-        </div>
-      </section>
-      {/* Stats Bar */}
-      <section className="py-16 px-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-y border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          <div>
-            <p className="text-5xl md:text-6xl font-bold text-blue-600 dark:text-cyan-400">1.4B+</p>
-            <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 mt-2">Trades Tracked</p>
-          </div>
-          <div>
-            <p className="text-5xl md:text-6xl font-bold text-blue-600 dark:text-cyan-400">120K+</p>
-            <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 mt-2">Active Traders</p>
-          </div>
-          <div>
-            <p className="text-5xl md:text-6xl font-bold text-blue-600 dark:text-cyan-400">4.9/5</p>
-            <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 mt-2">Average Rating</p>
-          </div>
-          <div>
-            <p className="text-5xl md:text-6xl font-bold text-blue-600 dark:text-cyan-400">99.9%</p>
-            <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 mt-2">Uptime & Privacy</p>
-          </div>
-        </div>
-      </section>
-      {/* Features Grid - Light Section */}
-      <section className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center space-y-6">
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
-              Built for Traders Who Want Results
-            </h2>
-            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto">
-              Tradeass gives you everything modern traders need from deep analytics to psychological reflection in one clean, private app.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
-            <div className="p-8 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mb-6">
-                <BarChart3 className="w-8 h-8 text-blue-600 dark:text-cyan-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Precision Trade Tracking
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Log trades in seconds: entry/exit, size, fees, tags, screenshots, broker sync or CSV import. Track multiple accounts, strategies, and instruments with zero hassle.
-              </p>
-            </div>
-            <div className="p-8 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <div className="w-14 h-14 rounded-2xl bg-cyan-100 dark:bg-cyan-900/50 flex items-center justify-center mb-6">
-                <LineChart className="w-8 h-8 text-cyan-600 dark:text-cyan-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                60+ Performance Reports
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Win rate by setup/time/day, expectancy, R-multiple distribution, PNL curves, drawdown analysis, heatmaps, streak detection exportable to CSV/PDF for deeper review.
-              </p>
-            </div>
-            <div className="p-8 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mb-6">
-                <BookOpen className="w-8 h-8 text-blue-600 dark:text-cyan-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Deep Daily Journals
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Structured daily reviews with mood, confidence, market context, and free notes. Attach screenshots, link trades, spot emotional patterns, and build long-term discipline.
-              </p>
-            </div>
-            <div className="p-8 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <div className="w-14 h-14 rounded-2xl bg-green-100 dark:bg-emerald-900/50 flex items-center justify-center mb-6">
-                <Brain className="w-8 h-8 text-green-600 dark:text-emerald-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                AI-Powered Insights
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Smart pattern detection: "Win rate drops 21% after lunch", "This setup has 2.4 R:R but only 38% win rate", personalized tips, risk warnings, and psychology suggestions.
-              </p>
-            </div>
-            <div className="p-8 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center mb-6">
-                <Target className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Risk & Money Management
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Built-in position sizing calculator, risk % tracker, max drawdown alerts, equity curve monitoring, and stop/target suggestions to protect capital and enforce discipline.
-              </p>
-            </div>
-            <div className="p-8 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <div className="w-14 h-14 rounded-2xl bg-teal-100 dark:bg-teal-900/50 flex items-center justify-center mb-6">
-                <Lock className="w-8 h-8 text-teal-600 dark:text-teal-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                100% Private • Offline-First
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                No servers, no tracking, no subscriptions. All data stored locally in your browser. Work offline, sync when online your trading stays yours forever.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-      {/* How It Works - Numbered Steps */}
-      <section className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
-        <div className="max-w-7xl mx-auto space-y-20">
-          <div className="text-center space-y-6">
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
-              From First Trade to Consistent Profits
-            </h2>
-            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto">
-              Tradeass makes it simple to build better habits and sharper decisions — step by step.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
-            <div className="space-y-6 text-center">
-              <div className="w-20 h-20 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-cyan-400 text-4xl font-bold shadow-lg">
-                1
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Sign Up & Setup
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Create account in seconds. Set starting balance, add brokers or import CSV. Create as many accounts as you trade.
-              </p>
-            </div>
-            <div className="space-y-6 text-center">
-              <div className="w-20 h-20 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-cyan-400 text-4xl font-bold shadow-lg">
-                2
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Log Trades & Reflect
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Record every detail. Write daily journals, attach screenshots, rate confidence, tag setups build complete context.
-              </p>
-            </div>
-            <div className="space-y-6 text-center">
-              <div className="w-20 h-20 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-cyan-400 text-4xl font-bold shadow-lg">
-                3
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Analyze Deeply
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Instant dashboards, 60+ reports, AI insights, pattern detection uncover what really drives your results.
-              </p>
-            </div>
-            <div className="space-y-6 text-center">
-              <div className="w-20 h-20 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-cyan-400 text-4xl font-bold shadow-lg">
-                4
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Improve & Scale
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Take challenges, run backtests, get mentor feedback, track progress turn data into rules and consistent profits.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-      {/* Testimonials */}
-      <section className="py-24 px-6 bg-gradient-to-b from-blue-900/95 to-black/95 text-white backdrop-blur-lg">
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center space-y-6">
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold">
-              Traders Trust Tradeass
-            </h2>
-            <p className="text-xl md:text-2xl text-gray-300 max-w-4xl mx-auto">
-              Real results from real traders using Tradeass every day.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-10">
-            <div className="p-8 rounded-3xl bg-blue-800/60 backdrop-blur-md border border-blue-700/50">
-              <div className="flex gap-1 mb-6">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-6 w-6 fill-yellow-400 text-yellow-400" />
-                ))}
-              </div>
-              <p className="text-lg italic mb-6">
-                "Switched from spreadsheets to Tradeass my win rate jumped 18% in 3 months. The AI insights are scary good."
-              </p>
-              <p className="font-semibold">Ryan P. • Futures Trader</p>
-            </div>
-            <div className="p-8 rounded-3xl bg-blue-800/60 backdrop-blur-md border border-blue-700/50">
-              <div className="flex gap-1 mb-6">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-6 w-6 fill-yellow-400 text-yellow-400" />
-                ))}
-              </div>
-              <p className="text-lg italic mb-6">
-                "Offline mode + privacy is unbeatable. Finally a journal I actually use every day."
-              </p>
-              <p className="font-semibold">Lisa M. • Forex Swing Trader</p>
-            </div>
-            <div className="p-8 rounded-3xl bg-blue-800/60 backdrop-blur-md border border-blue-700/50">
-              <div className="flex gap-1 mb-6">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-6 w-6 fill-yellow-400 text-yellow-400" />
-                ))}
-              </div>
-              <p className="text-lg italic mb-6">
-                "The reports and backtesting tools helped me cut my max drawdown in half. Worth every second."
-              </p>
-              <p className="font-semibold">David K. • Stock Day Trader</p>
-            </div>
-          </div>
-        </div>
-      </section>
-      {/* Pricing Teaser */}
-      <section className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center space-y-6">
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
-              Choose Your Plan
-            </h2>
-            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto">
-              Start free or upgrade for advanced features. Billed monthly or annually.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
-            <div className="p-8 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Free
-              </h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">$0</p>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">Forever</p>
-              <ul className="space-y-3 text-gray-700 dark:text-gray-300 mb-6">
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Basic trade tracking</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Daily journals</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Offline access</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Community support</li>
-              </ul>
-              <Button variant="outline" className="w-full" onClick={() => navigate('/register')}>
-                Start Free
-              </Button>
-            </div>
-            <div className="p-8 rounded-3xl bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/30 dark:to-blue-950/30 border border-cyan-500 shadow-xl hover:shadow-2xl transition-all group relative">
-              <div className="absolute top-0 right-0 bg-cyan-500 text-white text-xs px-3 py-1 rounded-bl-md">Popular</div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Pro
-              </h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">$19</p>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">Per month</p>
-              <ul className="space-y-3 text-gray-700 dark:text-gray-300 mb-6">
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Everything in Free</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> 60+ advanced reports</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> AI-powered insights</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Risk management tools</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Priority support</li>
-              </ul>
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={() => navigate('/register')}>
-                Get Pro
-              </Button>
-            </div>
-            <div className="p-8 rounded-3xl bg-gradient-to-br from-emerald-50 to-cyan-50 dark:from-emerald-950/30 dark:to-cyan-950/30 border border-emerald-500 shadow-lg hover:shadow-xl transition-all group">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Enterprise
-              </h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Custom</p>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">Contact us</p>
-              <ul className="space-y-3 text-gray-700 dark:text-gray-300 mb-6">
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Everything in Pro</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Multi-user teams</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Custom integrations</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Dedicated account manager</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> On-premise deployment</li>
-              </ul>
-              <Button variant="outline" className="w-full" onClick={() => navigate('/contact')}>
-                Contact Sales
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-      {/* Blog Teaser */}
-      <section className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center space-y-6">
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
-              Latest from Our Blog
-            </h2>
-            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto">
-              Expert tips, trading strategies, and insights to help you succeed in the markets.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
-            <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <div className="mb-4">
-                <img src="https://thumbs.dreamstime.com/b/financial-money-trap-trading-mistakes-volatility-crypto-stock-market-risk-investment-ponzi-scheme-concept-novice-267062442.jpg" alt="5 Common Trading Mistakes and How to Avoid Them" className="w-full h-48 object-cover rounded-2xl" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                5 Common Trading Mistakes and How to Avoid Them
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Learn from experienced traders on how to identify and fix common pitfalls in your trading strategy.
-              </p>
-              <Button variant="link" className="p-0 text-blue-600 hover:text-blue-700">
-                Read More <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <div className="mb-4">
-                <img src="https://thumbs.dreamstime.com/b/trading-journal-blank-pages-dice-financial-tracking-strategy-planning-close-up-open-featuring-data-entry-387043274.jpg" alt="The Power of Journaling in Trading Success" className="w-full h-48 object-cover rounded-2xl" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                The Power of Journaling in Trading Success
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Discover how consistent journaling can transform your trading performance and mindset.
-              </p>
-              <Button variant="link" className="p-0 text-blue-600 hover:text-blue-700">
-                Read More <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <div className="mb-4">
-                <img src="https://media.licdn.com/dms/image/v2/D4D12AQF4rZPmG1P0xA/article-cover_image-shrink_720_1280/B4DZcv_eWgHwAM-/0/1748856867015?e=2147483647&v=beta&t=DAmitDFbxtV1ODpv6H4YWJT3-U4Y1LDVjwqEmScQ_2o" alt="AI in Trading: Future or Present?" className="w-full h-48 object-cover rounded-2xl" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                AI in Trading: Future or Present?
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Explore how AI is revolutionizing trading analytics and decision-making today.
-              </p>
-              <Button variant="link" className="p-0 text-blue-600 hover:text-blue-700">
-                Read More <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <div className="text-center">
-            <Button variant="outline" className="text-lg px-8 py-4" onClick={() => navigate('/blog')}>
-              View All Posts
-            </Button>
-          </div>
-        </div>
-      </section>
-   {/* Final CTA */}
-<section className="py-32 px-6 text-center bg-gradient-to-br from-blue-600 via-cyan-600 to-emerald-600 text-white">
-  <div className="max-w-5xl mx-auto space-y-12">
-    <h2 className="text-5xl md:text-7xl font-extrabold leading-tight">
-      Ready to Trade Smarter?
-    </h2>
-    <p className="text-2xl md:text-3xl opacity-90 max-w-4xl mx-auto">
-      Unlock advanced analytics, AI insights, and risk tools to elevate your trading. Sign up now for unlimited access—no credit card needed.
-    </p>
-
-    {/* Black navigation bar – forced maximum visibility */}
-    <div className="py-10 px-8 bg-gray-950 border-2 border-gray-500 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.15)] text-white max-w-5xl mx-auto">
-      <div className="flex flex-wrap justify-center gap-6 md:gap-10 text-lg md:text-xl font-medium">
-        <a href="#features" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Features</a>
-        <a href="/supported-brokers" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Supported Brokers</a>
-        <a href="/become-a-partner" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Become A Partner</a>
-        <a href="/contact" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Contact Us</a>
-        <a href="/careers" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Careers</a>
-        <a href="/wall-of-love" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Wall of love</a>
-        <a href="/privacy" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Privacy Policy</a>
-        <a href="/terms" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Terms & Conditions</a>
-        <a href="/contact" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">contact</a>
-        <a href="/support" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">support</a>
-      </div>
-    </div>
-
-    <Button
-      size="xl"
-      onClick={() => navigate('/register')}
-      className="bg-white text-blue-700 hover:bg-gray-100 text-2xl md:text-3xl px-16 md:px-24 py-8 md:py-10 rounded-3xl shadow-2xl mt-8 transition-all"
+    <div
+      className="fixed right-4 sm:right-8 flex flex-col gap-2 z-50 w-[90%] max-w-[260px] sm:w-[260px] opacity-90"
+      style={{
+        top: "50%",
+        transform: "translateY(-50%)",
+        height: "auto",
+        maxHeight: "70vh",
+      }}
     >
-      Get Started Free
-    </Button>
-  </div>
-</section>
-
-{/* Professional Footer */}
-<footer className="py-16 px-6 bg-black text-gray-400 border-t border-gray-800">
-  <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12 text-center md:text-left">
-    {/* Company Info */}
-    <div>
-      <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-          T
+      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
+        <div className="text-sm font-bold text-gray-800 dark:text-gray-200">{currentAccount.name}</div>
+      </div>
+      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
+        <div className="text-xs text-gray-700 dark:text-gray-300">Total P&L</div>
+        <div className={`text-base font-bold ${currentTotals.totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}>
+          ${currentTotals.totalPnL.toFixed(2)}
         </div>
-        <span className="text-2xl font-bold text-white">Tradeass</span>
       </div>
-      <p className="text-sm mb-6">The ultimate trading journal for serious traders. Private, powerful, and performance-driven.</p>
-      <div className="flex justify-center md:justify-start gap-4">
-        <a href="https://twitter.com/tradeass" className="hover:text-white"><Twitter className="h-5 w-5" /></a>
-        <a href="https://linkedin.com/company/tradeass" className="hover:text-white"><Linkedin className="h-5 w-5" /></a>
-        <a href="https://github.com/tradeass" className="hover:text-white"><Github className="h-5 w-5" /></a>
+      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
+        <div className="text-xs text-gray-700 dark:text-gray-300">Current Balance</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">
+          ${currentTotals.currentBalance.toFixed(2)}
+        </div>
+      </div>
+      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
+        <div className="text-xs text-gray-700 dark:text-gray-300">Trades</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{currentTotals.totalTrades}</div>
+      </div>
+      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
+        <div className="text-xs text-gray-700 dark:text-gray-300">Journals</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{currentTotals.totalJournals}</div>
+      </div>
+      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
+        <div className="text-xs text-gray-700 dark:text-gray-300">Notes</div>
+        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{currentTotals.totalNotes}</div>
       </div>
     </div>
+  );
+}
 
-    {/* Product */}
-    <div>
-      <h4 className="text-lg font-semibold text-white mb-4">Product</h4>
-      <ul className="space-y-2 text-sm">
-        <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
-        <li><a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a></li>
-        <li><a href="/pricing" className="hover:text-white transition-colors">Pricing</a></li>
-        <li><a href="/blog" className="hover:text-white transition-colors">Blog</a></li>
-      </ul>
-    </div>
+// ────────────────────────────────────────────────
+// Manage Accounts Modal
+// ────────────────────────────────────────────────
 
-    {/* Support */}
-    <div>
-      <h4 className="text-lg font-semibold text-white mb-4">Support</h4>
-      <ul className="space-y-2 text-sm">
-        <li><a href="/help" className="hover:text-white transition-colors">Help Center</a></li>
-        <li><a href="/contact" className="hover:text-white transition-colors">Contact Us</a></li>
-        <li><a href="/faq" className="hover:text-white transition-colors">FAQ</a></li>
-        <li><a href="/status" className="hover:text-white transition-colors">Status</a></li>
-      </ul>
-    </div>
+function ManageAccountsModal({ onClose, navigate }) {
+  const { accounts, accountDataForAll, deleteAccount, resetAccountData, updateAccount } = useApp();
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
 
-    {/* Legal */}
-    <div>
-      <h4 className="text-lg font-semibold text-white mb-4">Legal</h4>
-      <ul className="space-y-2 text-sm">
-        <li><a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a></li>
-        <li><a href="/terms" className="hover:text-white transition-colors">Terms of Service</a></li>
-        <li><a href="/cookies" className="hover:text-white transition-colors">Cookie Policy</a></li>
-      </ul>
+  const handleDelete = (id) => {
+    if (!window.confirm("Delete this account? All data will be lost!")) return;
+    deleteAccount(id);
+    onClose();
+  };
+
+  const handleReset = (id) => {
+    if (!window.confirm("Reset all trades/notes/journals for this account?")) return;
+    resetAccountData(id);
+    onClose();
+  };
+
+  const handleRename = (id, newName) => {
+    updateAccount(id, { name: newName });
+    setEditingId(null);
+    setEditName("");
+  };
+
+  const handleCreate = () => {
+    onClose();
+    navigate("/edit-balance-pnl");
+  };
+
+  if (accounts.length === 0) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Manage Accounts"
+      tabIndex={-1}
+    >
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">Manage Accounts</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+            aria-label="Close modal"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="space-y-3 mb-4">
+          {accounts.map((account) => {
+            const accData = accountDataForAll[account.id] || {};
+            const totals = {
+              totalTrades: (accData.trades || []).length,
+              totalJournals: (accData.journals || []).length,
+              totalNotes: (accData.notes || []).length,
+              totalPnL: (accData.trades || []).reduce((sum, t) => sum + (t.pnl || 0), 0),
+            };
+
+            return (
+              <div key={account.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    {editingId === account.id ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="flex-1 p-1 border rounded dark:bg-gray-600"
+                          autoFocus
+                          aria-label={`Edit name for ${account.name}`}
+                        />
+                        <button
+                          onClick={() => handleRename(account.id, editName || account.name)}
+                          className="px-2 py-1 bg-gray-500 text-white rounded text-xs"
+                          aria-label="Save name"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">{account.name.charAt(0)}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium block">{account.name}</span>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
+                            <div>
+                              {totals.totalTrades} trades • ${totals.totalPnL.toFixed(2)} P&L
+                            </div>
+                            <div>
+                              {totals.totalJournals} journals • {totals.totalNotes} notes
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-1 ml-2">
+                    <button
+                      onClick={() => {
+                        setEditingId(account.id);
+                        setEditName(account.name);
+                      }}
+                      className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                      aria-label={`Edit ${account.name}`}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => handleReset(account.id)}
+                      className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                      aria-label={`Reset ${account.name}`}
+                    >
+                      🔄
+                    </button>
+                    {accounts.length > 1 && (
+                      <button
+                        onClick={() => handleDelete(account.id)}
+                        className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                        aria-label={`Delete ${account.name}`}
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <button
+          onClick={handleCreate}
+          className="w-full p-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm"
+          aria-label="Create new account"
+        >
+          + Create New Account
+        </button>
+      </div>
     </div>
-  </div>
-  <div className="max-w-7xl mx-auto mt-12 pt-12 border-t border-gray-800 text-center text-sm">
-    © {new Date().getFullYear()} Tradeass. All rights reserved.
-  </div>
-</footer>
-</div>
-);
+  );
+}
+
+// ────────────────────────────────────────────────
+// Edit Balance / PNL Modal
+// ────────────────────────────────────────────────
+
+function EditBalancePNL() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { accounts, createAccount, updateAccount } = useApp();
+
+  const [form, setForm] = useState({ name: "", startingBalance: 10000 });
+  const [isNewAccount, setIsNewAccount] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const accountId = location.state?.accountId;
+    if (accountId) {
+      const account = accounts.find((a) => a.id === accountId);
+      if (account) {
+        setForm({
+          name: account.name,
+          startingBalance: account.startingBalance,
+        });
+        setIsNewAccount(false);
+      }
+    } else {
+      setForm({
+        name: `Account ${Date.now().toString().slice(-4)}`,
+        startingBalance: 10000,
+      });
+      setIsNewAccount(true);
+    }
+  }, [location.state, accounts]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const trimmedName = form.name.trim() || (isNewAccount ? "New Account" : "Unnamed Account");
+      const balance = Number(form.startingBalance) || 10000;
+
+      if (isNewAccount) {
+        const newAccount = {
+          id: `acc-${Date.now()}`,
+          name: trimmedName,
+          startingBalance: balance,
+          createdAt: new Date().toISOString(),
+        };
+        createAccount(newAccount);
+      } else {
+        const accountId = location.state?.accountId;
+        if (accountId) {
+          updateAccount(accountId, { name: trimmedName, startingBalance: balance });
+        }
+      }
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      console.error("Save error:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-label={isNewAccount ? "Create New Account" : "Edit Account"}
+      tabIndex={-1}
+    >
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-100">
+          {isNewAccount ? "New Account" : "Edit Account"}
+        </h3>
+        <form onSubmit={handleSave}>
+          <div className="mb-4">
+            <label htmlFor="account-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Account Name
+            </label>
+            <input
+              id="account-name"
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 p-2 bg-white dark:bg-gray-700"
+              required
+              disabled={isSubmitting}
+            />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="starting-balance" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Starting Balance
+            </label>
+            <input
+              id="starting-balance"
+              type="number"
+              value={form.startingBalance}
+              onChange={(e) => setForm({ ...form, startingBalance: Number(e.target.value) })}
+              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 p-2 bg-white dark:bg-gray-700"
+              required
+              disabled={isSubmitting}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard", { replace: true })}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+              disabled={isSubmitting}
+              aria-label="Cancel"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md disabled:opacity-50"
+              aria-label={isNewAccount ? "Create" : "Save"}
+            >
+              {isSubmitting ? "Saving..." : isNewAccount ? "Create" : "Save"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────
+// Protected App
+// ────────────────────────────────────────────────
+
+function ProtectedApp() {
+  const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showManageModal, setShowManageModal] = useState(false);
+
+  return (
+    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
+      <div className="fixed top-0 left-0 right-0 h-12 z-40">
+        <Topbar />
+      </div>
+      <div className="flex flex-1 pt-12">
+        <Sidebar
+          open={sidebarOpen}
+          setOpen={setSidebarOpen}
+          onSwitchAccount={(id) => {
+            // Sidebar should use useContext(DispatchContext) if it needs dispatch
+            // Or receive dispatch as prop if preferred
+          }}
+          onCreateAccount={() => navigate("/edit-balance-pnl")}
+          onShowManage={() => setShowManageModal(true)}
+        />
+        <div
+          className="flex-1 min-w-0 transition-all duration-300"
+          style={{
+            marginLeft: sidebarOpen ? "calc(12rem + 8px)" : "calc(6rem + 8px)",
+            maxWidth: sidebarOpen ? "calc(100vw - 12rem - 8px)" : "calc(100vw - 6rem - 8px)",
+          }}
+        >
+          <main
+            className="overflow-y-auto overflow-x-hidden relative"
+            style={{
+              height: "calc(100vh - 3rem)",
+              paddingTop: "1.5rem",
+            }}
+          >
+            <div
+              className="bg-transparent border-none p-3 sm:p-3 mx-1 sm:mx-2 mb-0"
+              style={{ minHeight: "calc(100vh - 4.5rem)" }}
+            >
+              <Routes>
+                <Route
+                  path="/dashboard"
+                  element={<Dashboard currentAccount={useApp().currentAccount} currentTotals={useApp().currentTotals} />}
+                />
+                <Route path="/journal" element={<DailyJournal />} />
+                <Route path="/trades" element={<Trades />} />
+                <Route path="/notebook" element={<Notebook />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/challenges" element={<Challenges />} />
+                <Route path="/mentor" element={<MentorMode />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/backtest" element={<BacktestJournal />} />
+                <Route path="/quantitative-analysis" element={<QuantitativeAnalysis />} />
+                <Route path="/edit-balance-pnl" element={<EditBalancePNL />} />
+                <Route path="/trades/new" element={<AddTrade />} />
+                <Route path="*" element={<Dashboard currentAccount={useApp().currentAccount} currentTotals={useApp().currentTotals} />} />
+              </Routes>
+            </div>
+          </main>
+        </div>
+        <FloatingWidgets />
+        {showManageModal && <ManageAccountsModal onClose={() => setShowManageModal(false)} navigate={navigate} />}
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────
+// Public App
+// ────────────────────────────────────────────────
+
+function PublicApp() {
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="*" element={<Landing />} />
+    </Routes>
+  );
+}
+
+// ────────────────────────────────────────────────
+// AppContent - Root layout (with the critical fix)
+// ────────────────────────────────────────────────
+
+function AppContent() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    try {
+      const { accounts, currentAccountId, data } = loadInitialState();
+      dispatch({ type: "LOAD_DATA", payload: { accounts, currentAccountId, data } });
+    } catch (err) {
+      dispatch({ type: "SET_ERROR", payload: "Failed to load your data. Please try refreshing." });
+    }
+  }, []);
+
+  useDebouncedPersist(600);
+
+  useEffect(() => {
+    if (state.loading) return;
+
+    const isLoggedIn = !!state.currentAccountId;
+    const publicPaths = ["/", "/login", "/register"];
+
+    if (isLoggedIn && publicPaths.includes(location.pathname)) {
+      navigate("/dashboard", { replace: true });
+    } else if (!isLoggedIn && !publicPaths.includes(location.pathname)) {
+      navigate("/login", { replace: true });
+    }
+  }, [location.pathname, navigate, state.loading, state.currentAccountId]);
+
+  // ─── Fix: Check loading & error BEFORE rendering providers or any context consumer ───
+  if (state.loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  if (state.error) {
+    return <div className="flex items-center justify-center min-h-screen text-red-500">{state.error}</div>;
+  }
+
+  return (
+    <StateContext.Provider value={state}>
+      <DispatchContext.Provider value={dispatch}>
+        <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
+          {state.currentAccountId ? <ProtectedApp /> : <PublicApp />}
+        </div>
+      </DispatchContext.Provider>
+    </StateContext.Provider>
+  );
+}
+
+// ────────────────────────────────────────────────
+// Root
+// ────────────────────────────────────────────────
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </ThemeProvider>
+  );
 }
