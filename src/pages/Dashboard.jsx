@@ -20,11 +20,11 @@ import {
   DollarSign,
   Percent,
   Zap,
-  BarChart3,       // ← added here
+  BarChart3,
   Plus,
 } from "lucide-react";
 
-// Simple animated counter hook (used at top level)
+// Animated counter hook
 const useCountUp = (end, duration = 1500) => {
   const [count, setCount] = useState(0);
 
@@ -240,8 +240,8 @@ export default function Dashboard({ currentAccount }) {
       .slice(0, 5);
   }, [trades]);
 
-  // Animated values (called at top level)
-  const animatedPnL = useCountUp(monthlyStats.totalPnL);
+  // Animated counters – called at top level (fixed)
+  const animatedPnL = useCountUp(Math.abs(monthlyStats.totalPnL));
   const animatedWinRate = useCountUp(Number(monthlyStats.winRate));
   const animatedTrades = useCountUp(monthlyStats.totalTrades);
 
@@ -288,8 +288,8 @@ export default function Dashboard({ currentAccount }) {
         {[
           {
             title: "Monthly P&L",
-            value: monthlyStats.totalPnL,
-            prefix: monthlyStats.totalPnL >= 0 ? "+" : "",
+            value: Math.abs(monthlyStats.totalPnL),
+            prefix: monthlyStats.totalPnL >= 0 ? "+" : "-",
             color: monthlyStats.totalPnL >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
             icon: monthlyStats.totalPnL >= 0 ? TrendingUp : TrendingDown,
           },
@@ -324,7 +324,7 @@ export default function Dashboard({ currentAccount }) {
             icon: BarChart3,
           },
         ].map((stat, i) => {
-          const animatedValue = useCountUp(Math.abs(stat.value || 0));
+          const animatedValue = useCountUp(stat.value);
           return (
             <Card
               key={i}
