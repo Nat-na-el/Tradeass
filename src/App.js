@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
@@ -18,7 +17,7 @@ import Reports from "./pages/Reports";
 import Challenges from "./pages/Challenges";
 import MentorMode from "./pages/MentorMode";
 import SettingsPage from "./pages/SettingsPage";
-import BacktestJournal from "./pages/BacktestJournal";
+import Backtest from "./pages/Backtest"; // ← your new backtest page
 import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
@@ -209,13 +208,14 @@ function ManageAccountsModal({
   );
 }
 
-// EditBalancePNL (unchanged - already redirects to dashboard)
+// EditBalancePNL (unchanged)
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ name: "", startingBalance: 10000 });
   const [isNewAccount, setIsNewAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     if (location.state?.accountId) {
       const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
@@ -235,10 +235,12 @@ function EditBalancePNL({ onSaved }) {
       });
     }
   }, [location]);
+
   const saveAccount = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
+
     const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
     if (isNewAccount) {
       const newAccountId = `acc-${Date.now()}`;
@@ -265,9 +267,11 @@ function EditBalancePNL({ onSaved }) {
       localStorage.setItem("accounts", JSON.stringify(accounts));
       navigate("/dashboard", { replace: true });
     }
+
     setIsSubmitting(false);
     if (onSaved) onSaved();
   };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
@@ -334,13 +338,16 @@ function AppContent() {
   const [showManageModal, setShowManageModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
   useEffect(() => {
     initializeAccounts();
   }, []);
+
   useEffect(() => {
     const currentId = localStorage.getItem("currentAccountId");
     const isLoggedIn = !!currentId;
     const publicPaths = ["/", "/login", "/register"];
+
     if (isLoggedIn && publicPaths.includes(location.pathname)) {
       navigate("/dashboard", { replace: true });
     }
@@ -348,32 +355,39 @@ function AppContent() {
       navigate("/login", { replace: true });
     }
   }, [location.pathname, navigate]);
+
   const initializeAccounts = () => {
     let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
     let currentId = localStorage.getItem("currentAccountId");
+
     if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
       currentId = storedAccounts[0]?.id || null;
       if (currentId) {
         localStorage.setItem("currentAccountId", currentId);
       }
     }
+
     setAccounts(storedAccounts);
     const current = storedAccounts.find((a) => a.id === currentId);
     setCurrentAccount(current);
   };
+
   const createAccount = () => {
     navigate("/edit-balance-pnl");
   };
+
   const switchAccount = (accountId) => {
     localStorage.setItem("currentAccountId", accountId);
     navigate("/dashboard", { replace: true });
   };
+
   const deleteAccount = (accountId) => {
     let updated = accounts.filter((a) => a.id !== accountId);
     localStorage.removeItem(`${accountId}_trades`);
     localStorage.removeItem(`${accountId}_notes`);
     localStorage.removeItem(`${accountId}_journals`);
     localStorage.removeItem(`dashboard_${accountId}`);
+
     const currentId = localStorage.getItem("currentAccountId");
     if (currentId === accountId || updated.length === 0) {
       localStorage.removeItem("currentAccountId");
@@ -381,9 +395,11 @@ function AppContent() {
       navigate("/", { replace: true });
       return;
     }
+
     localStorage.setItem("accounts", JSON.stringify(updated));
     navigate("/dashboard", { replace: true });
   };
+
   const resetAccount = (accountId) => {
     localStorage.setItem(`${accountId}_trades`, JSON.stringify([]));
     localStorage.setItem(`${accountId}_notes`, JSON.stringify([]));
@@ -391,6 +407,7 @@ function AppContent() {
     localStorage.setItem(`dashboard_${accountId}`, JSON.stringify({}));
     navigate("/dashboard", { replace: true });
   };
+
   const renameAccount = (accountId, newName) => {
     const updated = accounts.map((a) =>
       a.id === accountId ? { ...a, name: newName } : a
@@ -398,7 +415,9 @@ function AppContent() {
     localStorage.setItem("accounts", JSON.stringify(updated));
     navigate("/dashboard", { replace: true });
   };
+
   const isLoggedIn = !!localStorage.getItem("currentAccountId");
+
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
       {isLoggedIn && (
@@ -445,7 +464,7 @@ function AppContent() {
                     <Route path="/challenges" element={<Challenges />} />
                     <Route path="/mentor" element={<MentorMode />} />
                     <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/backtest" element={<BacktestJournal />} />
+                    <Route path="/backtest" element={<Backtest />} /> {/* ← your new backtest page */}
                     <Route path="/quantitative-analysis" element={<QuantitativeAnalysis />} />
                     <Route path="/edit-balance-pnl" element={<EditBalancePNL onSaved={() => {}} />} />
                     <Route path="/trades/new" element={<AddTrade />} />
