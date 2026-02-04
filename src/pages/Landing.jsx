@@ -33,7 +33,24 @@ export default function Landing() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-indigo-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-800">
+    <div className="relative min-h-screen flex flex-col overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-800">
+      {/* Animated Background - Lucrative and Beautiful Enhancements */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        {/* Layer 1 - Slow moving gradient orbs for premium feel */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(99,102,241,0.12)_0%,transparent_50%)] dark:bg-[radial-gradient(circle_at_20%_30%,rgba(99,102,241,0.18)_0%,transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.10)_0%,transparent_50%)] dark:bg-[radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.15)_0%,transparent_50%)]" />
+        
+        {/* Floating animated particles for dynamic, lucrative motion */}
+        <div className="absolute inset-0">
+          <div className="absolute w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-float-slow left-[-10%] top-[15%]" />
+          <div className="absolute w-[500px] h-[500px] bg-purple-600/8 rounded-full blur-3xl animate-float-medium right-[-15%] bottom-[10%]" />
+          <div className="absolute w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-float-fast left-[30%] bottom-[20%]" />
+        </div>
+
+        {/* Very subtle grid/noise overlay for sophisticated texture */}
+        <div className="absolute inset-0 opacity-20 bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] bg-[size:60px_60px] dark:bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)]" />
+      </div>
+
       {/* Fixed Header - Logo + Auth */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
@@ -46,7 +63,6 @@ export default function Landing() {
               Tradeass
             </span>
           </div>
-
           {/* Auth Buttons */}
           <div className="flex items-center gap-4">
             <Button
@@ -70,16 +86,13 @@ export default function Landing() {
       <section className="pt-40 pb-32 px-6 md:px-12 lg:px-20 text-center relative overflow-hidden">
         {/* Background gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-100/30 via-transparent to-purple-100/20 dark:from-indigo-950/30 dark:to-purple-950/20 pointer-events-none" />
-
         <div className="max-w-6xl mx-auto relative z-10 space-y-10 md:space-y-12">
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-none animate-fade-in">
             Your Personal Trading Edge
           </h1>
-
           <p className="text-xl sm:text-2xl md:text-3xl text-gray-700 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed">
             The most powerful, private, offline-first trading journal. Track every trade, reflect deeply, analyze with precision, and turn data into consistent profits built for serious traders.
           </p>
-
           <div className="pt-6 md:pt-10 flex flex-col sm:flex-row gap-5 justify-center">
             <Button
               size="xl"
@@ -89,7 +102,6 @@ export default function Landing() {
               Start Free No Card Needed
               <ArrowRight className="ml-3 h-6 w-6 transition-transform group-hover:translate-x-2" />
             </Button>
-
             <Button
               size="xl"
               variant="outline"
@@ -99,7 +111,6 @@ export default function Landing() {
               Sign In to Your Journal
             </Button>
           </div>
-
           {/* Trust signals */}
           <div className="pt-12 flex flex-wrap justify-center gap-6 md:gap-12 text-sm md:text-base text-gray-600 dark:text-gray-400">
             <div className="flex items-center gap-2">
@@ -151,7 +162,6 @@ export default function Landing() {
               Tradeass gives you everything modern traders need from deep analytics to psychological reflection in one clean, private app.
             </p>
           </div>
-
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
             <div className="p-8 rounded-3xl bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-gray-900 border border-indigo-100 dark:border-indigo-900/50 shadow-lg hover:shadow-xl transition-all group">
               <div className="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center mb-6">
@@ -164,7 +174,6 @@ export default function Landing() {
                 Log trades in seconds: entry/exit, size, fees, tags, screenshots, broker sync or CSV import. Track multiple accounts, strategies, and instruments with zero hassle.
               </p>
             </div>
-
             <div className="p-8 rounded-3xl bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-gray-900 border border-indigo-100 dark:border-indigo-900/50 shadow-lg hover:shadow-xl transition-all group">
               <div className="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center mb-6">
                 <LineChart className="w-8 h-8 text-purple-600 dark:text-purple-400" />
@@ -176,7 +185,6 @@ export default function Landing() {
                 Win rate by setup/time/day, expectancy, R-multiple distribution, PNL curves, drawdown analysis, heatmaps, streak detection exportable to CSV/PDF for deeper review.
               </p>
             </div>
-
             <div className="p-8 rounded-3xl bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-gray-900 border border-indigo-100 dark:border-indigo-900/50 shadow-lg hover:shadow-xl transition-all group">
               <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mb-6">
                 <BookOpen className="w-8 h-8 text-blue-600 dark:text-blue-400" />
@@ -188,7 +196,6 @@ export default function Landing() {
                 Structured daily reviews with mood, confidence, market context, and free notes. Attach screenshots, link trades, spot emotional patterns, and build long-term discipline.
               </p>
             </div>
-
             <div className="p-8 rounded-3xl bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-gray-900 border border-indigo-100 dark:border-indigo-900/50 shadow-lg hover:shadow-xl transition-all group">
               <div className="w-14 h-14 rounded-2xl bg-green-100 dark:bg-green-900/50 flex items-center justify-center mb-6">
                 <Brain className="w-8 h-8 text-green-600 dark:text-green-400" />
@@ -200,7 +207,6 @@ export default function Landing() {
                 Smart pattern detection: "Win rate drops 21% after lunch", "This setup has 2.4 R:R but only 38% win rate", personalized tips, risk warnings, and psychology suggestions.
               </p>
             </div>
-
             <div className="p-8 rounded-3xl bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-gray-900 border border-indigo-100 dark:border-indigo-900/50 shadow-lg hover:shadow-xl transition-all group">
               <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mb-6">
                 <Target className="w-8 h-8 text-amber-600 dark:text-amber-400" />
@@ -212,7 +218,6 @@ export default function Landing() {
                 Built-in position sizing calculator, risk % tracker, max drawdown alerts, equity curve monitoring, and stop/target suggestions to protect capital and enforce discipline.
               </p>
             </div>
-
             <div className="p-8 rounded-3xl bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-gray-900 border border-indigo-100 dark:border-indigo-900/50 shadow-lg hover:shadow-xl transition-all group">
               <div className="w-14 h-14 rounded-2xl bg-pink-100 dark:bg-pink-900/50 flex items-center justify-center mb-6">
                 <Lock className="w-8 h-8 text-pink-600 dark:text-pink-400" />
@@ -239,7 +244,6 @@ export default function Landing() {
               Tradeass makes it simple to build better habits and sharper decisions — step by step.
             </p>
           </div>
-
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
             <div className="space-y-6 text-center">
               <div className="w-20 h-20 mx-auto rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-4xl font-bold shadow-lg">
@@ -252,7 +256,6 @@ export default function Landing() {
                 Create account in seconds. Set starting balance, add brokers or import CSV. Create as many accounts as you trade.
               </p>
             </div>
-
             <div className="space-y-6 text-center">
               <div className="w-20 h-20 mx-auto rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-4xl font-bold shadow-lg">
                 2
@@ -264,7 +267,6 @@ export default function Landing() {
                 Record every detail. Write daily journals, attach screenshots, rate confidence, tag setups build complete context.
               </p>
             </div>
-
             <div className="space-y-6 text-center">
               <div className="w-20 h-20 mx-auto rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-4xl font-bold shadow-lg">
                 3
@@ -276,7 +278,6 @@ export default function Landing() {
                 Instant dashboards, 60+ reports, AI insights, pattern detection uncover what really drives your results.
               </p>
             </div>
-
             <div className="space-y-6 text-center">
               <div className="w-20 h-20 mx-auto rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-4xl font-bold shadow-lg">
                 4
@@ -303,7 +304,6 @@ export default function Landing() {
               Real results from real traders using Tradeass every day.
             </p>
           </div>
-
           <div className="grid md:grid-cols-3 gap-10">
             <div className="p-8 rounded-3xl bg-indigo-800/40 backdrop-blur-sm border border-indigo-700/50">
               <div className="flex gap-1 mb-6">
@@ -316,7 +316,6 @@ export default function Landing() {
               </p>
               <p className="font-semibold">Ryan P. • Futures Trader</p>
             </div>
-
             <div className="p-8 rounded-3xl bg-indigo-800/40 backdrop-blur-sm border border-indigo-700/50">
               <div className="flex gap-1 mb-6">
                 {[...Array(5)].map((_, i) => (
@@ -328,7 +327,6 @@ export default function Landing() {
               </p>
               <p className="font-semibold">Lisa M. • Forex Swing Trader</p>
             </div>
-
             <div className="p-8 rounded-3xl bg-indigo-800/40 backdrop-blur-sm border border-indigo-700/50">
               <div className="flex gap-1 mb-6">
                 {[...Array(5)].map((_, i) => (
@@ -392,7 +390,6 @@ export default function Landing() {
               Terms
             </a>
           </nav>
-
           <p className="text-sm">
             © {new Date().getFullYear()} Tradeass • All rights reserved • Built for traders who want an edge
           </p>
