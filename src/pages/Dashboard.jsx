@@ -12,21 +12,26 @@ import {
 } from "date-fns";
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "../Theme-provider"; // correct path assuming Theme-provider is in src/
+import { useTheme } from "../Theme-provider";
 import {
   TrendingUp,
-  TrendingDown,
   Activity,
   Percent,
   Zap,
   BarChart3,
   DollarSign,
+  X,
+  Lightbulb,
+  AlertCircle,
+  CheckCircle,
+  ChevronRight,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 
-// Safe animated number component
+// Safe animated number component (unchanged)
 const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
   const [display, setDisplay] = useState(0);
-
   useEffect(() => {
     const start = performance.now();
     const step = (timestamp) => {
@@ -36,7 +41,6 @@ const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
     };
     requestAnimationFrame(step);
   }, [value, duration]);
-
   return <>{Number(display).toFixed(decimals)}</>;
 };
 
@@ -46,8 +50,9 @@ export default function Dashboard({ currentAccount }) {
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewDate, setViewDate] = useState(new Date());
+  const [showQuickAnalysis, setShowQuickAnalysis] = useState(false);
 
-  // Fetch trades
+  // Fetch trades (unchanged)
   const refreshTrades = async () => {
     setLoading(true);
     try {
@@ -237,396 +242,574 @@ export default function Dashboard({ currentAccount }) {
     navigate("/trades?date=" + formattedDate);
   };
 
-  const addQuantitativeAnalysis = () => {
-    const label = prompt("Enter new stat label:") || `Custom Stat ${5}`;
-    const value = prompt("Enter value (e.g., 100 or stats.totalPnL):") || "0";
-    navigate("/quantitative-analysis", {
-      state: { monthlyTrades, monthlyStats, newLabel: label, newValue: value },
-    });
-  };
-
   const recentTrades = useMemo(() => {
     return [...trades]
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 5);
   }, [trades]);
 
+  // Quick Analysis modal content - new feature
+  const quickAnalysisContent = () => {
+    if (!monthlyTrades.length) {
+      return (
+        <div className="text-center py-10 px-4">
+          <AlertCircle size={64} className="mx-auto text-indigo-400 mb-6 opacity-80" />
+          <h3 className="text-2xl font-semibold mb-4 text-gray-200">No trades recorded this month</h3>
+          <p className="text-gray-400 max-w-lg mx-auto leading-relaxed">
+            Add some trades to unlock real-time performance insights, pattern detection, and personalized trading suggestions.
+          </p>
+          <button
+            onClick={() => {
+              setShowQuickAnalysis(false);
+              navigate("/trades/new");
+            }}
+            className="mt-8 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl shadow-lg transition-all"
+          >
+            Add Your First Trade
+          </button>
+        </div>
+      );
+    }
+
+    const winRate = Number(monthlyStats.winRate);
+    const totalPnL = Number(monthlyStats.totalPnL);
+    const avgRR = Number(monthlyStats.avgRR);
+    const totalTrades = monthlyStats.totalTrades;
+
+    return (
+      <div className="space-y-8">
+        {/* Performance Snapshot */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="p-6 bg-gray-900/60 rounded-2xl border border-indigo-500/30 shadow-inner">
+            <div className="text-sm text-gray-400 mb-2">Win Rate</div>
+            <div className="text-4xl font-bold text-indigo-300">{winRate}%</div>
+            <div className="mt-3 text-sm opacity-80 flex items-center gap-2">
+              {winRate >= 60 ? (
+                <CheckCircle className="text-emerald-400" size={18} />
+              ) : winRate >= 45 ? (
+                <AlertCircle className="text-amber-400" size={18} />
+              ) : (
+                <AlertCircle className="text-rose-400" size={18} />
+              )}
+              {winRate >= 60
+                ? "Strong performance — protect your edge"
+                : winRate >= 45
+                ? "Solid base — improve reward:risk"
+                : "Needs attention — focus on high-probability entries"}
+            </div>
+          </div>
+
+          <div className="p-6 bg-gray-900/60 rounded-2xl border border-emerald-500/30 shadow-inner">
+            <div className="text-sm text-gray-400 mb-2">Net Result</div>
+            <div
+              className={`text-4xl font-bold ${
+                totalPnL >= 0 ? "text-emerald-400" : "text-rose-400"
+              }`}
+            >
+              {totalPnL >= 0 ? "+" : ""}${Math.abs(totalPnL).toFixed(2)}
+            </div>
+            <div className="mt-3 text-sm opacity-80 flex items-center gap-2">
+              {totalPnL >= 0 ? (
+                <ArrowUpRight className="text-emerald-400" size={18} />
+              ) : (
+                <ArrowDownRight className="text-rose-400" size={18} />
+              )}
+              {totalPnL >= 0 ? "Positive month — manage greed" : "Drawdown — tighten risk now"}
+            </div>
+          </div>
+
+          <div className="p-6 bg-gray-900/60 rounded-2xl border border-purple-500/30 shadow-inner">
+            <div className="text-sm text-gray-400 mb-2">Average R:R</div>
+            <div className="text-4xl font-bold text-purple-300">{avgRR}</div>
+            <div className="mt-3 text-sm opacity-80 flex items-center gap-2">
+              {avgRR >= 2.5 ? (
+                <CheckCircle className="text-emerald-400" size={18} />
+              ) : (
+                <AlertCircle className="text-amber-400" size={18} />
+              )}
+              {avgRR >= 2.5
+                ? "Excellent asymmetry — keep hunting"
+                : "Can improve — aim for 1:3+ setups"}
+            </div>
+          </div>
+        </div>
+
+        {/* Personalized Suggestions */}
+        <div className="p-6 bg-gradient-to-br from-gray-950 to-gray-900 rounded-2xl border border-indigo-500/20 shadow-inner">
+          <h4 className="text-xl font-semibold mb-5 flex items-center gap-3 text-indigo-300">
+            <Lightbulb size={22} className="text-yellow-400" />
+            Instant Coaching Insights
+          </h4>
+
+          <div className="space-y-4 text-gray-300 text-sm leading-relaxed">
+            {totalTrades < 15 && (
+              <div className="flex items-start gap-3">
+                <AlertCircle className="text-amber-400 mt-1 shrink-0" size={18} />
+                <p>
+                  Sample size still small ({totalTrades} trades). Aim for at least 20–30 trades before drawing strong conclusions about strategy effectiveness.
+                </p>
+              </div>
+            )}
+
+            {winRate < 50 && (
+              <div className="flex items-start gap-3">
+                <AlertCircle className="text-rose-400 mt-1 shrink-0" size={18} />
+                <p>
+                  Win rate below 50% — be extra selective this week. Only take A+ setups that match your proven edge. Avoid revenge or FOMO trades.
+                </p>
+              </div>
+            )}
+
+            {avgRR < 2 && (
+              <div className="flex items-start gap-3">
+                <AlertCircle className="text-amber-400 mt-1 shrink-0" size={18} />
+                <p>
+                  Average reward:risk is low ({avgRR}). Focus on trades with minimum 1:2.5 or better. Avoid break-even or 1:1 targets unless extremely high probability.
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-start gap-3">
+              <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
+              <p>
+                Review your last 5 losing trades in detail. Look for one repeating mistake (entry timing, sizing, stop placement, emotion). Fix that pattern first.
+              </p>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
+              <p>
+                Maintain risk at ≤1% per trade until win rate consistently exceeds 55%. Protect capital while you refine your edge.
+              </p>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
+              <p>
+                Journal every trade’s emotion and confidence level (1–10). Patterns in psychology often explain results more than technicals.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-amber-50 dark:bg-gray-950">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto"></div>
-          <p className="mt-4 text-amber-900 dark:text-gray-300">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
+          <p className="mt-4 text-gray-400">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div
-      className={`min-h-screen w-full p-4 sm:p-6 lg:p-8 
-        bg-gradient-to-br from-amber-50/90 via-white/80 to-amber-50/70 
-        dark:from-gray-950 dark:via-gray-900 dark:to-gray-950
-        text-gray-900 dark:text-gray-100 transition-colors duration-300 overflow-y-auto`}
-    >
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 lg:mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-amber-700 to-amber-500 dark:from-amber-300 dark:to-amber-200 bg-clip-text text-transparent">
-            Dashboard
-          </h1>
-          <p className="text-sm sm:text-base text-amber-700/80 dark:text-gray-400 mt-1">
-            {format(viewDate, "MMMM yyyy")} • {currentAccount?.name || "Account"}
-          </p>
+    <>
+      {/* Animated background layer */}
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        {/* Deep moving gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950/35 to-purple-950/25 animate-gradient-slow"></div>
+        
+        {/* Subtle radial depth */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(99,102,241,0.15)_0%,transparent_65%)] animate-pulse-slow"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_75%,rgba(168,85,247,0.12)_0%,transparent_75%)] animate-pulse-slower"></div>
+      </div>
+
+      <div className="relative min-h-screen w-full p-4 sm:p-6 lg:p-8 text-gray-100 overflow-y-auto">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-indigo-300 via-purple-300 to-fuchsia-300 bg-clip-text text-transparent">
+              Dashboard
+            </h1>
+            <p className="mt-1.5 text-gray-400">
+              {format(viewDate, "MMMM yyyy")} • {currentAccount?.name || "Account"}
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowQuickAnalysis(true)}
+            className="flex items-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-700 hover:via-purple-700 hover:to-indigo-800 text-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 font-medium transform hover:scale-[1.03] active:scale-95"
+          >
+            <Zap size={18} className="text-yellow-300" />
+            Quick Analysis
+          </button>
         </div>
 
-        <button
-          onClick={addQuantitativeAnalysis}
-          className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-sm font-medium transform hover:scale-[1.03]"
-        >
-          <Zap size={18} />
-          Quick Analysis
-        </button>
-      </div>
-
-      {/* Stats Cards - now with more stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-5 mb-8">
-        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200">
-                Monthly P&L
+        {/* Stats Cards - your original code preserved */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-5 mb-8">
+          <Card className="relative overflow-hidden bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xs sm:text-sm font-medium text-gray-400 group-hover:text-indigo-300">
+                  Monthly P&L
+                </div>
+                <TrendingUp className="h-5 w-5 text-indigo-500/40 group-hover:text-indigo-400" />
               </div>
-              <TrendingUp className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500" />
-            </div>
-            <div className={`text-2xl sm:text-3xl font-extrabold ${monthlyStats.totalPnL >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-              {monthlyStats.totalPnL >= 0 ? "+" : "-"}${Math.abs(monthlyStats.totalPnL)}
-            </div>
-          </div>
-        </Card>
-
-        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200">
-                Win Rate
+              <div className={`text-2xl sm:text-3xl font-extrabold ${monthlyStats.totalPnL >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                {monthlyStats.totalPnL >= 0 ? "+" : "-"}${Math.abs(monthlyStats.totalPnL)}
               </div>
-              <Percent className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500" />
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">
-              <AnimatedNumber value={Number(monthlyStats.winRate)} decimals={1} />%
-            </div>
-          </div>
-        </Card>
+          </Card>
 
-        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200">
-                Profit Factor
+          <Card className="relative overflow-hidden bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xs sm:text-sm font-medium text-gray-400 group-hover:text-indigo-300">
+                  Win Rate
+                </div>
+                <Percent className="h-5 w-5 text-indigo-500/40 group-hover:text-indigo-400" />
               </div>
-              <Activity className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-cyan-600 dark:text-cyan-400">
-              {monthlyStats.profitFactor}
-            </div>
-          </div>
-        </Card>
-
-        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200">
-                Streak
+              <div className="text-2xl sm:text-3xl font-extrabold text-indigo-300">
+                <AnimatedNumber value={Number(monthlyStats.winRate)} decimals={1} />%
               </div>
-              <Zap className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500" />
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-gray-600 dark:text-gray-300">
-              {currentStreak.count > 0 ? `${currentStreak.type} ${currentStreak.count}` : "None"}
-            </div>
-          </div>
-        </Card>
+          </Card>
 
-        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200">
-                Total Trades
+          <Card className="relative overflow-hidden bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xs sm:text-sm font-medium text-gray-400 group-hover:text-indigo-300">
+                  Profit Factor
+                </div>
+                <Activity className="h-5 w-5 text-indigo-500/40 group-hover:text-indigo-400" />
               </div>
-              <BarChart3 className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-violet-600 dark:text-violet-400">
-              <AnimatedNumber value={monthlyStats.totalTrades} decimals={0} />
-            </div>
-          </div>
-        </Card>
-
-        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200">
-                Expectancy
+              <div className="text-2xl sm:text-3xl font-extrabold text-cyan-400">
+                {monthlyStats.profitFactor}
               </div>
-              <DollarSign className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500" />
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-teal-600 dark:text-teal-400">
-              ${monthlyStats.expectancy}
-            </div>
-          </div>
-        </Card>
-      </div>
+          </Card>
 
-      {/* Recent Trades + Highlights */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Card className="lg:col-span-2 bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg p-5 lg:p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-semibold text-amber-900 dark:text-gray-100 flex items-center gap-2">
-              <Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              Recent Trades
-            </h3>
-            <button
-              onClick={() => navigate("/trades")}
-              className="text-sm text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-white flex items-center gap-1 transition-colors"
-            >
-              View All →
-            </button>
-          </div>
-
-          {recentTrades.length === 0 ? (
-            <div className="text-center py-12 text-amber-700/70 dark:text-gray-400 bg-amber-50/30 dark:bg-gray-800/30 rounded-xl">
-              No recent trades yet
+          <Card className="relative overflow-hidden bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xs sm:text-sm font-medium text-gray-400 group-hover:text-indigo-300">
+                  Streak
+                </div>
+                <Zap className="h-5 w-5 text-indigo-500/40 group-hover:text-indigo-400" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-gray-200">
+                {currentStreak.count > 0 ? `${currentStreak.type} ${currentStreak.count}` : "None"}
+              </div>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {recentTrades.map((trade, i) => (
-                <div
-                  key={i}
-                  onClick={() => navigate(`/trades?date=${format(new Date(trade.date), "yyyy-MM-dd")}`)}
-                  className="flex items-center justify-between p-4 bg-amber-50/50 dark:bg-gray-800/50 rounded-xl border border-amber-100 dark:border-gray-700 hover:bg-amber-100/50 dark:hover:bg-gray-700/50 transition-all cursor-pointer"
-                >
-                  <div className="flex items-center gap-4">
+          </Card>
+
+          <Card className="relative overflow-hidden bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xs sm:text-sm font-medium text-gray-400 group-hover:text-indigo-300">
+                  Total Trades
+                </div>
+                <BarChart3 className="h-5 w-5 text-indigo-500/40 group-hover:text-indigo-400" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-violet-300">
+                <AnimatedNumber value={monthlyStats.totalTrades} decimals={0} />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="relative overflow-hidden bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xs sm:text-sm font-medium text-gray-400 group-hover:text-indigo-300">
+                  Expectancy
+                </div>
+                <DollarSign className="h-5 w-5 text-indigo-500/40 group-hover:text-indigo-400" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-teal-300">
+                ${monthlyStats.expectancy}
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Recent Trades + Highlights */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+          <Card className="lg:col-span-2 bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg p-5 lg:p-6 hover:shadow-2xl transition-all duration-300">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-semibold text-gray-100 flex items-center gap-2">
+                <Activity className="h-5 w-5 text-indigo-400" />
+                Recent Trades
+              </h3>
+              <button
+                onClick={() => navigate("/trades")}
+                className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+              >
+                View All →
+              </button>
+            </div>
+
+            {recentTrades.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 bg-gray-800/30 rounded-xl">
+                No recent trades yet
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentTrades.map((trade, i) => (
+                  <div
+                    key={i}
+                    onClick={() => navigate(`/trades?date=${format(new Date(trade.date), "yyyy-MM-dd")}`)}
+                    className="flex items-center justify-between p-4 bg-gray-800/40 rounded-xl border border-gray-700 hover:bg-gray-700/60 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold shadow-sm ${
+                          trade.pnl >= 0
+                            ? "bg-emerald-900/40 text-emerald-300"
+                            : "bg-rose-900/40 text-rose-300"
+                        }`}
+                      >
+                        {trade.pair?.slice(0, 2) || "T"}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-100">
+                          {trade.pair} {trade.direction}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {format(new Date(trade.date), "dd MMM yyyy • HH:mm")}
+                        </div>
+                      </div>
+                    </div>
                     <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold shadow-sm ${
-                        trade.pnl >= 0
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                          : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+                      className={`font-bold text-lg ${
+                        trade.pnl >= 0 ? "text-emerald-400" : "text-rose-400"
                       }`}
                     >
-                      {trade.pair?.slice(0, 2) || "T"}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-amber-950 dark:text-gray-200">
-                        {trade.pair} {trade.direction}
-                      </div>
-                      <div className="text-xs text-amber-700/80 dark:text-gray-400">
-                        {format(new Date(trade.date), "dd MMM yyyy • HH:mm")}
-                      </div>
+                      {trade.pnl >= 0 ? "+" : ""}${Math.abs(Number(trade.pnl || 0)).toFixed(2)}
                     </div>
                   </div>
-                  <div
-                    className={`font-bold text-lg ${
-                      trade.pnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                    }`}
-                  >
-                    {trade.pnl >= 0 ? "+" : ""}${Math.abs(Number(trade.pnl || 0)).toFixed(2)}
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Monthly Highlights */}
+          <Card className="bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg p-5 lg:p-6">
+            <h3 className="text-lg font-semibold mb-5 text-gray-100 flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-indigo-400" />
+              Monthly Highlights
+            </h3>
+
+            <div className="space-y-5">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-300">Best Day</span>
+                <div className="text-right">
+                  <div className="font-bold text-emerald-400">
+                    +${monthlyStats.bestDayPnL}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {monthlyStats.bestDayDate}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </Card>
+              </div>
 
-        {/* Monthly Highlights - now with dates */}
-        <Card className="bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg p-5 lg:p-6">
-          <h3 className="text-lg font-semibold mb-5 text-amber-900 dark:text-gray-100 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            Monthly Highlights
-          </h3>
-
-          <div className="space-y-5">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-amber-800 dark:text-gray-300">Best Day</span>
-              <div className="text-right">
-                <div className="font-bold text-emerald-600 dark:text-emerald-400">
-                  +${monthlyStats.bestDayPnL}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {monthlyStats.bestDayDate}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-300">Worst Day</span>
+                <div className="text-right">
+                  <div className="font-bold text-rose-400">
+                    ${monthlyStats.worstDayPnL}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {monthlyStats.worstDayDate}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-amber-800 dark:text-gray-300">Worst Day</span>
-              <div className="text-right">
-                <div className="font-bold text-rose-600 dark:text-rose-400">
-                  ${monthlyStats.worstDayPnL}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {monthlyStats.worstDayDate}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-amber-800 dark:text-gray-300">Avg R:R</span>
-              <span className="font-bold text-violet-600 dark:text-violet-400">
-                {monthlyStats.avgRR}
-              </span>
-            </div>
-
-            <div className="pt-4 border-t border-amber-200/50 dark:border-gray-700">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-amber-800 dark:text-gray-300">Win Rate</span>
-                <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
-                  <AnimatedNumber value={Number(monthlyStats.winRate)} decimals={1} />%
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-300">Avg R:R</span>
+                <span className="font-bold text-purple-300">
+                  {monthlyStats.avgRR}
                 </span>
               </div>
-              <div className="w-full bg-amber-200/30 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-1000 ease-out"
-                  style={{ width: `${monthlyStats.winRate}%` }}
-                />
+
+              <div className="pt-4 border-t border-gray-800">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-300">Win Rate</span>
+                  <span className="text-xl font-bold text-indigo-300">
+                    <AnimatedNumber value={Number(monthlyStats.winRate)} decimals={1} />%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-1000 ease-out"
+                    style={{ width: `${monthlyStats.winRate}%` }}
+                  />
+                </div>
               </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Calendar - your original code preserved */}
+        <Card className="bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg p-5 lg:p-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={prevMonth}
+                className="p-3 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 transition-all shadow-sm hover:shadow-md"
+              >
+                ◀
+              </button>
+              <button
+                onClick={() => {
+                  const res = prompt("Enter month (YYYY-MM)");
+                  if (res && /^\d{4}-\d{2}$/.test(res)) {
+                    const [y, m] = res.split("-").map(Number);
+                    jumpTo(y, m);
+                  }
+                }}
+                className="px-5 py-3 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 hover:bg-gray-700 transition-all shadow-sm hover:shadow-md"
+              >
+                {format(viewDate, "MMMM yyyy")}
+              </button>
+              <button
+                onClick={nextMonth}
+                className="p-3 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 transition-all shadow-sm hover:shadow-md"
+              >
+                ▶
+              </button>
+            </div>
+            <span className="text-sm text-gray-400 font-medium">
+              Tap a day to view trades
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <div className="grid grid-cols-8 min-w-[640px] gap-1.5 sm:gap-2">
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Wk"].map((d) => (
+                <div
+                  key={d}
+                  className="text-xs font-medium text-center text-gray-400 py-3"
+                >
+                  {d}
+                </div>
+              ))}
+
+              {calendarWeeks.map((week, wi) => {
+                const wSum = weekSummary(week);
+                return (
+                  <React.Fragment key={wi}>
+                    {week.map((dayObj, di) => {
+                      const ds = daySummary(dayObj);
+                      const isCur = isSameMonth(dayObj, viewDate);
+                      const pnl = ds?.pnl || 0;
+                      const intensity = Math.min(Math.abs(pnl) / 1500, 0.6);
+
+                      return (
+                        <div
+                          key={di}
+                          onClick={() => openDay(dayObj)}
+                          className={`
+                            cursor-pointer aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-between border transition-all duration-300
+                            ${isCur
+                              ? "bg-gray-900/70 border-indigo-500/30"
+                              : "bg-transparent border-dashed border-gray-700/40"}
+                            hover:shadow-xl hover:scale-[1.03] hover:border-indigo-400
+                          `}
+                          style={{
+                            backgroundColor: pnl > 0
+                              ? `rgba(34, 197, 94, ${intensity})`
+                              : pnl < 0
+                              ? `rgba(239, 68, 68, ${intensity})`
+                              : undefined,
+                          }}
+                        >
+                          <div className="text-xs text-center text-gray-400">
+                            {format(dayObj, "d")}
+                          </div>
+                          <div className="flex-1 flex flex-col items-center justify-center text-center">
+                            {ds ? (
+                              <>
+                                <div
+                                  className={`font-bold text-xs sm:text-sm ${
+                                    pnl >= 0
+                                      ? "text-emerald-400"
+                                      : "text-rose-400"
+                                  }`}
+                                >
+                                  {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toFixed(2)}
+                                </div>
+                                <div className="text-[10px] text-gray-400">
+                                  {ds.count}t • {ds.winRate}%
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-xs text-gray-500">—</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Weekly Summary */}
+                    <div className="aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-center items-center border bg-gray-800/50 border-gray-700">
+                      <div className="text-xs text-gray-400 mb-1">
+                        W{wi + 1}
+                      </div>
+                      <div
+                        className={`text-sm font-bold ${
+                          wSum.pnl >= 0
+                            ? "text-emerald-400"
+                            : "text-rose-400"
+                        }`}
+                      >
+                        {wSum.pnl >= 0 ? "+" : ""}${Math.abs(wSum.pnl).toFixed(2)}
+                      </div>
+                      <div className="text-[10px] text-gray-400">
+                        {wSum.count}t • {wSum.winRate}%
+                      </div>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
             </div>
           </div>
         </Card>
-      </div>
 
-      {/* Calendar */}
-      <Card className="bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg p-5 lg:p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={prevMonth}
-              className="p-3 rounded-xl bg-amber-100 dark:bg-gray-800 text-amber-800 dark:text-gray-200 hover:bg-amber-200 dark:hover:bg-gray-700 transition-all shadow-sm hover:shadow-md"
-            >
-              ◀
-            </button>
-            <button
-              onClick={() => {
-                const res = prompt("Enter month (YYYY-MM)");
-                if (res && /^\d{4}-\d{2}$/.test(res)) {
-                  const [y, m] = res.split("-").map(Number);
-                  jumpTo(y, m);
-                }
-              }}
-              className="px-5 py-3 rounded-xl bg-amber-100 dark:bg-gray-800 border border-amber-200 dark:border-gray-700 text-amber-900 dark:text-gray-200 hover:bg-amber-200 dark:hover:bg-gray-700 transition-all shadow-sm hover:shadow-md"
-            >
-              {format(viewDate, "MMMM yyyy")}
-            </button>
-            <button
-              onClick={nextMonth}
-              className="p-3 rounded-xl bg-amber-100 dark:bg-gray-800 text-amber-800 dark:text-gray-200 hover:bg-amber-200 dark:hover:bg-gray-700 transition-all shadow-sm hover:shadow-md"
-            >
-              ▶
-            </button>
-          </div>
-          <span className="text-sm text-amber-700 dark:text-gray-400 font-medium">
-            Tap a day to view trades
-          </span>
-        </div>
+        {/* Floating Quick Add Button - updated color */}
+        <button
+          onClick={() => navigate("/trades/new")}
+          className="fixed bottom-6 right-6 z-[1000] w-14 h-14 rounded-full bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white shadow-2xl hover:shadow-purple-500/40 transition-all duration-300 flex items-center justify-center transform hover:scale-110 active:scale-95"
+          aria-label="Add New Trade"
+        >
+          <span className="text-3xl font-bold leading-none">+</span>
+        </button>
 
-        <div className="overflow-x-auto">
-          <div className="grid grid-cols-8 min-w-[640px] gap-1.5 sm:gap-2">
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Wk"].map((d) => (
-              <div
-                key={d}
-                className="text-xs font-medium text-center text-amber-700/80 dark:text-gray-400 py-3"
-              >
-                {d}
+        {/* Quick Analysis Modal */}
+        {showQuickAnalysis && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[2000] p-4 backdrop-blur-md">
+            <div className="bg-gray-900/95 border border-indigo-500/30 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 sm:p-8">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                    Quick Analysis
+                  </h2>
+                  <button
+                    onClick={() => setShowQuickAnalysis(false)}
+                    className="text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-gray-800"
+                  >
+                    <X size={28} />
+                  </button>
+                </div>
+
+                {quickAnalysisContent()}
+
+                <div className="mt-8 pt-6 border-t border-gray-800 flex justify-end">
+                  <button
+                    onClick={() => setShowQuickAnalysis(false)}
+                    className="px-6 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl transition-all"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
-            ))}
-
-            {calendarWeeks.map((week, wi) => {
-              const wSum = weekSummary(week);
-              return (
-                <React.Fragment key={wi}>
-                  {week.map((dayObj, di) => {
-                    const ds = daySummary(dayObj);
-                    const isCur = isSameMonth(dayObj, viewDate);
-                    const pnl = ds?.pnl || 0;
-                    const intensity = Math.min(Math.abs(pnl) / 1500, 0.6);
-
-                    return (
-                      <div
-                        key={di}
-                        onClick={() => openDay(dayObj)}
-                        className={`
-                          cursor-pointer aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-between border transition-all duration-300
-                          ${isCur 
-                            ? "bg-white/80 dark:bg-gray-800/80 border-amber-200/60 dark:border-gray-700" 
-                            : "bg-transparent border-dashed border-amber-200/40 dark:border-gray-700/40"}
-                          hover:shadow-xl hover:scale-[1.03] hover:border-amber-400 dark:hover:border-indigo-500
-                        `}
-                        style={{
-                          backgroundColor: pnl > 0 
-                            ? `rgba(16, 185, 129, ${intensity})` 
-                            : pnl < 0 
-                            ? `rgba(239, 68, 68, ${intensity})` 
-                            : undefined,
-                        }}
-                      >
-                        <div className="text-xs text-center text-amber-800/80 dark:text-gray-400">
-                          {format(dayObj, "d")}
-                        </div>
-                        <div className="flex-1 flex flex-col items-center justify-center text-center">
-                          {ds ? (
-                            <>
-                              <div
-                                className={`font-bold text-xs sm:text-sm ${
-                                  pnl >= 0
-                                    ? "text-emerald-600 dark:text-emerald-400"
-                                    : "text-rose-600 dark:text-rose-400"
-                                }`}
-                              >
-                                {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toFixed(2)}
-                              </div>
-                              <div className="text-[10px] text-amber-700/70 dark:text-gray-400">
-                                {ds.count}t • {ds.winRate}%
-                              </div>
-                            </>
-                          ) : (
-                            <div className="text-xs text-amber-700/50 dark:text-gray-500">—</div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* Weekly Summary */}
-                  <div className="aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-center items-center border bg-amber-100/50 dark:bg-gray-800/60 border-amber-200/60 dark:border-gray-700">
-                    <div className="text-xs text-amber-700/80 dark:text-gray-400 mb-1">
-                      W{wi + 1}
-                    </div>
-                    <div
-                      className={`text-sm font-bold ${
-                        wSum.pnl >= 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-rose-600 dark:text-rose-400"
-                      }`}
-                    >
-                      {wSum.pnl >= 0 ? "+" : ""}${Math.abs(wSum.pnl).toFixed(2)}
-                    </div>
-                    <div className="text-[10px] text-amber-700/70 dark:text-gray-400">
-                      {wSum.count}t • {wSum.winRate}%
-                    </div>
-                  </div>
-                </React.Fragment>
-              );
-            })}
+            </div>
           </div>
-        </div>
-      </Card>
-
-      {/* Floating Quick Add Button */}
-      <button
-        onClick={() => navigate("/trades/new")}
-        className="fixed bottom-6 right-6 z-[1000] w-14 h-14 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center transform hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-amber-400/40"
-        aria-label="Add New Trade"
-      >
-        <span className="text-3xl font-bold leading-none">+</span>
-      </button>
-    </div>
+        )}
+      </div>
+    </>
   );
 }
