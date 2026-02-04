@@ -43,16 +43,16 @@ export default function Landing() {
         delay: 250,
         direction: ''
       }, settings || {});
-     
+    
       this.DOM = {};
       this.build(selector);
-     
+    
       this.DOM.scope.addEventListener('transitionend', e => {
         if (e.pseudoElement === "::before" && e.propertyName == 'margin-top') {
           e.target.classList.remove('blur');
         }
       });
-     
+    
       this.count();
     }
     Counter.prototype = {
@@ -62,16 +62,16 @@ export default function Landing() {
               : selector
                 ? selector
                 : this.DOM.scope;
-       
+      
         scopeElm.innerHTML = Array(this.settings.digits + 1)
             .join('<div><b data-value="0"></b></div>');
-       
+      
         this.DOM = {
           scope: scopeElm,
           digits: scopeElm.querySelectorAll('b')
         };
       },
-     
+    
       count: function(newVal) {
         var countTo, className,
             settings = this.settings,
@@ -116,7 +116,7 @@ export default function Landing() {
         <div className="absolute inset-0 bg-gradient-to-br from-blue-950/90 via-teal-950 to-gray-950" />
         {/* Moving chart grid – like stock exchange board */}
         <div className="absolute inset-0 opacity-12 dark:opacity-15">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(6,182,212,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(6,182,212,0.1)_1px,transparent_1px)] bg-[size:50px_50px] animate-grid-move" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(6,182,212,0.1)_1px,transparent_1px),linear_gradient(to_bottom,rgba(6,182,212,0.1)_1px,transparent_1px)] bg-[size:50px_50px] animate-grid-move" />
         </div>
         {/* Rising/falling candlestick bars – more prominent */}
         <div className="absolute inset-0 flex justify-around items-end opacity-25 md:opacity-20 pointer-events-none">
@@ -151,7 +151,7 @@ export default function Landing() {
         </div>
         {/* Diagonal trend lines – simulating market trends */}
         <div className="absolute inset-0 opacity-12 dark:opacity-15">
-          <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_35%,rgba(34,197,94,0.15)_45%,transparent_55%)] animate-trend-move" />
+          <div className="absolute inset-0 bg-[linear_gradient(135deg,transparent_35%,rgba(34,197,94,0.15)_45%,transparent_55%)] animate-trend-move" />
           <div className="absolute inset-0 bg-[linear_gradient(-135deg,transparent_35%,rgba(239,68,68,0.12)_45%,transparent_55%)] animate-trend-move-reverse" style={{ animationDelay: '8s' }} />
         </div>
         {/* Flipping stock price counters – scattered in background (adapted from CodePen) */}
@@ -618,6 +618,20 @@ export default function Landing() {
           <p className="text-2xl md:text-3xl opacity-90 max-w-4xl mx-auto">
             Unlock advanced analytics, AI insights, and risk tools to elevate your trading. Sign up now for unlimited access—no credit card needed.
           </p>
+          <div className="py-8 bg-black text-gray-400">
+            <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-4 md:gap-6 text-sm md:text-base">
+              <a href="#features" className="hover:text-white transition-colors">Features</a>
+              <a href="/supported-brokers" className="hover:text-white transition-colors">Supported Brokers</a>
+              <a href="/become-a-partner" className="hover:text-white transition-colors">Become A Partner</a>
+              <a href="/contact" className="hover:text-white transition-colors">Contact Us</a>
+              <a href="/careers" className="hover:text-white transition-colors">Careers</a>
+              <a href="/wall-of-love" className="hover:text-white transition-colors">Wall of love</a>
+              <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="/terms" className="hover:text-white transition-colors">Terms & Conditions</a>
+              <a href="/contact" className="hover:text-white transition-colors">contact</a>
+              <a href="/support" className="hover:text-white transition-colors">support</a>
+            </div>
+          </div>
           <Button
             size="xl"
             onClick={() => navigate('/register')}
@@ -627,24 +641,6 @@ export default function Landing() {
           </Button>
         </div>
       </section>
-      {/* Additional Navigation Bar */}
-      <div className="py-8 px-6 bg-black text-gray-400 border-t border-gray-800">
-        <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-4 md:gap-6 text-sm md:text-base">
-          <a href="/login" className="hover:text-white transition-colors">Log In</a>
-          <a href="#features" className="hover:text-white transition-colors">Features</a>
-          <a href="/blog" className="hover:text-white transition-colors">Blog</a>
-          <a href="/pricing" className="hover:text-white transition-colors">Pricing</a>
-          <a href="/supported-brokers" className="hover:text-white transition-colors">Supported Brokers</a>
-          <a href="/become-partner" className="hover:text-white transition-colors">Become A Partner</a>
-          <a href="/contact" className="hover:text-white transition-colors">Contact Us</a>
-          <a href="/careers" className="hover:text-white transition-colors">Careers</a>
-          <a href="/wall-of-love" className="hover:text-white transition-colors">Wall of Love</a>
-          <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
-          <a href="/terms" className="hover:text-white transition-colors">Terms & Conditions</a>
-          <a href="/contact" className="hover:text-white transition-colors">Contact</a>
-          <a href="/support" className="hover:text-white transition-colors">Support</a>
-        </div>
-      </div>
       {/* Professional Footer */}
       <footer className="py-16 px-6 bg-black text-gray-400 border-t border-gray-800">
         <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12 text-center md:text-left">
