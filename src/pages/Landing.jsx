@@ -40,16 +40,16 @@ export default function Landing() {
         delay: 250,
         direction: ''
       }, settings || {});
-      
+     
       this.DOM = {};
       this.build(selector);
-      
+     
       this.DOM.scope.addEventListener('transitionend', e => {
         if (e.pseudoElement === "::before" && e.propertyName == 'margin-top') {
           e.target.classList.remove('blur');
         }
       });
-      
+     
       this.count();
     }
 
@@ -122,12 +122,10 @@ export default function Landing() {
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         {/* Base dark gradient for depth */}
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/90 via-black to-gray-950" />
-
         {/* Moving chart grid – like stock exchange board */}
         <div className="absolute inset-0 opacity-12 dark:opacity-15">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(99,102,241,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(99,102,241,0.1)_1px,transparent_1px)] bg-[size:50px_50px] animate-grid-move" />
         </div>
-
         {/* Rising/falling candlestick bars – more prominent */}
         <div className="absolute inset-0 flex justify-around items-end opacity-25 md:opacity-20 pointer-events-none">
           {[...Array(20)].map((_, i) => (
@@ -153,20 +151,17 @@ export default function Landing() {
             />
           ))}
         </div>
-
         {/* Floating orbs with glow – representing market bubbles */}
         <div className="absolute inset-0">
           <div className="absolute w-[800px] sm:w-[1200px] md:w-[1600px] h-[800px] sm:h-[1200px] md:h-[1600px] bg-gradient-to-br from-indigo-700/30 via-indigo-600/20 to-transparent rounded-full blur-4xl animate-float-slow left-[-30%] sm:left-[-20%] top-[-20%] animate-pulse-glow" />
           <div className="absolute w-[1000px] sm:w-[1500px] md:w-[2000px] h-[1000px] sm:h-[1500px] md:h-[2000px] bg-gradient-to-br from-purple-700/25 via-fuchsia-600/15 to-transparent rounded-full blur-4xl animate-float-medium right-[-35%] sm:right-[-25%] bottom-[-25%] animate-pulse-glow" style={{ animationDelay: '6s' }} />
           <div className="absolute w-[700px] sm:w-[1000px] md:w-[1400px] h-[700px] sm:h-[1000px] md:h-[1400px] bg-gradient-to-br from-cyan-600/22 via-emerald-500/12 to-transparent rounded-full blur-4xl animate-float-fast left-[5%] sm:left-[15%] bottom-[0%] animate-pulse-glow" style={{ animationDelay: '10s' }} />
         </div>
-
         {/* Diagonal trend lines – simulating market trends */}
         <div className="absolute inset-0 opacity-12 dark:opacity-15">
           <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_35%,rgba(34,197,94,0.15)_45%,transparent_55%)] animate-trend-move" />
           <div className="absolute inset-0 bg-[linear-gradient(-135deg,transparent_35%,rgba(239,68,68,0.12)_45%,transparent_55%)] animate-trend-move-reverse" style={{ animationDelay: '8s' }} />
         </div>
-
         {/* Scrolling stock ticker – pure CSS (adapted from CodePen) */}
         <div className="absolute bottom-0 left-0 right-0 h-12 bg-black/40 backdrop-blur-md overflow-hidden opacity-70">
           <div className="ticker-wrap">
@@ -182,20 +177,18 @@ export default function Landing() {
             </div>
           </div>
         </div>
-
         {/* Flipping stock price counters – scattered in background (adapted from CodePen) */}
-        <div className="absolute top-20 left-10 opacity-50">
+        <div className="absolute top-20 left-10 opacity-50 z-0">
           <div className="numCounter stock-counter1" data-value="123456"></div>
         </div>
-        <div className="absolute top-40 right-20 opacity-50">
+        <div className="absolute top-40 right-20 opacity-50 z-0">
           <div className="numCounter stock-counter2" data-value="78901"></div>
         </div>
-        <div className="absolute bottom-32 left-1/3 opacity-50">
+        <div className="absolute bottom-32 left-1/3 opacity-50 z-0">
           <div className="numCounter stock-counter3" data-value="2345678"></div>
         </div>
-
         {/* Floating currency symbols for creative touch */}
-        <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 pointer-events-none z-0">
           {[...Array(8)].map((_, i) => (
             <div
               key={i}
@@ -226,7 +219,6 @@ export default function Landing() {
           ))}
         </div>
       </div>
-
       {/* Fixed Header - Logo + Auth */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
@@ -257,9 +249,8 @@ export default function Landing() {
           </div>
         </div>
       </header>
-
       {/* Hero - Full bleed, centered */}
-      <section className="pt-40 pb-32 px-6 md:px-12 lg:px-20 text-center relative overflow-hidden">
+      <section className="pt-40 pb-32 px-6 md:px-12 lg:px-20 text-center relative overflow-hidden z-10 bg-white/10 dark:bg-black/10 backdrop-blur-sm">
         {/* Background gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-100/30 via-transparent to-purple-100/20 dark:from-indigo-950/30 dark:to-purple-950/20 pointer-events-none" />
         <div className="max-w-6xl mx-auto relative z-10 space-y-10 md:space-y-12">
@@ -305,7 +296,7 @@ export default function Landing() {
         </div>
       </section>
       {/* Stats Bar */}
-      <section className="py-16 px-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-y border-gray-200 dark:border-gray-800">
+      <section className="py-16 px-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-y border-gray-200 dark:border-gray-800 relative z-10">
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           <div>
             <p className="text-5xl md:text-6xl font-bold text-indigo-600 dark:text-indigo-400">1.4B+</p>
@@ -326,7 +317,7 @@ export default function Landing() {
         </div>
       </section>
       {/* Features Grid - Light Section */}
-      <section className="py-24 px-6 bg-white dark:bg-gray-900">
+      <section className="py-24 px-6 bg-white dark:bg-gray-900 relative z-10">
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="text-center space-y-6">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
@@ -407,7 +398,7 @@ export default function Landing() {
         </div>
       </section>
       {/* How It Works - Numbered Steps */}
-      <section className="py-24 px-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-gray-900">
+      <section className="py-24 px-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-gray-900 relative z-10">
         <div className="max-w-7xl mx-auto space-y-20">
           <div className="text-center space-y-6">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
@@ -466,7 +457,7 @@ export default function Landing() {
         </div>
       </section>
       {/* Testimonials */}
-      <section className="py-24 px-6 bg-gradient-to-b from-indigo-900 to-black text-white">
+      <section className="py-24 px-6 bg-gradient-to-b from-indigo-900 to-black text-white relative z-10">
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="text-center space-y-6">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold">
@@ -514,7 +505,7 @@ export default function Landing() {
         </div>
       </section>
       {/* Final CTA */}
-      <section className="py-32 px-6 text-center bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white">
+      <section className="py-32 px-6 text-center bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white relative z-10">
         <div className="max-w-5xl mx-auto space-y-12">
           <h2 className="text-5xl md:text-7xl font-extrabold leading-tight">
             Ready to Trade Smarter?
@@ -532,7 +523,7 @@ export default function Landing() {
         </div>
       </section>
       {/* Footer with Navigation */}
-      <footer className="py-16 px-6 bg-black text-gray-400 text-center border-t border-gray-800">
+      <footer className="py-16 px-6 bg-black text-gray-400 text-center border-t border-gray-800 relative z-10">
         <div className="max-w-7xl mx-auto space-y-12">
           <nav className="flex flex-wrap justify-center gap-6 md:gap-10 text-lg">
             <a href="#features" className="hover:text-white transition-colors">
