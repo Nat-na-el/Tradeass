@@ -13,7 +13,25 @@ import {
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../Theme-provider";
-import { TrendingUp, TrendingDown, Activity, DollarSign, Percent, Zap } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, DollarSign, Percent, Zap, Plus } from "lucide-react";
+
+// Simple animated counter hook
+const useCountUp = (end, duration = 1500) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTime;
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      setCount(Math.floor(end * progress));
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, [end, duration]);
+
+  return count;
+};
 
 export default function Dashboard({ currentAccount }) {
   const { theme } = useTheme();
@@ -56,7 +74,6 @@ export default function Dashboard({ currentAccount }) {
   const monthStart = startOfMonth(viewDate);
   const monthEnd = endOfMonth(viewDate);
 
-  // Monthly filtered trades
   const monthlyTrades = useMemo(() => {
     return trades
       .filter((t) => {
@@ -66,7 +83,6 @@ export default function Dashboard({ currentAccount }) {
       .sort((a, b) => new Date(a.date) - new Date(b.date));
   }, [trades, viewDate]);
 
-  // Weekly trades (current week)
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
   const weeklyTrades = useMemo(() => {
@@ -78,7 +94,6 @@ export default function Dashboard({ currentAccount }) {
       .sort((a, b) => new Date(a.date) - new Date(b.date));
   }, [trades]);
 
-  // Monthly statistics
   const monthlyStats = useMemo(() => {
     if (!monthlyTrades.length) {
       return {
@@ -105,7 +120,7 @@ export default function Dashboard({ currentAccount }) {
     const winRate = total ? ((wins / total) * 100).toFixed(1) : 0;
     const expectancy = monthlyTrades.reduce((a, b) => a + Number(b.pnl), 0) / total || 0;
 
-    // Group by day to find best/worst
+    // Daily summary for best/worst
     const dailyPnL = {};
     monthlyTrades.forEach((t) => {
       const day = format(new Date(t.date), "yyyy-MM-dd");
@@ -134,7 +149,6 @@ export default function Dashboard({ currentAccount }) {
     };
   }, [monthlyTrades]);
 
-  // Current streak
   const currentStreak = useMemo(() => {
     let streak = { type: "None", count: 0 };
     let current = null;
@@ -153,7 +167,6 @@ export default function Dashboard({ currentAccount }) {
     return streak;
   }, [weeklyTrades]);
 
-  // Trades grouped by date
   const tradesByDate = useMemo(() => {
     return monthlyTrades.reduce((acc, t) => {
       const d = t.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
@@ -213,24 +226,29 @@ export default function Dashboard({ currentAccount }) {
     });
   };
 
-  // Quick recent trades (last 5)
+  // Recent trades (last 5)
   const recentTrades = useMemo(() => {
     return [...trades]
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 5);
   }, [trades]);
 
+  // Animated counters
+  const animatedPnL = useCountUp(monthlyStats.totalPnL);
+  const animatedWinRate = useCountUp(Number(monthlyStats.winRate));
+  const animatedTrades = useCountUp(monthlyStats.totalTrades);
+
   return (
     <div
       className={`min-h-screen w-full p-4 sm:p-6 lg:p-8 
-        bg-gradient-to-br from-amber-50/80 via-white to-amber-50/60 
+        bg-gradient-to-br from-amber-50/90 via-white/80 to-amber-50/70 
         dark:from-gray-950 dark:via-gray-900 dark:to-gray-950
-        text-gray-900 dark:text-gray-100 transition-colors duration-300`}
+        text-gray-900 dark:text-gray-100 transition-colors duration-300 overflow-y-auto`}
     >
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 lg:mb-8 gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold bg-gradient-to-r from-amber-700 to-amber-500 dark:from-amber-400 dark:to-amber-300 bg-clip-text text-transparent">
+          <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-amber-700 to-amber-500 dark:from-amber-300 dark:to-amber-200 bg-clip-text text-transparent">
             Dashboard
           </h1>
           <p className="text-sm sm:text-base text-amber-700/80 dark:text-gray-400 mt-1">
@@ -238,18 +256,16 @@ export default function Dashboard({ currentAccount }) {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={addQuantitativeAnalysis}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all text-sm font-medium"
-          >
-            <Zap size={16} />
-            Quick Analysis
-          </button>
-        </div>
+        <button
+          onClick={addQuantitativeAnalysis}
+          className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-sm font-medium transform hover:scale-[1.03]"
+        >
+          <Zap size={18} />
+          Quick Analysis
+        </button>
       </div>
 
-      {/* Stats Grid - Animated numbers */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-6 mb-8">
         {[
           {
@@ -261,7 +277,7 @@ export default function Dashboard({ currentAccount }) {
           },
           {
             title: "Win Rate",
-            value: monthlyStats.winRate,
+            value: Number(monthlyStats.winRate),
             suffix: "%",
             color: "text-indigo-600 dark:text-indigo-400",
             icon: Percent,
@@ -289,32 +305,36 @@ export default function Dashboard({ currentAccount }) {
             color: "text-violet-600 dark:text-violet-400",
             icon: BarChart3,
           },
-        ].map((stat, i) => (
-          <Card
-            key={i}
-            className="relative overflow-hidden bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-amber-200/50 dark:border-gray-800 hover:border-amber-400/50 dark:hover:border-indigo-500/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group"
-          >
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200 transition-colors">
-                  {stat.title}
+        ].map((stat, i) => {
+          const animatedValue = useCountUp(Math.abs(stat.value || 0));
+          return (
+            <Card
+              key={i}
+              className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group"
+            >
+              <div className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200 transition-colors">
+                    {stat.title}
+                  </div>
+                  <stat.icon className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500 dark:group-hover:text-indigo-400 transition-colors" />
                 </div>
-                <stat.icon className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500 dark:group-hover:text-indigo-400 transition-colors" />
+                <div className={`text-2xl sm:text-3xl font-extrabold ${stat.color}`}>
+                  {stat.prefix || ""}
+                  {animatedValue.toFixed(stat.suffix ? 1 : 2)}
+                  {stat.suffix || ""}
+                </div>
               </div>
-              <div className={`text-2xl sm:text-3xl font-bold ${stat.color}`}>
-                {stat.prefix || ""}
-                {typeof stat.value === "number" ? stat.value.toFixed(2) : stat.value}
-                {stat.suffix || ""}
-              </div>
-            </div>
-            <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-gradient-to-br from-amber-400/10 to-transparent dark:from-indigo-500/10 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          </Card>
-        ))}
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-400/5 to-transparent dark:from-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Quick Recent Trades */}
+      {/* Quick Recent Trades + Highlights */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Card className="lg:col-span-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-amber-200/50 dark:border-gray-800 p-5 lg:p-6 shadow-md hover:shadow-xl transition-all">
+        {/* Recent Trades */}
+        <Card className="lg:col-span-2 bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all p-5 lg:p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-lg font-semibold text-amber-900 dark:text-gray-100 flex items-center gap-2">
               <Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" />
@@ -322,27 +342,27 @@ export default function Dashboard({ currentAccount }) {
             </h3>
             <button
               onClick={() => navigate("/trades")}
-              className="text-xs sm:text-sm text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-white flex items-center gap-1 transition-colors"
+              className="text-sm text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-white flex items-center gap-1 transition-colors"
             >
               View All <span aria-hidden="true">→</span>
             </button>
           </div>
 
           {recentTrades.length === 0 ? (
-            <div className="text-center py-10 text-amber-700/70 dark:text-gray-400">
-              No recent trades
+            <div className="text-center py-12 text-amber-700/70 dark:text-gray-400 bg-amber-50/30 dark:bg-gray-800/30 rounded-xl">
+              No recent trades yet
             </div>
           ) : (
             <div className="space-y-3">
               {recentTrades.map((trade, i) => (
                 <div
                   key={trade.id || i}
-                  className="flex items-center justify-between p-3 bg-amber-50/50 dark:bg-gray-800/50 rounded-lg border border-amber-100 dark:border-gray-700 hover:bg-amber-100/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
                   onClick={() => navigate(`/trades?date=${format(new Date(trade.date), "yyyy-MM-dd")}`)}
+                  className="flex items-center justify-between p-4 bg-amber-50/50 dark:bg-gray-800/50 rounded-xl border border-amber-100 dark:border-gray-700 hover:bg-amber-100/50 dark:hover:bg-gray-700/50 transition-all cursor-pointer group"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold shadow-sm ${
                         trade.pnl >= 0
                           ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                           : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
@@ -351,7 +371,7 @@ export default function Dashboard({ currentAccount }) {
                       {trade.pair?.slice(0, 2) || "T"}
                     </div>
                     <div>
-                      <div className="font-medium text-amber-950 dark:text-gray-200">
+                      <div className="font-semibold text-amber-950 dark:text-gray-200 group-hover:text-amber-900 dark:group-hover:text-white transition-colors">
                         {trade.pair} {trade.direction}
                       </div>
                       <div className="text-xs text-amber-700/80 dark:text-gray-400">
@@ -372,14 +392,14 @@ export default function Dashboard({ currentAccount }) {
           )}
         </Card>
 
-        {/* Quick Stats Summary */}
-        <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-amber-200/50 dark:border-gray-800 p-5 lg:p-6 shadow-md hover:shadow-xl transition-all">
+        {/* Highlights Panel */}
+        <Card className="bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all p-5 lg:p-6">
           <h3 className="text-lg font-semibold mb-5 text-amber-900 dark:text-gray-100 flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             Monthly Highlights
           </h3>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="flex justify-between items-center">
               <span className="text-sm text-amber-800 dark:text-gray-300">Best Day</span>
               <span className="font-bold text-emerald-600 dark:text-emerald-400">
@@ -398,16 +418,16 @@ export default function Dashboard({ currentAccount }) {
                 {monthlyStats.avgRR || "—"}
               </span>
             </div>
-            <div className="pt-3 border-t border-amber-200/50 dark:border-gray-700">
+            <div className="pt-4 border-t border-amber-200/50 dark:border-gray-700">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm text-amber-800 dark:text-gray-300">Win Rate</span>
-                <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
                   {monthlyStats.winRate}%
                 </span>
               </div>
-              <div className="w-full bg-amber-200/30 dark:bg-gray-700 rounded-full h-2.5">
+              <div className="w-full bg-amber-200/30 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                 <div
-                  className="bg-indigo-500 h-2.5 rounded-full transition-all duration-1000"
+                  className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-1000 ease-out"
                   style={{ width: `${monthlyStats.winRate || 0}%` }}
                 />
               </div>
@@ -417,12 +437,12 @@ export default function Dashboard({ currentAccount }) {
       </div>
 
       {/* Calendar */}
-      <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-amber-200/50 dark:border-gray-800 p-4 sm:p-6 shadow-md hover:shadow-xl transition-all">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-4">
+      <Card className="bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all p-5 lg:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={prevMonth}
-              className="p-2 rounded-lg bg-amber-100 dark:bg-gray-800 text-amber-800 dark:text-gray-200 hover:bg-amber-200 dark:hover:bg-gray-700 transition-all"
+              className="p-3 rounded-xl bg-amber-100 dark:bg-gray-800 text-amber-800 dark:text-gray-200 hover:bg-amber-200 dark:hover:bg-gray-700 transition-all shadow-sm hover:shadow-md"
             >
               ◀
             </button>
@@ -434,18 +454,18 @@ export default function Dashboard({ currentAccount }) {
                   jumpTo(y, m);
                 }
               }}
-              className="px-4 py-2 rounded-lg bg-amber-100 dark:bg-gray-800 border border-amber-200 dark:border-gray-700 text-amber-900 dark:text-gray-200 hover:bg-amber-200 dark:hover:bg-gray-700 transition-all"
+              className="px-5 py-3 rounded-xl bg-amber-100 dark:bg-gray-800 border border-amber-200 dark:border-gray-700 text-amber-900 dark:text-gray-200 hover:bg-amber-200 dark:hover:bg-gray-700 transition-all shadow-sm hover:shadow-md"
             >
               {format(viewDate, "MMMM yyyy")}
             </button>
             <button
               onClick={nextMonth}
-              className="p-2 rounded-lg bg-amber-100 dark:bg-gray-800 text-amber-800 dark:text-gray-200 hover:bg-amber-200 dark:hover:bg-gray-700 transition-all"
+              className="p-3 rounded-xl bg-amber-100 dark:bg-gray-800 text-amber-800 dark:text-gray-200 hover:bg-amber-200 dark:hover:bg-gray-700 transition-all shadow-sm hover:shadow-md"
             >
               ▶
             </button>
           </div>
-          <span className="text-sm text-amber-700 dark:text-gray-400">
+          <span className="text-sm text-amber-700 dark:text-gray-400 font-medium">
             Tap a day to view trades
           </span>
         </div>
@@ -455,7 +475,7 @@ export default function Dashboard({ currentAccount }) {
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Wk"].map((d) => (
               <div
                 key={d}
-                className="text-xs font-medium text-center text-amber-700/80 dark:text-gray-400 py-2"
+                className="text-xs font-medium text-center text-amber-700/80 dark:text-gray-400 py-3"
               >
                 {d}
               </div>
@@ -469,28 +489,28 @@ export default function Dashboard({ currentAccount }) {
                     const ds = daySummary(dayObj);
                     const isCur = isSameMonth(dayObj, viewDate);
                     const pnl = ds?.pnl || 0;
-                    const intensity = Math.min(Math.abs(pnl) / 1000, 1); // scale opacity
+                    const intensity = Math.min(Math.abs(pnl) / 1500, 0.6); // softer scaling
 
                     return (
                       <div
                         key={di}
                         onClick={() => openDay(dayObj)}
                         className={`
-                          cursor-pointer aspect-square rounded-lg p-1.5 sm:p-2 flex flex-col justify-between border transition-all duration-200
+                          cursor-pointer aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-between border transition-all duration-300
                           ${isCur 
                             ? "bg-white/80 dark:bg-gray-800/80 border-amber-200/60 dark:border-gray-700" 
                             : "bg-transparent border-dashed border-amber-200/40 dark:border-gray-700/40"}
-                          hover:shadow-lg hover:border-amber-400 dark:hover:border-indigo-500 hover:scale-[1.02]
+                          hover:shadow-xl hover:scale-[1.03] hover:border-amber-400 dark:hover:border-indigo-500
                         `}
                         style={{
                           backgroundColor: pnl > 0 
-                            ? `rgba(16, 185, 129, ${intensity * 0.25})` 
+                            ? `rgba(16, 185, 129, ${intensity})` 
                             : pnl < 0 
-                            ? `rgba(239, 68, 68, ${intensity * 0.25})` 
+                            ? `rgba(239, 68, 68, ${intensity})` 
                             : undefined,
                         }}
                       >
-                        <div className="text-xs text-amber-800/80 dark:text-gray-400 text-center">
+                        <div className="text-xs text-center text-amber-800/80 dark:text-gray-400">
                           {format(dayObj, "d")}
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -505,7 +525,7 @@ export default function Dashboard({ currentAccount }) {
                               >
                                 {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toFixed(2)}
                               </div>
-                              <div className="text-[10px] sm:text-xs text-amber-700/80 dark:text-gray-400">
+                              <div className="text-[10px] text-amber-700/70 dark:text-gray-400">
                                 {ds.count}t • {ds.winRate}%
                               </div>
                             </>
@@ -518,7 +538,7 @@ export default function Dashboard({ currentAccount }) {
                   })}
 
                   {/* Weekly Summary */}
-                  <div className="aspect-square rounded-lg p-1.5 sm:p-2 flex flex-col justify-center items-center border bg-amber-100/40 dark:bg-gray-800/60 border-amber-200/60 dark:border-gray-700">
+                  <div className="aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-center items-center border bg-amber-100/50 dark:bg-gray-800/60 border-amber-200/60 dark:border-gray-700">
                     <div className="text-xs text-amber-700/80 dark:text-gray-400 mb-1">
                       W{wi + 1}
                     </div>
@@ -542,13 +562,13 @@ export default function Dashboard({ currentAccount }) {
         </div>
       </Card>
 
-      {/* Floating Quick Add Trade Button */}
+      {/* Floating Quick Add Button */}
       <button
         onClick={() => navigate("/trades/new")}
-        className="fixed bottom-6 right-6 z-[1000] w-14 h-14 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-amber-400/40"
+        className="fixed bottom-6 right-6 z-[1000] w-14 h-14 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center transform hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-amber-400/40"
         aria-label="Add New Trade"
       >
-        <span className="text-2xl font-bold">+</span>
+        <span className="text-3xl font-bold leading-none">+</span>
       </button>
     </div>
   );
