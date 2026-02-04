@@ -12,7 +12,7 @@ import {
 } from "date-fns";
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "../Theme-provider"; // ← correct path when file is in src/
+import { useTheme } from "../Theme-provider"; // correct path assuming Theme-provider is in src/
 import {
   TrendingUp,
   TrendingDown,
@@ -20,6 +20,7 @@ import {
   Percent,
   Zap,
   BarChart3,
+  DollarSign,
 } from "lucide-react";
 
 // Safe animated number component
@@ -101,16 +102,18 @@ export default function Dashboard({ currentAccount }) {
     if (!monthlyTrades.length) {
       return {
         totalPnL: 0,
-        winRate: 0,
+        winRate: "0.0",
         profitFactor: "—",
-        expectancy: 0,
+        expectancy: "0.00",
         winCount: 0,
         lossCount: 0,
         totalTrades: 0,
-        avgPnL: 0,
+        avgPnL: "0.00",
         bestDayPnL: 0,
+        bestDayDate: "—",
         worstDayPnL: 0,
-        avgRR: 0,
+        worstDayDate: "—",
+        avgRR: "0.00",
       };
     }
 
@@ -129,12 +132,24 @@ export default function Dashboard({ currentAccount }) {
       dailyPnL[day] = (dailyPnL[day] || 0) + Number(t.pnl || 0);
     });
 
-    const dailyValues = Object.values(dailyPnL);
-    const bestDayPnL = dailyValues.length ? Math.max(...dailyValues).toFixed(2) : 0;
-    const worstDayPnL = dailyValues.length ? Math.min(...dailyValues).toFixed(2) : 0;
+    let bestDayPnL = 0;
+    let bestDayDate = "—";
+    let worstDayPnL = 0;
+    let worstDayDate = "—";
+
+    if (Object.keys(dailyPnL).length > 0) {
+      const entries = Object.entries(dailyPnL);
+      const bestEntry = entries.reduce((max, curr) => (curr[1] > max[1] ? curr : max));
+      const worstEntry = entries.reduce((min, curr) => (curr[1] < min[1] ? curr : min));
+
+      bestDayPnL = bestEntry[1].toFixed(2);
+      bestDayDate = format(new Date(bestEntry[0]), "dd MMM");
+      worstDayPnL = worstEntry[1].toFixed(2);
+      worstDayDate = format(new Date(worstEntry[0]), "dd MMM");
+    }
 
     const totalRR = monthlyTrades.reduce((sum, t) => sum + (Number(t.rr) || 0), 0);
-    const avgRR = total ? (totalRR / total).toFixed(2) : 0;
+    const avgRR = total ? (totalRR / total).toFixed(2) : "0.00";
 
     return {
       totalPnL: (profits - losses).toFixed(2),
@@ -146,7 +161,9 @@ export default function Dashboard({ currentAccount }) {
       totalTrades: total,
       avgPnL: (monthlyTrades.reduce((a, b) => a + Number(b.pnl), 0) / total).toFixed(2),
       bestDayPnL,
+      bestDayDate,
       worstDayPnL,
+      worstDayDate,
       avgRR,
     };
   }, [monthlyTrades]);
@@ -272,29 +289,29 @@ export default function Dashboard({ currentAccount }) {
         </button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-6 mb-8">
-        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+      {/* Stats Cards - now with more stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-5 mb-8">
+        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
           <div className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400">
+              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200">
                 Monthly P&L
               </div>
-              <TrendingUp className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40" />
+              <TrendingUp className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500" />
             </div>
             <div className={`text-2xl sm:text-3xl font-extrabold ${monthlyStats.totalPnL >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-              {monthlyStats.totalPnL >= 0 ? "+" : "-"}${Math.abs(monthlyStats.totalPnL).toFixed(2)}
+              {monthlyStats.totalPnL >= 0 ? "+" : "-"}${Math.abs(monthlyStats.totalPnL)}
             </div>
           </div>
         </Card>
 
-        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
           <div className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400">
+              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200">
                 Win Rate
               </div>
-              <Percent className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40" />
+              <Percent className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500" />
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">
               <AnimatedNumber value={Number(monthlyStats.winRate)} decimals={1} />%
@@ -302,13 +319,13 @@ export default function Dashboard({ currentAccount }) {
           </div>
         </Card>
 
-        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
           <div className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400">
+              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200">
                 Profit Factor
               </div>
-              <Activity className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40" />
+              <Activity className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500" />
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-cyan-600 dark:text-cyan-400">
               {monthlyStats.profitFactor}
@@ -316,13 +333,13 @@ export default function Dashboard({ currentAccount }) {
           </div>
         </Card>
 
-        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
           <div className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400">
+              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200">
                 Streak
               </div>
-              <Zap className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40" />
+              <Zap className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500" />
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-gray-600 dark:text-gray-300">
               {currentStreak.count > 0 ? `${currentStreak.type} ${currentStreak.count}` : "None"}
@@ -330,16 +347,30 @@ export default function Dashboard({ currentAccount }) {
           </div>
         </Card>
 
-        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
           <div className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400">
-                Avg R:R
+              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200">
+                Total Trades
               </div>
-              <BarChart3 className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40" />
+              <BarChart3 className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500" />
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-violet-600 dark:text-violet-400">
-              {monthlyStats.avgRR}
+              <AnimatedNumber value={monthlyStats.totalTrades} decimals={0} />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="relative overflow-hidden bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs sm:text-sm font-medium text-amber-700/80 dark:text-gray-400 group-hover:text-amber-900 dark:group-hover:text-gray-200">
+                Expectancy
+              </div>
+              <DollarSign className="h-5 w-5 text-amber-500/40 dark:text-gray-500/40 group-hover:text-amber-500" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-teal-600 dark:text-teal-400">
+              ${monthlyStats.expectancy}
             </div>
           </div>
         </Card>
@@ -405,6 +436,7 @@ export default function Dashboard({ currentAccount }) {
           )}
         </Card>
 
+        {/* Monthly Highlights - now with dates */}
         <Card className="bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg p-5 lg:p-6">
           <h3 className="text-lg font-semibold mb-5 text-amber-900 dark:text-gray-100 flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-amber-600 dark:text-amber-400" />
@@ -414,22 +446,35 @@ export default function Dashboard({ currentAccount }) {
           <div className="space-y-5">
             <div className="flex justify-between items-center">
               <span className="text-sm text-amber-800 dark:text-gray-300">Best Day</span>
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                +${Math.abs(monthlyStats.bestDayPnL).toFixed(2)}
-              </span>
+              <div className="text-right">
+                <div className="font-bold text-emerald-600 dark:text-emerald-400">
+                  +${monthlyStats.bestDayPnL}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {monthlyStats.bestDayDate}
+                </div>
+              </div>
             </div>
+
             <div className="flex justify-between items-center">
               <span className="text-sm text-amber-800 dark:text-gray-300">Worst Day</span>
-              <span className="font-bold text-rose-600 dark:text-rose-400">
-                -${Math.abs(monthlyStats.worstDayPnL).toFixed(2)}
-              </span>
+              <div className="text-right">
+                <div className="font-bold text-rose-600 dark:text-rose-400">
+                  ${monthlyStats.worstDayPnL}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {monthlyStats.worstDayDate}
+                </div>
+              </div>
             </div>
+
             <div className="flex justify-between items-center">
               <span className="text-sm text-amber-800 dark:text-gray-300">Avg R:R</span>
               <span className="font-bold text-violet-600 dark:text-violet-400">
-                {monthlyStats.avgRR || "—"}
+                {monthlyStats.avgRR}
               </span>
             </div>
+
             <div className="pt-4 border-t border-amber-200/50 dark:border-gray-700">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm text-amber-800 dark:text-gray-300">Win Rate</span>
@@ -440,7 +485,7 @@ export default function Dashboard({ currentAccount }) {
               <div className="w-full bg-amber-200/30 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-1000 ease-out"
-                  style={{ width: `${monthlyStats.winRate || 0}%` }}
+                  style={{ width: `${monthlyStats.winRate}%` }}
                 />
               </div>
             </div>
@@ -549,6 +594,7 @@ export default function Dashboard({ currentAccount }) {
                     );
                   })}
 
+                  {/* Weekly Summary */}
                   <div className="aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-center items-center border bg-amber-100/50 dark:bg-gray-800/60 border-amber-200/60 dark:border-gray-700">
                     <div className="text-xs text-amber-700/80 dark:text-gray-400 mb-1">
                       W{wi + 1}
