@@ -29,6 +29,11 @@ const useCountUp = (end, duration = 1500) => {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
+    if (end === 0) {
+      setCount(0);
+      return;
+    }
+
     let startTime;
     const animate = (timestamp) => {
       if (!startTime) startTime = timestamp;
@@ -240,10 +245,12 @@ export default function Dashboard({ currentAccount }) {
       .slice(0, 5);
   }, [trades]);
 
-  // Animated counters – called at top level (fixed)
+  // Animated counters — all called at top level (this fixes the hook error)
   const animatedPnL = useCountUp(Math.abs(monthlyStats.totalPnL));
   const animatedWinRate = useCountUp(Number(monthlyStats.winRate));
   const animatedTrades = useCountUp(monthlyStats.totalTrades);
+  const animatedBestDay = useCountUp(Math.abs(monthlyStats.bestDayPnL));
+  const animatedWorstDay = useCountUp(Math.abs(monthlyStats.worstDayPnL));
 
   if (loading) {
     return (
@@ -324,7 +331,13 @@ export default function Dashboard({ currentAccount }) {
             icon: BarChart3,
           },
         ].map((stat, i) => {
-          const animatedValue = useCountUp(stat.value);
+          // Use pre-computed animated values instead of calling hook here
+          let animatedValue;
+          if (stat.title === "Monthly P&L") animatedValue = animatedPnL;
+          else if (stat.title === "Win Rate") animatedValue = animatedWinRate;
+          else if (stat.title === "Total Trades") animatedValue = animatedTrades;
+          else animatedValue = stat.value; // non-animated for others
+
           return (
             <Card
               key={i}
@@ -339,7 +352,7 @@ export default function Dashboard({ currentAccount }) {
                 </div>
                 <div className={`text-2xl sm:text-3xl font-extrabold ${stat.color}`}>
                   {stat.prefix || ""}
-                  {animatedValue.toFixed(stat.suffix ? 1 : 2)}
+                  {typeof animatedValue === "number" ? animatedValue.toFixed(stat.suffix ? 1 : 2) : animatedValue}
                   {stat.suffix || ""}
                 </div>
               </div>
@@ -351,7 +364,6 @@ export default function Dashboard({ currentAccount }) {
 
       {/* Quick Recent Trades + Highlights */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Recent Trades */}
         <Card className="lg:col-span-2 bg-white/90 dark:bg-gray-900/80 backdrop-blur-md border border-amber-200/50 dark:border-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all p-5 lg:p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-lg font-semibold text-amber-900 dark:text-gray-100 flex items-center gap-2">
@@ -421,13 +433,13 @@ export default function Dashboard({ currentAccount }) {
             <div className="flex justify-between items-center">
               <span className="text-sm text-amber-800 dark:text-gray-300">Best Day</span>
               <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                +${Math.abs(monthlyStats.bestDayPnL || 0).toFixed(2)}
+                +${animatedBestDay.toFixed(2)}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-amber-800 dark:text-gray-300">Worst Day</span>
               <span className="font-bold text-rose-600 dark:text-rose-400">
-                -${Math.abs(monthlyStats.worstDayPnL || 0).toFixed(2)}
+                -${animatedWorstDay.toFixed(2)}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -440,7 +452,7 @@ export default function Dashboard({ currentAccount }) {
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm text-amber-800 dark:text-gray-300">Win Rate</span>
                 <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
-                  {monthlyStats.winRate}%
+                  {animatedWinRate}%
                 </span>
               </div>
               <div className="w-full bg-amber-200/30 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
