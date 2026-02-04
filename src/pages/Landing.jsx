@@ -490,49 +490,67 @@ export default function Landing() {
             Ready to Trade Smarter?
           </h2>
           <p className="text-2xl md:text-3xl opacity-90 max-w-4xl mx-auto">
-            Join thousands of traders using Tradeass to track, analyze, and win consistently. Start free today no card required.
+            Unlock advanced analytics, AI insights, and risk tools to elevate your trading. Sign up now for unlimited access—no credit card needed.
           </p>
           <Button
             size="xl"
             onClick={() => navigate('/register')}
-            className="bg-blue-600 text-white hover:bg-blue-700 text-2xl md:text-3xl px-16 md:px-24 py-8 md:py-10 rounded-3xl shadow-2xl mt-8 transition-all"
+            className="bg-white text-blue-700 hover:bg-gray-100 text-2xl md:text-3xl px-16 md:px-24 py-8 md:py-10 rounded-3xl shadow-2xl mt-8 transition-all"
           >
             Get Started Free
           </Button>
         </div>
       </section>
-      {/* Footer with Navigation */}
-      <footer className="py-16 px-6 bg-black text-gray-400 text-center border-t border-gray-800">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <nav className="flex flex-wrap justify-center gap-6 md:gap-10 text-lg">
-            <a href="#features" className="hover:text-white transition-colors">
-              Features
-            </a>
-            <a href="#how-it-works" className="hover:text-white transition-colors">
-              How It Works
-            </a>
-            <a href="#pricing" className="hover:text-white transition-colors">
-              Pricing
-            </a>
-            <a href="#blog" className="hover:text-white transition-colors">
-              Blog
-            </a>
-            <a href="#support" className="hover:text-white transition-colors">
-              Support
-            </a>
-            <a href="#contact" className="hover:text-white transition-colors">
-              Contact
-            </a>
-            <a href="#privacy" className="hover:text-white transition-colors">
-              Privacy
-            </a>
-            <a href="#terms" className="hover:text-white transition-colors">
-              Terms
-            </a>
-          </nav>
-          <p className="text-sm">
-            © {new Date().getFullYear()} Tradeass • All rights reserved • Built for traders who want an edge
-          </p>
+      {/* Professional Footer */}
+      <footer className="py-16 px-6 bg-black text-gray-400 border-t border-gray-800">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12 text-center md:text-left">
+          {/* Company Info */}
+          <div>
+            <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+                T
+              </div>
+              <span className="text-2xl font-bold text-white">Tradeass</span>
+            </div>
+            <p className="text-sm mb-6">The ultimate trading journal for serious traders. Private, powerful, and performance-driven.</p>
+            <div className="flex justify-center md:justify-start gap-4">
+              <a href="https://twitter.com/tradeass" className="hover:text-white"><Twitter className="h-5 w-5" /></a>
+              <a href="https://linkedin.com/company/tradeass" className="hover:text-white"><Linkedin className="h-5 w-5" /></a>
+              <a href="https://github.com/tradeass" className="hover:text-white"><Github className="h-5 w-5" /></a>
+            </div>
+          </div>
+          {/* Product */}
+          <div>
+            <h4 className="text-lg font-semibold text-white mb-4">Product</h4>
+            <ul className="space-y-2 text-sm">
+              <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
+              <li><a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a></li>
+              <li><a href="/pricing" className="hover:text-white transition-colors">Pricing</a></li>
+              <li><a href="/blog" className="hover:text-white transition-colors">Blog</a></li>
+            </ul>
+          </div>
+          {/* Support */}
+          <div>
+            <h4 className="text-lg font-semibold text-white mb-4">Support</h4>
+            <ul className="space-y-2 text-sm">
+              <li><a href="/help" className="hover:text-white transition-colors">Help Center</a></li>
+              <li><a href="/contact" className="hover:text-white transition-colors">Contact Us</a></li>
+              <li><a href="/faq" className="hover:text-white transition-colors">FAQ</a></li>
+              <li><a href="/status" className="hover:text-white transition-colors">Status</a></li>
+            </ul>
+          </div>
+          {/* Legal */}
+          <div>
+            <h4 className="text-lg font-semibold text-white mb-4">Legal</h4>
+            <ul className="space-y-2 text-sm">
+              <li><a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a></li>
+              <li><a href="/terms" className="hover:text-white transition-colors">Terms of Service</a></li>
+              <li><a href="/cookies" className="hover:text-white transition-colors">Cookie Policy</a></li>
+            </ul>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto mt-12 pt-12 border-t border-gray-800 text-center text-sm">
+          © {new Date().getFullYear()} Tradeass. All rights reserved.
         </div>
       </footer>
     </div>
