@@ -33,10 +33,8 @@ import {
   Linkedin,
   Github,
 } from 'lucide-react';
-
 export default function Landing() {
   const navigate = useNavigate();
-
   useEffect(() => {
     // Initialize flipping counter logic (adapted from CodePen)
     function Counter(selector, settings) {
@@ -154,7 +152,7 @@ export default function Landing() {
         {/* Diagonal trend lines – simulating market trends */}
         <div className="absolute inset-0 opacity-12 dark:opacity-15">
           <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_35%,rgba(34,197,94,0.15)_45%,transparent_55%)] animate-trend-move" />
-          <div className="absolute inset-0 bg-[linear-gradient(-135deg,transparent_35%,rgba(239,68,68,0.12)_45%,transparent_55%)] animate-trend-move-reverse" style={{ animationDelay: '8s' }} />
+          <div className="absolute inset-0 bg-[linear_gradient(-135deg,transparent_35%,rgba(239,68,68,0.12)_45%,transparent_55%)] animate-trend-move-reverse" style={{ animationDelay: '8s' }} />
         </div>
         {/* Flipping stock price counters – scattered in background (adapted from CodePen) */}
         <div className="absolute top-20 left-10 opacity-50">
@@ -563,7 +561,7 @@ export default function Landing() {
           <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
             <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
               <div className="mb-4">
-                <img src="/placeholder-blog-1.jpg" alt="Blog 1" className="w-full h-48 object-cover rounded-2xl" />
+                <img src="https://thumbs.dreamstime.com/b/financial-money-trap-trading-mistakes-volatility-crypto-stock-market-risk-investment-ponzi-scheme-concept-novice-267062442.jpg" alt="5 Common Trading Mistakes and How to Avoid Them" className="w-full h-48 object-cover rounded-2xl" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 5 Common Trading Mistakes and How to Avoid Them
@@ -577,7 +575,7 @@ export default function Landing() {
             </div>
             <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
               <div className="mb-4">
-                <img src="/placeholder-blog-2.jpg" alt="Blog 2" className="w-full h-48 object-cover rounded-2xl" />
+                <img src="https://thumbs.dreamstime.com/b/trading-journal-blank-pages-dice-financial-tracking-strategy-planning-close-up-open-featuring-data-entry-387043274.jpg" alt="The Power of Journaling in Trading Success" className="w-full h-48 object-cover rounded-2xl" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 The Power of Journaling in Trading Success
@@ -591,7 +589,7 @@ export default function Landing() {
             </div>
             <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
               <div className="mb-4">
-                <img src="/placeholder-blog-3.jpg" alt="Blog 3" className="w-full h-48 object-cover rounded-2xl" />
+                <img src="https://media.licdn.com/dms/image/v2/D4D12AQF4rZPmG1P0xA/article-cover_image-shrink_720_1280/B4DZcv_eWgHwAM-/0/1748856867015?e=2147483647&v=beta&t=DAmitDFbxtV1ODpv6H4YWJT3-U4Y1LDVjwqEmScQ_2o" alt="AI in Trading: Future or Present?" className="w-full h-48 object-cover rounded-2xl" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 AI in Trading: Future or Present?
@@ -629,6 +627,24 @@ export default function Landing() {
           </Button>
         </div>
       </section>
+      {/* Additional Navigation Bar */}
+      <div className="py-8 px-6 bg-black text-gray-400 border-t border-gray-800">
+        <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-4 md:gap-6 text-sm md:text-base">
+          <a href="/login" className="hover:text-white transition-colors">Log In</a>
+          <a href="#features" className="hover:text-white transition-colors">Features</a>
+          <a href="/blog" className="hover:text-white transition-colors">Blog</a>
+          <a href="/pricing" className="hover:text-white transition-colors">Pricing</a>
+          <a href="/supported-brokers" className="hover:text-white transition-colors">Supported Brokers</a>
+          <a href="/become-partner" className="hover:text-white transition-colors">Become A Partner</a>
+          <a href="/contact" className="hover:text-white transition-colors">Contact Us</a>
+          <a href="/careers" className="hover:text-white transition-colors">Careers</a>
+          <a href="/wall-of-love" className="hover:text-white transition-colors">Wall of Love</a>
+          <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+          <a href="/terms" className="hover:text-white transition-colors">Terms & Conditions</a>
+          <a href="/contact" className="hover:text-white transition-colors">Contact</a>
+          <a href="/support" className="hover:text-white transition-colors">Support</a>
+        </div>
+      </div>
       {/* Professional Footer */}
       <footer className="py-16 px-6 bg-black text-gray-400 border-t border-gray-800">
         <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12 text-center md:text-left">
