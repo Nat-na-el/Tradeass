@@ -412,7 +412,7 @@ function AppContent() {
               </main>
             </div>
 
-            {/* No FloatingWidgets here anymore */}
+            {/* FloatingWidgets removed */}
             {showManageModal && (
               <ManageAccountsModal
                 accounts={accounts}
