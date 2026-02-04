@@ -154,3 +154,65 @@ textarea {
     grid-column: span 12 / span 12;
   }
 }
+
+/* ────────────────────────────────────────────────
+   NEW ANIMATED BACKGROUND (added for Dashboard)
+   ──────────────────────────────────────────────── */
+
+/* Smooth moving gradient animation */
+@keyframes gradient-slow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Gentle pulsing overlays for depth */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+@keyframes pulse-slower {
+  0%, 100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.50;
+  }
+}
+
+/* Apply animations */
+.animate-gradient-slow {
+  animation: gradient-slow 28s ease infinite;
+  background-size: 180% 180%;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 14s ease-in-out infinite;
+}
+
+.animate-pulse-slower {
+  animation: pulse-slower 22s ease-in-out infinite;
+}
+
+/* Optional: helper class for animated background container */
+.bg-animated {
+  background: linear-gradient(
+    135deg,
+    #0f172a 0%,
+    #1e293b 25%,
+    #312e81 50%,
+    #4f46e5 75%,
+    #0f172a 100%
+  );
+}
