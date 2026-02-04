@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { useTheme } from "../Theme-provider";
@@ -8,10 +9,11 @@ import {
   Flame,
   CheckCircle2,
   Clock,
-  AlertCircle,
   ChevronRight,
+  AlertCircle,
 } from "lucide-react";
 
+// Sample data — in real app you would load from localStorage or backend
 const SAMPLE_CHALLENGES = [
   {
     id: "consistency-30",
@@ -20,29 +22,40 @@ const SAMPLE_CHALLENGES = [
     target: 30,
     current: 12,
     type: "streak",
-    reward: "Custom badge + journal template unlock",
+    reward: "Custom badge + premium journal template",
     active: true,
-    endDate: "2025-03-15",
+    endDate: new Date(2025, 2, 15).toISOString(), // March 15, 2025
   },
   {
     id: "profit-goal",
     title: "Monthly Profit Goal",
-    description: "Achieve +$500 net profit in February",
+    description: "Achieve +$500 net profit this month",
     target: 500,
     current: 320,
     type: "profit",
-    reward: "Double analysis sessions next month",
+    reward: "Double mentor sessions next month",
     active: true,
-    endDate: "2025-02-28",
+    endDate: endOfMonth(new Date()).toISOString(),
   },
   {
     id: "risk-control",
-    title: "Max 1% Risk Per Trade",
-    description: "Complete 50 trades without exceeding 1% account risk on any single position",
+    title: "Max 1% Risk Discipline",
+    description: "Complete 50 trades without exceeding 1% account risk on any trade",
     target: 50,
-    current: 0,
+    current: 28,
     type: "discipline",
-    reward: "Priority support + personalized review",
+    reward: "Priority support + personalized trade review",
+    active: true,
+    endDate: new Date(2025, 5, 30).toISOString(),
+  },
+  {
+    id: "no-revenge",
+    title: "No Revenge Trading",
+    description: "Avoid revenge trades for 60 consecutive days",
+    target: 60,
+    current: 0,
+    type: "psychology",
+    reward: "Psychology deep-dive session",
     active: false,
     completed: true,
   },
@@ -52,14 +65,16 @@ export default function Challenges() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
-  const [challenges, setChallenges] = useState(SAMPLE_CHALLENGES);
+  const [challenges, setChallenges] = useState([]);
 
-  // In real app you would load/save from localStorage or backend
+  // Load or initialize challenges
   useEffect(() => {
-    // Example: load from localStorage
     const saved = localStorage.getItem("challenges");
     if (saved) {
       setChallenges(JSON.parse(saved));
+    } else {
+      setChallenges(SAMPLE_CHALLENGES);
+      localStorage.setItem("challenges", JSON.stringify(SAMPLE_CHALLENGES));
     }
   }, []);
 
@@ -68,9 +83,20 @@ export default function Challenges() {
     localStorage.setItem("challenges", JSON.stringify(updated));
   };
 
-  const getProgressPercentage = (challenge) => {
+  const getProgress = (challenge) => {
     return Math.min(100, Math.round((challenge.current / challenge.target) * 100));
   };
+
+  const formatDate = (isoString) => {
+    try {
+      return format(new Date(isoString), "MMM d, yyyy");
+    } catch {
+      return "—";
+    }
+  };
+
+  const activeChallenges = challenges.filter((c) => c.active);
+  const completedChallenges = challenges.filter((c) => !c.active && c.completed);
 
   return (
     <div
@@ -85,125 +111,136 @@ export default function Challenges() {
           Trading Challenges
         </h1>
         <p className="mt-2 text-lg opacity-80">
-          Push your limits • Build discipline • Earn rewards
+          Build discipline • Track progress • Unlock rewards
         </p>
       </div>
 
-      {/* Active Challenges */}
-      <div className="mb-12">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-          <Flame className="text-orange-500" size={28} /> Active Challenges
-        </h2>
+      {activeChallenges.length === 0 && completedChallenges.length === 0 ? (
+        <Card className="p-12 text-center rounded-2xl bg-white/50 dark:bg-gray-800/50 border border-dashed">
+          <Target className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+          <h3 className="text-2xl font-semibold mb-3">No challenges yet</h3>
+          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-8">
+            Start a challenge to push your trading skills and stay accountable.
+          </p>
+          <Button className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700">
+            Create Your First Challenge
+          </Button>
+        </Card>
+      ) : (
+        <>
+          {/* Active Challenges */}
+          {activeChallenges.length > 0 && (
+            <section className="mb-12">
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                <Flame className="text-orange-500" size={28} /> Active Challenges
+              </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {challenges
-            .filter((c) => c.active)
-            .map((challenge) => {
-              const progress = getProgressPercentage(challenge);
-              const isCompleted = progress >= 100;
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {activeChallenges.map((challenge) => {
+                  const progress = getProgress(challenge);
+                  const isCompleted = progress >= 100;
 
-              return (
-                <Card
-                  key={challenge.id}
-                  className={`p-6 rounded-2xl border transition-all duration-300 hover:shadow-xl hover:-translate-y-1
-                    ${isDark
-                      ? "bg-gray-800/60 border-gray-700/50 backdrop-blur-md"
-                      : "bg-white/80 border-gray-200/50 backdrop-blur-md"}`}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-xl font-bold">{challenge.title}</h3>
-                      <p className="text-sm opacity-80 mt-1">{challenge.description}</p>
+                  return (
+                    <Card
+                      key={challenge.id}
+                      className={`relative p-6 rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1
+                        ${isDark
+                          ? "bg-gray-800/60 border-gray-700/50 backdrop-blur-md"
+                          : "bg-white/80 border-gray-200/50 backdrop-blur-md"}`}
+                    >
+                      {isCompleted && (
+                        <div className="absolute top-0 right-0 bg-emerald-500 text-white text-xs font-bold px-4 py-1 rounded-bl-xl">
+                          COMPLETED
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="pr-10">
+                          <h3 className="text-xl font-bold">{challenge.title}</h3>
+                          <p className="text-sm opacity-80 mt-1.5">{challenge.description}</p>
+                        </div>
+                        <div className={`p-3 rounded-xl ${
+                          isCompleted
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "bg-amber-500/20 text-amber-400"
+                        }`}>
+                          {isCompleted ? <CheckCircle2 size={28} /> : <Target size={28} />}
+                        </div>
+                      </div>
+
+                      {/* Progress */}
+                      <div className="mb-5">
+                        <div className="flex justify-between text-sm mb-1.5 font-medium">
+                          <span>Progress</span>
+                          <span>{progress}%</span>
+                        </div>
+                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                              isCompleted ? "bg-emerald-500" : "bg-gradient-to-r from-amber-500 to-orange-500"
+                            }`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-sm">
+                        <div className="opacity-80">
+                          {challenge.current} / {challenge.target}
+                        </div>
+                        <div className="flex items-center gap-1.5 opacity-80">
+                          <Clock size={14} />
+                          Ends {formatDate(challenge.endDate)}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
+                        <p className="text-sm opacity-80 flex items-center gap-2">
+                          <Trophy size={16} className="text-amber-400" />
+                          Reward: {challenge.reward}
+                        </p>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* Completed */}
+          {completedChallenges.length > 0 && (
+            <section>
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                <Trophy className="text-yellow-500" size={28} /> Completed Challenges
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {completedChallenges.map((challenge) => (
+                  <Card
+                    key={challenge.id}
+                    className={`p-6 rounded-2xl border bg-gradient-to-br from-emerald-900/10 to-emerald-950/5
+                      ${isDark ? "border-emerald-800/30" : "border-emerald-200/40"}`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="p-4 rounded-xl bg-emerald-500/20 text-emerald-400">
+                        <CheckCircle2 size={32} />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold">{challenge.title}</h3>
+                        <p className="text-sm opacity-80 mt-1">{challenge.description}</p>
+                        <div className="mt-5 text-sm flex items-center gap-2 text-emerald-400 font-medium">
+                          <Trophy size={16} />
+                          Reward unlocked: {challenge.reward}
+                        </div>
+                      </div>
                     </div>
-                    <div className={`p-3 rounded-xl ${
-                      isCompleted
-                        ? "bg-emerald-500/20 text-emerald-400"
-                        : "bg-amber-500/20 text-amber-400"
-                    }`}>
-                      {isCompleted ? <CheckCircle2 /> : <Target />}
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm mb-1.5">
-                      <span>Progress</span>
-                      <span className="font-medium">{progress}%</span>
-                    </div>
-                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-1000 ${
-                          isCompleted ? "bg-emerald-500" : "bg-gradient-to-r from-amber-500 to-orange-500"
-                        }`}
-                        style={{ width: `${progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center text-sm">
-                    <div className="opacity-80">
-                      {challenge.current} / {challenge.target}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock size={14} />
-                      <span>Ends {format(new Date(challenge.endDate), "MMM d")}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
-                    <p className="text-xs opacity-70 flex items-center gap-1.5">
-                      <Star size={14} className="text-amber-400" />
-                      Reward: {challenge.reward}
-                    </p>
-                  </div>
-                </Card>
-              );
-            })}
-        </div>
-      </div>
-
-      {/* Completed Challenges */}
-      <div>
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-          <Trophy className="text-yellow-500" size={28} /> Completed Challenges
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {challenges
-            .filter((c) => !c.active)
-            .map((challenge) => (
-              <Card
-                key={challenge.id}
-                className={`p-6 rounded-2xl border bg-gradient-to-br from-emerald-900/20 to-emerald-950/10
-                  ${isDark ? "border-emerald-800/30" : "border-emerald-200/50"}`}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="p-4 rounded-xl bg-emerald-500/20 text-emerald-400">
-                    <CheckCircle2 size={32} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold">{challenge.title}</h3>
-                    <p className="text-sm opacity-80 mt-1">{challenge.description}</p>
-                    <div className="mt-4 text-sm flex items-center gap-2 text-emerald-400">
-                      <Trophy size={16} />
-                      <span>Reward claimed: {challenge.reward}</span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))}
-        </div>
-
-        {challenges.filter((c) => !c.active).length === 0 && (
-          <Card className="p-10 text-center rounded-2xl bg-white/50 dark:bg-gray-800/50 border border-dashed">
-            <Trophy className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No completed challenges yet</h3>
-            <p className="opacity-70">
-              Finish your active challenges to unlock rewards and badges!
-            </p>
-          </Card>
-        )}
-      </div>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
     </div>
   );
 }
