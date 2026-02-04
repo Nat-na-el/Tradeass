@@ -17,74 +17,12 @@ import Reports from "./pages/Reports";
 import Challenges from "./pages/Challenges";
 import MentorMode from "./pages/MentorMode";
 import SettingsPage from "./pages/SettingsPage";
-import Backtest from "./pages/Backtest"; // ← your new backtest page
+import Backtest from "./pages/Backtest";
 import AddTrade from "./components/ui/AddTrade";
 import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
-
-// FloatingWidgets - visible ONLY on dashboard
-function FloatingWidgets({ currentAccount }) {
-  const location = useLocation();
-
-  // Show only on /dashboard
-  if (location.pathname !== "/dashboard") return null;
-
-  const currentId = localStorage.getItem("currentAccountId");
-  if (!currentId || !currentAccount) return null;
-
-  const trades = JSON.parse(localStorage.getItem(`${currentId}_trades`) || "[]");
-  const journals = JSON.parse(localStorage.getItem(`${currentId}_journals`) || "[]");
-  const notes = JSON.parse(localStorage.getItem(`${currentId}_notes`) || "[]");
-  const totalTrades = trades.length;
-  const totalJournals = journals.length;
-  const totalNotes = notes.length;
-  const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
-  const currentBalance = currentAccount.startingBalance + totalPnL;
-
-  return (
-    <div
-      className="fixed right-4 sm:right-8 flex flex-col gap-2 z-[9999] w-[90%] max-w-[260px] sm:w-[260px] opacity-90"
-      style={{
-        top: "50%",
-        transform: "translateY(-50%)",
-        height: "auto",
-        maxHeight: "70vh",
-      }}
-    >
-      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-sm font-bold text-gray-800 dark:text-gray-200">
-          {currentAccount.name}
-        </div>
-      </div>
-      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Total P&L</div>
-        <div className={`text-base font-bold ${totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}>
-          ${totalPnL.toFixed(2)}
-        </div>
-      </div>
-      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Current Balance</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">
-          ${currentBalance.toFixed(2)}
-        </div>
-      </div>
-      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Trades</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totalTrades}</div>
-      </div>
-      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Journals</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totalJournals}</div>
-      </div>
-      <div className="p-3 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-        <div className="text-[10px] text-gray-700 dark:text-gray-300">Notes</div>
-        <div className="text-base font-bold text-gray-800 dark:text-gray-200">{totalNotes}</div>
-      </div>
-    </div>
-  );
-}
 
 // ManageAccountsModal (unchanged)
 function ManageAccountsModal({
@@ -330,7 +268,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// Inner content
+// Main content – FloatingWidgets completely removed
 function AppContent() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -464,7 +402,7 @@ function AppContent() {
                     <Route path="/challenges" element={<Challenges />} />
                     <Route path="/mentor" element={<MentorMode />} />
                     <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/backtest" element={<Backtest />} /> {/* ← your new backtest page */}
+                    <Route path="/backtest" element={<Backtest />} />
                     <Route path="/quantitative-analysis" element={<QuantitativeAnalysis />} />
                     <Route path="/edit-balance-pnl" element={<EditBalancePNL onSaved={() => {}} />} />
                     <Route path="/trades/new" element={<AddTrade />} />
@@ -473,7 +411,8 @@ function AppContent() {
                 </div>
               </main>
             </div>
-            <FloatingWidgets currentAccount={currentAccount} />
+
+            {/* FloatingWidgets removed – no more right-side panel */}
             {showManageModal && (
               <ManageAccountsModal
                 accounts={accounts}
