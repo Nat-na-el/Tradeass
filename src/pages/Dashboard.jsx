@@ -29,7 +29,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 
-// Safe animated number component (unchanged)
+// Animated number component
 const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
   const [display, setDisplay] = useState(0);
   useEffect(() => {
@@ -46,13 +46,14 @@ const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
 
 export default function Dashboard({ currentAccount }) {
   const { theme } = useTheme();
+  const isDark = theme === "dark";
   const navigate = useNavigate();
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewDate, setViewDate] = useState(new Date());
   const [showQuickAnalysis, setShowQuickAnalysis] = useState(false);
 
-  // Fetch trades (unchanged)
+  // Fetch trades
   const refreshTrades = async () => {
     setLoading(true);
     try {
@@ -173,6 +174,20 @@ export default function Dashboard({ currentAccount }) {
     };
   }, [monthlyTrades]);
 
+  // Consistency Score (0–100)
+  const consistencyScore = useMemo(() => {
+    if (!monthlyTrades.length) return 0;
+
+    const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
+    const tradingDays = new Set(monthlyTrades.map(t => format(new Date(t.date), "yyyy-MM-dd"))).size;
+    const frequencyScore = Math.min(100, Math.round((tradingDays / daysInMonth) * 100));
+
+    const streakBonus = currentStreak.count * 6;
+    const finalScore = Math.min(100, Math.round(frequencyScore * 0.6 + streakBonus * 0.4));
+
+    return finalScore;
+  }, [monthlyTrades, currentStreak.count, viewDate]);
+
   const currentStreak = useMemo(() => {
     let streak = { type: "None", count: 0 };
     let current = null;
@@ -248,7 +263,6 @@ export default function Dashboard({ currentAccount }) {
       .slice(0, 5);
   }, [trades]);
 
-  // Quick Analysis modal content - new feature
   const quickAnalysisContent = () => {
     if (!monthlyTrades.length) {
       return (
@@ -263,7 +277,7 @@ export default function Dashboard({ currentAccount }) {
               setShowQuickAnalysis(false);
               navigate("/trades/new");
             }}
-            className="mt-8 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl shadow-lg transition-all"
+            className="mt-8 px-6 py-3 bg-gradient-to-r from-indigo-700 to-purple-800 hover:from-indigo-800 hover:to-purple-900 text-white rounded-xl shadow-lg transition-all"
           >
             Add Your First Trade
           </button>
@@ -278,10 +292,9 @@ export default function Dashboard({ currentAccount }) {
 
     return (
       <div className="space-y-8">
-        {/* Performance Snapshot */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="p-6 bg-gray-900/60 rounded-2xl border border-indigo-500/30 shadow-inner">
-            <div className="text-sm text-gray-400 mb-2">Win Rate</div>
+          <div className={`p-6 rounded-2xl border shadow-inner ${isDark ? "bg-gray-900/70 border-gray-700" : "bg-white/90 border-gray-200"}`}>
+            <div className={`text-sm mb-2 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Win Rate</div>
             <div className="text-4xl font-bold text-indigo-300">{winRate}%</div>
             <div className="mt-3 text-sm opacity-80 flex items-center gap-2">
               {winRate >= 60 ? (
@@ -299,8 +312,8 @@ export default function Dashboard({ currentAccount }) {
             </div>
           </div>
 
-          <div className="p-6 bg-gray-900/60 rounded-2xl border border-emerald-500/30 shadow-inner">
-            <div className="text-sm text-gray-400 mb-2">Net Result</div>
+          <div className={`p-6 rounded-2xl border shadow-inner ${isDark ? "bg-gray-900/70 border-gray-700" : "bg-white/90 border-gray-200"}`}>
+            <div className={`text-sm mb-2 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Net Result</div>
             <div
               className={`text-4xl font-bold ${
                 totalPnL >= 0 ? "text-emerald-400" : "text-rose-400"
@@ -318,8 +331,8 @@ export default function Dashboard({ currentAccount }) {
             </div>
           </div>
 
-          <div className="p-6 bg-gray-900/60 rounded-2xl border border-purple-500/30 shadow-inner">
-            <div className="text-sm text-gray-400 mb-2">Average R:R</div>
+          <div className={`p-6 rounded-2xl border shadow-inner ${isDark ? "bg-gray-900/70 border-gray-700" : "bg-white/90 border-gray-200"}`}>
+            <div className={`text-sm mb-2 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Average R:R</div>
             <div className="text-4xl font-bold text-purple-300">{avgRR}</div>
             <div className="mt-3 text-sm opacity-80 flex items-center gap-2">
               {avgRR >= 2.5 ? (
@@ -334,60 +347,42 @@ export default function Dashboard({ currentAccount }) {
           </div>
         </div>
 
-        {/* Personalized Suggestions */}
-        <div className="p-6 bg-gradient-to-br from-gray-950 to-gray-900 rounded-2xl border border-indigo-500/20 shadow-inner">
-          <h4 className="text-xl font-semibold mb-5 flex items-center gap-3 text-indigo-300">
+        <div className={`p-6 rounded-2xl border shadow-inner ${isDark ? "bg-gradient-to-br from-gray-950 to-gray-900 border-gray-700" : "bg-gradient-to-br from-gray-50 to-white border-gray-200"}`}>
+          <h4 className={`text-xl font-semibold mb-5 flex items-center gap-3 ${isDark ? "text-gray-200" : "text-gray-800"}`}>
             <Lightbulb size={22} className="text-yellow-400" />
             Instant Coaching Insights
           </h4>
 
-          <div className="space-y-4 text-gray-300 text-sm leading-relaxed">
+          <div className="space-y-4 text-sm leading-relaxed">
             {totalTrades < 15 && (
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-amber-400 mt-1 shrink-0" size={18} />
-                <p>
-                  Sample size still small ({totalTrades} trades). Aim for at least 20–30 trades before drawing strong conclusions about strategy effectiveness.
-                </p>
+                <p>Sample size still small ({totalTrades} trades). Aim for 20–30 trades before strong conclusions.</p>
               </div>
             )}
-
-            {winRate < 50 && (
+            {monthlyStats.winRate < 50 && (
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-rose-400 mt-1 shrink-0" size={18} />
-                <p>
-                  Win rate below 50% — be extra selective this week. Only take A+ setups that match your proven edge. Avoid revenge or FOMO trades.
-                </p>
+                <p>Win rate below 50% — be extra selective. Only A+ setups. Avoid revenge/FOMO trades.</p>
               </div>
             )}
-
             {avgRR < 2 && (
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-amber-400 mt-1 shrink-0" size={18} />
-                <p>
-                  Average reward:risk is low ({avgRR}). Focus on trades with minimum 1:2.5 or better. Avoid break-even or 1:1 targets unless extremely high probability.
-                </p>
+                <p>Average R:R low ({avgRR}). Target minimum 1:2.5. Avoid 1:1 or break-even trades.</p>
               </div>
             )}
-
             <div className="flex items-start gap-3">
               <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
-              <p>
-                Review your last 5 losing trades in detail. Look for one repeating mistake (entry timing, sizing, stop placement, emotion). Fix that pattern first.
-              </p>
+              <p>Review last 5 losing trades — identify one repeating mistake (timing, sizing, stop, emotion).</p>
             </div>
-
             <div className="flex items-start gap-3">
               <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
-              <p>
-                Maintain risk at ≤1% per trade until win rate consistently exceeds 55%. Protect capital while you refine your edge.
-              </p>
+              <p>Maintain ≤1% risk per trade until win rate consistently >55%.</p>
             </div>
-
             <div className="flex items-start gap-3">
               <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
-              <p>
-                Journal every trade’s emotion and confidence level (1–10). Patterns in psychology often explain results more than technicals.
-              </p>
+              <p>Journal emotion & confidence (1–10) for every trade — psychology drives results more than you think.</p>
             </div>
           </div>
         </div>
@@ -397,7 +392,7 @@ export default function Dashboard({ currentAccount }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-950">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
           <p className="mt-4 text-gray-400">Loading dashboard...</p>
@@ -408,118 +403,164 @@ export default function Dashboard({ currentAccount }) {
 
   return (
     <>
-      {/* Animated background layer */}
+      {/* Very subtle background animation */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        {/* Deep moving gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950/35 to-purple-950/25 animate-gradient-slow"></div>
-        
-        {/* Subtle radial depth */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(99,102,241,0.15)_0%,transparent_65%)] animate-pulse-slow"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_75%,rgba(168,85,247,0.12)_0%,transparent_75%)] animate-pulse-slower"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-950 via-slate-950 to-gray-950 animate-gradient-slow"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(79,70,229,0.06)_0%,transparent_70%)] animate-pulse-slow"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(139,92,246,0.04)_0%,transparent_80%)] animate-pulse-slower"></div>
       </div>
 
-      <div className="relative min-h-screen w-full p-4 sm:p-6 lg:p-8 text-gray-100 overflow-y-auto">
+      <div className={`relative min-h-screen w-full p-4 sm:p-6 lg:p-8 overflow-y-auto ${isDark ? "text-gray-200 bg-gray-950" : "text-gray-900 bg-gray-50"}`}>
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-indigo-300 via-purple-300 to-fuchsia-300 bg-clip-text text-transparent">
+            <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
               Dashboard
             </h1>
-            <p className="mt-1.5 text-gray-400">
+            <p className={`mt-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
               {format(viewDate, "MMMM yyyy")} • {currentAccount?.name || "Account"}
             </p>
           </div>
 
           <button
             onClick={() => setShowQuickAnalysis(true)}
-            className="flex items-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-700 hover:via-purple-700 hover:to-indigo-800 text-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 font-medium transform hover:scale-[1.03] active:scale-95"
+            className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 font-medium transform hover:scale-[1.03] active:scale-95 ${
+              isDark
+                ? "bg-gradient-to-r from-indigo-700 to-purple-800 hover:from-indigo-800 hover:to-purple-900 text-white"
+                : "bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+            }`}
           >
-            <Zap size={18} className="text-yellow-300" />
+            <Zap size={18} />
             Quick Analysis
           </button>
         </div>
 
-        {/* Stats Cards - your original code preserved */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-5 mb-8">
-          <Card className="relative overflow-hidden bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-6 mb-10">
+          {/* Monthly P&L */}
+          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
+            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
+          }`}>
             <div className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-xs sm:text-sm font-medium text-gray-400 group-hover:text-indigo-300">
+                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
                   Monthly P&L
                 </div>
-                <TrendingUp className="h-5 w-5 text-indigo-500/40 group-hover:text-indigo-400" />
+                <TrendingUp className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
               </div>
-              <div className={`text-2xl sm:text-3xl font-extrabold ${monthlyStats.totalPnL >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+              <div className={`text-3xl font-extrabold ${monthlyStats.totalPnL >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                 {monthlyStats.totalPnL >= 0 ? "+" : "-"}${Math.abs(monthlyStats.totalPnL)}
               </div>
             </div>
           </Card>
 
-          <Card className="relative overflow-hidden bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs sm:text-sm font-medium text-gray-400 group-hover:text-indigo-300">
-                  Win Rate
+          {/* Win Rate + tooltip */}
+          <div className="group relative">
+            <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ${
+              isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
+            }`}>
+              <div className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
+                    Win Rate
+                  </div>
+                  <Percent className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
                 </div>
-                <Percent className="h-5 w-5 text-indigo-500/40 group-hover:text-indigo-400" />
+                <div className="text-3xl font-extrabold text-indigo-300">
+                  <AnimatedNumber value={Number(monthlyStats.winRate)} decimals={1} />%
+                </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-indigo-300">
-                <AnimatedNumber value={Number(monthlyStats.winRate)} decimals={1} />%
+            </Card>
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none flex items-end justify-center pb-4 z-20">
+              <div className={`px-4 py-2.5 rounded-lg text-sm max-w-xs text-center shadow-xl border ${
+                isDark ? "bg-gray-900/95 border-gray-700 text-gray-300" : "bg-white/95 border-gray-200 text-gray-700"
+              }`}>
+                Percentage of winning trades this month (higher = more consistent strategy)
               </div>
             </div>
-          </Card>
+          </div>
 
-          <Card className="relative overflow-hidden bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs sm:text-sm font-medium text-gray-400 group-hover:text-indigo-300">
-                  Profit Factor
+          {/* Profit Factor + tooltip */}
+          <div className="group relative">
+            <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ${
+              isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
+            }`}>
+              <div className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
+                    Profit Factor
+                  </div>
+                  <Activity className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
                 </div>
-                <Activity className="h-5 w-5 text-indigo-500/40 group-hover:text-indigo-400" />
+                <div className="text-3xl font-extrabold text-cyan-300">
+                  {monthlyStats.profitFactor}
+                </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-cyan-400">
-                {monthlyStats.profitFactor}
+            </Card>
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none flex items-end justify-center pb-4 z-20">
+              <div className={`px-4 py-2.5 rounded-lg text-sm max-w-xs text-center shadow-xl border ${
+                isDark ? "bg-gray-900/95 border-gray-700 text-gray-300" : "bg-white/95 border-gray-200 text-gray-700"
+              }`}>
+                Gross profit ÷ gross loss — >1.5 is good, >2 is excellent
               </div>
             </div>
-          </Card>
+          </div>
 
-          <Card className="relative overflow-hidden bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs sm:text-sm font-medium text-gray-400 group-hover:text-indigo-300">
-                  Streak
+          {/* Consistency Score */}
+          <div className="group relative">
+            <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ${
+              isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
+            }`}>
+              <div className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
+                    Consistency Score
+                  </div>
+                  <Zap className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
                 </div>
-                <Zap className="h-5 w-5 text-indigo-500/40 group-hover:text-indigo-400" />
+                <div className="text-3xl font-extrabold text-violet-300">
+                  {consistencyScore}/100
+                </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-gray-200">
-                {currentStreak.count > 0 ? `${currentStreak.type} ${currentStreak.count}` : "None"}
+            </Card>
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none flex items-end justify-center pb-4 z-20">
+              <div className={`px-4 py-2.5 rounded-lg text-sm max-w-xs text-center shadow-xl border ${
+                isDark ? "bg-gray-900/95 border-gray-700 text-gray-300" : "bg-white/95 border-gray-200 text-gray-700"
+              }`}>
+                Combines trading frequency + streak strength — higher means more disciplined
               </div>
             </div>
-          </Card>
+          </div>
 
-          <Card className="relative overflow-hidden bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+          {/* Total Trades */}
+          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ${
+            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
+          }`}>
             <div className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-xs sm:text-sm font-medium text-gray-400 group-hover:text-indigo-300">
+                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
                   Total Trades
                 </div>
-                <BarChart3 className="h-5 w-5 text-indigo-500/40 group-hover:text-indigo-400" />
+                <BarChart3 className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
               </div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-violet-300">
+              <div className="text-3xl font-extrabold text-violet-300">
                 <AnimatedNumber value={monthlyStats.totalTrades} decimals={0} />
               </div>
             </div>
           </Card>
 
-          <Card className="relative overflow-hidden bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+          {/* Expectancy */}
+          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ${
+            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
+          }`}>
             <div className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-xs sm:text-sm font-medium text-gray-400 group-hover:text-indigo-300">
+                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
                   Expectancy
                 </div>
-                <DollarSign className="h-5 w-5 text-indigo-500/40 group-hover:text-indigo-400" />
+                <DollarSign className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
               </div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-teal-300">
+              <div className="text-3xl font-extrabold text-teal-300">
                 ${monthlyStats.expectancy}
               </div>
             </div>
@@ -528,22 +569,26 @@ export default function Dashboard({ currentAccount }) {
 
         {/* Recent Trades + Highlights */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-          <Card className="lg:col-span-2 bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg p-5 lg:p-6 hover:shadow-2xl transition-all duration-300">
+          <Card className={`lg:col-span-2 backdrop-blur-md rounded-2xl shadow-lg p-5 lg:p-6 hover:shadow-2xl transition-all duration-300 ${
+            isDark ? "bg-gray-900/70 border-indigo-500/20" : "bg-white/90 border-gray-200"
+          }`}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-semibold text-gray-100 flex items-center gap-2">
+              <h3 className={`text-lg font-semibold flex items-center gap-2 ${isDark ? "text-gray-100" : "text-gray-900"}`}>
                 <Activity className="h-5 w-5 text-indigo-400" />
                 Recent Trades
               </h3>
               <button
                 onClick={() => navigate("/trades")}
-                className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+                className={`text-sm flex items-center gap-1 transition-colors ${
+                  isDark ? "text-indigo-400 hover:text-indigo-300" : "text-indigo-600 hover:text-indigo-700"
+                }`}
               >
                 View All →
               </button>
             </div>
 
             {recentTrades.length === 0 ? (
-              <div className="text-center py-12 text-gray-400 bg-gray-800/30 rounded-xl">
+              <div className={`text-center py-12 rounded-xl ${isDark ? "text-gray-400 bg-gray-800/30" : "text-gray-600 bg-gray-100/50"}`}>
                 No recent trades yet
               </div>
             ) : (
@@ -552,7 +597,11 @@ export default function Dashboard({ currentAccount }) {
                   <div
                     key={i}
                     onClick={() => navigate(`/trades?date=${format(new Date(trade.date), "yyyy-MM-dd")}`)}
-                    className="flex items-center justify-between p-4 bg-gray-800/40 rounded-xl border border-gray-700 hover:bg-gray-700/60 transition-all cursor-pointer"
+                    className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
+                      isDark
+                        ? "bg-gray-800/40 border-gray-700 hover:bg-gray-700/60"
+                        : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                    }`}
                   >
                     <div className="flex items-center gap-4">
                       <div
@@ -565,10 +614,10 @@ export default function Dashboard({ currentAccount }) {
                         {trade.pair?.slice(0, 2) || "T"}
                       </div>
                       <div>
-                        <div className="font-semibold text-gray-100">
+                        <div className={`font-semibold ${isDark ? "text-gray-100" : "text-gray-900"}`}>
                           {trade.pair} {trade.direction}
                         </div>
-                        <div className="text-xs text-gray-400">
+                        <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
                           {format(new Date(trade.date), "dd MMM yyyy • HH:mm")}
                         </div>
                       </div>
@@ -587,39 +636,39 @@ export default function Dashboard({ currentAccount }) {
           </Card>
 
           {/* Monthly Highlights */}
-          <Card className="bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg p-5 lg:p-6">
-            <h3 className="text-lg font-semibold mb-5 text-gray-100 flex items-center gap-2">
+          <Card className={`backdrop-blur-md rounded-2xl shadow-lg p-5 lg:p-6 ${isDark ? "bg-gray-900/70 border-indigo-500/20" : "bg-white/90 border-gray-200"}`}>
+            <h3 className={`text-lg font-semibold mb-5 flex items-center gap-2 ${isDark ? "text-gray-100" : "text-gray-900"}`}>
               <BarChart3 className="h-5 w-5 text-indigo-400" />
               Monthly Highlights
             </h3>
 
             <div className="space-y-5">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-300">Best Day</span>
+                <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Best Day</span>
                 <div className="text-right">
                   <div className="font-bold text-emerald-400">
                     +${monthlyStats.bestDayPnL}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className={`text-xs ${isDark ? "text-gray-500" : "text-gray-500"}`}>
                     {monthlyStats.bestDayDate}
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-300">Worst Day</span>
+                <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Worst Day</span>
                 <div className="text-right">
                   <div className="font-bold text-rose-400">
                     ${monthlyStats.worstDayPnL}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className={`text-xs ${isDark ? "text-gray-500" : "text-gray-500"}`}>
                     {monthlyStats.worstDayDate}
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-300">Avg R:R</span>
+                <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Avg R:R</span>
                 <span className="font-bold text-purple-300">
                   {monthlyStats.avgRR}
                 </span>
@@ -627,14 +676,14 @@ export default function Dashboard({ currentAccount }) {
 
               <div className="pt-4 border-t border-gray-800">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-300">Win Rate</span>
+                  <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Win Rate</span>
                   <span className="text-xl font-bold text-indigo-300">
                     <AnimatedNumber value={Number(monthlyStats.winRate)} decimals={1} />%
                   </span>
                 </div>
                 <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-1000 ease-out"
+                    className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 transition-all duration-1000 ease-out"
                     style={{ width: `${monthlyStats.winRate}%` }}
                   />
                 </div>
@@ -643,13 +692,15 @@ export default function Dashboard({ currentAccount }) {
           </Card>
         </div>
 
-        {/* Calendar - your original code preserved */}
-        <Card className="bg-gray-900/70 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg p-5 lg:p-6">
+        {/* Calendar */}
+        <Card className={`backdrop-blur-md rounded-2xl shadow-lg p-5 lg:p-6 ${isDark ? "bg-gray-900/70 border-indigo-500/20" : "bg-white/90 border-gray-200"}`}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div className="flex items-center gap-3">
               <button
                 onClick={prevMonth}
-                className="p-3 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 transition-all shadow-sm hover:shadow-md"
+                className={`p-3 rounded-xl transition-all shadow-sm hover:shadow-md ${
+                  isDark ? "bg-gray-800 text-gray-300 hover:bg-gray-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
               >
                 ◀
               </button>
@@ -661,18 +712,22 @@ export default function Dashboard({ currentAccount }) {
                     jumpTo(y, m);
                   }
                 }}
-                className="px-5 py-3 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 hover:bg-gray-700 transition-all shadow-sm hover:shadow-md"
+                className={`px-5 py-3 rounded-xl border transition-all shadow-sm hover:shadow-md ${
+                  isDark ? "bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700" : "bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200"
+                }`}
               >
                 {format(viewDate, "MMMM yyyy")}
               </button>
               <button
                 onClick={nextMonth}
-                className="p-3 rounded-xl bg-gray-800 text-gray-300 hover:bg-gray-700 transition-all shadow-sm hover:shadow-md"
+                className={`p-3 rounded-xl transition-all shadow-sm hover:shadow-md ${
+                  isDark ? "bg-gray-800 text-gray-300 hover:bg-gray-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
               >
                 ▶
               </button>
             </div>
-            <span className="text-sm text-gray-400 font-medium">
+            <span className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>
               Tap a day to view trades
             </span>
           </div>
@@ -682,7 +737,7 @@ export default function Dashboard({ currentAccount }) {
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Wk"].map((d) => (
                 <div
                   key={d}
-                  className="text-xs font-medium text-center text-gray-400 py-3"
+                  className={`text-xs font-medium text-center py-3 ${isDark ? "text-gray-400" : "text-gray-600"}`}
                 >
                   {d}
                 </div>
@@ -705,8 +760,12 @@ export default function Dashboard({ currentAccount }) {
                           className={`
                             cursor-pointer aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-between border transition-all duration-300
                             ${isCur
-                              ? "bg-gray-900/70 border-indigo-500/30"
-                              : "bg-transparent border-dashed border-gray-700/40"}
+                              ? isDark
+                                ? "bg-gray-900/70 border-indigo-500/30"
+                                : "bg-white/80 border-gray-200"
+                              : isDark
+                              ? "bg-transparent border-dashed border-gray-700/40"
+                              : "bg-transparent border-dashed border-gray-300"}
                             hover:shadow-xl hover:scale-[1.03] hover:border-indigo-400
                           `}
                           style={{
@@ -717,7 +776,7 @@ export default function Dashboard({ currentAccount }) {
                               : undefined,
                           }}
                         >
-                          <div className="text-xs text-center text-gray-400">
+                          <div className={`text-xs text-center ${isDark ? "text-gray-400" : "text-gray-600"}`}>
                             {format(dayObj, "d")}
                           </div>
                           <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -732,12 +791,12 @@ export default function Dashboard({ currentAccount }) {
                                 >
                                   {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toFixed(2)}
                                 </div>
-                                <div className="text-[10px] text-gray-400">
+                                <div className={`text-[10px] ${isDark ? "text-gray-400" : "text-gray-500"}`}>
                                   {ds.count}t • {ds.winRate}%
                                 </div>
                               </>
                             ) : (
-                              <div className="text-xs text-gray-500">—</div>
+                              <div className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>—</div>
                             )}
                           </div>
                         </div>
@@ -745,8 +804,10 @@ export default function Dashboard({ currentAccount }) {
                     })}
 
                     {/* Weekly Summary */}
-                    <div className="aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-center items-center border bg-gray-800/50 border-gray-700">
-                      <div className="text-xs text-gray-400 mb-1">
+                    <div className={`aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-center items-center border ${
+                      isDark ? "bg-gray-800/50 border-gray-700" : "bg-gray-100/50 border-gray-200"
+                    }`}>
+                      <div className={`text-xs mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
                         W{wi + 1}
                       </div>
                       <div
@@ -758,7 +819,7 @@ export default function Dashboard({ currentAccount }) {
                       >
                         {wSum.pnl >= 0 ? "+" : ""}${Math.abs(wSum.pnl).toFixed(2)}
                       </div>
-                      <div className="text-[10px] text-gray-400">
+                      <div className={`text-[10px] ${isDark ? "text-gray-400" : "text-gray-500"}`}>
                         {wSum.count}t • {wSum.winRate}%
                       </div>
                     </div>
@@ -769,10 +830,14 @@ export default function Dashboard({ currentAccount }) {
           </div>
         </Card>
 
-        {/* Floating Quick Add Button - updated color */}
+        {/* Floating Quick Add Button */}
         <button
           onClick={() => navigate("/trades/new")}
-          className="fixed bottom-6 right-6 z-[1000] w-14 h-14 rounded-full bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white shadow-2xl hover:shadow-purple-500/40 transition-all duration-300 flex items-center justify-center transform hover:scale-110 active:scale-95"
+          className={`fixed bottom-6 right-6 z-[1000] w-14 h-14 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center transform hover:scale-110 active:scale-95 ${
+            isDark
+              ? "bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white hover:shadow-purple-500/40"
+              : "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white hover:shadow-indigo-500/40"
+          }`}
           aria-label="Add New Trade"
         >
           <span className="text-3xl font-bold leading-none">+</span>
@@ -781,7 +846,9 @@ export default function Dashboard({ currentAccount }) {
         {/* Quick Analysis Modal */}
         {showQuickAnalysis && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[2000] p-4 backdrop-blur-md">
-            <div className="bg-gray-900/95 border border-indigo-500/30 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className={`border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
+              isDark ? "bg-gray-900/95 border-indigo-500/30" : "bg-white/95 border-gray-200"
+            }`}>
               <div className="p-6 sm:p-8">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
@@ -789,7 +856,9 @@ export default function Dashboard({ currentAccount }) {
                   </h2>
                   <button
                     onClick={() => setShowQuickAnalysis(false)}
-                    className="text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-gray-800"
+                    className={`p-2 rounded-full transition-colors ${
+                      isDark ? "text-gray-400 hover:text-white hover:bg-gray-800" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    }`}
                   >
                     <X size={28} />
                   </button>
@@ -797,10 +866,12 @@ export default function Dashboard({ currentAccount }) {
 
                 {quickAnalysisContent()}
 
-                <div className="mt-8 pt-6 border-t border-gray-800 flex justify-end">
+                <div className="mt-8 pt-6 border-t flex justify-end">
                   <button
                     onClick={() => setShowQuickAnalysis(false)}
-                    className="px-6 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl transition-all"
+                    className={`px-6 py-3 rounded-xl transition-all ${
+                      isDark ? "bg-gray-800 hover:bg-gray-700 border-gray-700" : "bg-gray-100 hover:bg-gray-50 border-gray-200"
+                    }`}
                   >
                     Close
                   </button>
