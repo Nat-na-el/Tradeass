@@ -609,29 +609,29 @@ export default function Landing() {
           </div>
         </div>
       </section>
-      {/* Final CTA */}
+   {/* Final CTA */}
 <section className="py-32 px-6 text-center bg-gradient-to-br from-blue-600 via-cyan-600 to-emerald-600 text-white">
   <div className="max-w-5xl mx-auto space-y-12">
     <h2 className="text-5xl md:text-7xl font-extrabold leading-tight">
       Ready to Trade Smarter?
     </h2>
     <p className="text-2xl md:text-3xl opacity-90 max-w-4xl mx-auto">
-      Unlock advanced analytics, AI insights, and risk tools to elevate your trading. Sign up now for unlimited access no credit card needed.
+      Unlock advanced analytics, AI insights, and risk tools to elevate your trading. Sign up now for unlimited access—no credit card needed.
     </p>
 
-    {/* Dedicated black navigation bar – now clearly visible */}
-    <div className="py-8 px-6 bg-black/95 border border-gray-700 rounded-2xl shadow-2xl text-gray-200 max-w-5xl mx-auto">
-      <div className="flex flex-wrap justify-center gap-6 md:gap-10 text-base md:text-lg font-medium">
-        <a href="#features" className="hover:text-white transition-colors hover:underline">Features</a>
-        <a href="/supported-brokers" className="hover:text-white transition-colors hover:underline">Supported Brokers</a>
-        <a href="/become-a-partner" className="hover:text-white transition-colors hover:underline">Become A Partner</a>
-        <a href="/contact" className="hover:text-white transition-colors hover:underline">Contact Us</a>
-        <a href="/careers" className="hover:text-white transition-colors hover:underline">Careers</a>
-        <a href="/wall-of-love" className="hover:text-white transition-colors hover:underline">Wall of love</a>
-        <a href="/privacy" className="hover:text-white transition-colors hover:underline">Privacy Policy</a>
-        <a href="/terms" className="hover:text-white transition-colors hover:underline">Terms & Conditions</a>
-        <a href="/contact" className="hover:text-white transition-colors hover:underline">contact</a>
-        <a href="/support" className="hover:text-white transition-colors hover:underline">support</a>
+    {/* Black navigation bar – forced maximum visibility */}
+    <div className="py-10 px-8 bg-gray-950 border-2 border-gray-500 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.15)] text-white max-w-5xl mx-auto">
+      <div className="flex flex-wrap justify-center gap-6 md:gap-10 text-lg md:text-xl font-medium">
+        <a href="#features" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Features</a>
+        <a href="/supported-brokers" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Supported Brokers</a>
+        <a href="/become-a-partner" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Become A Partner</a>
+        <a href="/contact" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Contact Us</a>
+        <a href="/careers" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Careers</a>
+        <a href="/wall-of-love" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Wall of love</a>
+        <a href="/privacy" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Privacy Policy</a>
+        <a href="/terms" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">Terms & Conditions</a>
+        <a href="/contact" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">contact</a>
+        <a href="/support" className="hover:bg-white/10 px-4 py-2 rounded-lg transition-all">support</a>
       </div>
     </div>
 
@@ -702,4 +702,5 @@ export default function Landing() {
 </footer>
 </div>
 );
-}
+}  
+
