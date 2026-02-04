@@ -268,7 +268,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// Main content – FloatingWidgets completely removed
+// Main content – FloatingWidgets removed
 function AppContent() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -412,7 +412,7 @@ function AppContent() {
               </main>
             </div>
 
-            {/* FloatingWidgets removed – no more right-side panel */}
+            {/* No FloatingWidgets here anymore */}
             {showManageModal && (
               <ManageAccountsModal
                 accounts={accounts}
