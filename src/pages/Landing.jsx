@@ -40,53 +40,47 @@ export default function Landing() {
         delay: 250,
         direction: ''
       }, settings || {});
-      
+     
       this.DOM = {};
       this.build(selector);
-      
+     
       this.DOM.scope.addEventListener('transitionend', e => {
         if (e.pseudoElement === "::before" && e.propertyName == 'margin-top') {
           e.target.classList.remove('blur');
         }
       });
-      
+     
       this.count();
     }
-
-    Counter.prototype = { 
+    Counter.prototype = {
       build: function(selector) {
-        var scopeElm = typeof selector == 'string' 
-              ? document.querySelector(selector) 
-              : selector 
+        var scopeElm = typeof selector == 'string'
+              ? document.querySelector(selector)
+              : selector
                 ? selector
                 : this.DOM.scope;
-        
+       
         scopeElm.innerHTML = Array(this.settings.digits + 1)
             .join('<div><b data-value="0"></b></div>');
-        
+       
         this.DOM = {
           scope: scopeElm,
           digits: scopeElm.querySelectorAll('b')
         };
       },
-      
+     
       count: function(newVal) {
-        var countTo, className, 
+        var countTo, className,
             settings = this.settings,
             digitsElms = this.DOM.digits;
-
         this.value = newVal || this.DOM.scope.dataset.value | 0;
-
         if (!this.value) return;
-
         countTo = (this.value + '').split('');
-
         if (settings.direction == 'rtl') {
           countTo = countTo.reverse();
           digitsElms = [].slice.call(digitsElms).reverse();
         }
-
-        digitsElms.forEach(function(item, i) { 
+        digitsElms.forEach(function(item, i) {
           if (+item.dataset.value != countTo[i] && countTo[i] >= 0) {
             setTimeout(function(j) {
               var diff = Math.abs(countTo[j] - +item.dataset.value);
@@ -97,25 +91,20 @@ export default function Landing() {
         });
       }
     };
-
     // Create counters for background
     new Counter('.stock-counter1', { digits: 6, direction: 'rtl', delay: 200 });
     new Counter('.stock-counter2', { digits: 5, direction: 'rtl', delay: 150 });
     new Counter('.stock-counter3', { digits: 7, direction: 'rtl', delay: 250 });
-
     // Randomly update counters every few seconds
     const randomCount = () => {
       document.querySelector('.stock-counter1').dataset.value = Math.floor(Math.random() * 1000000) + 100000;
       document.querySelector('.stock-counter2').dataset.value = Math.floor(Math.random() * 100000) + 10000;
       document.querySelector('.stock-counter3').dataset.value = Math.floor(Math.random() * 10000000) + 1000000;
     };
-
     randomCount();
     const interval = setInterval(randomCount, 4000);
-
     return () => clearInterval(interval);
   }, []);
-
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-800">
       {/* Animated Trading-Themed Background – creative & visible */}
@@ -317,7 +306,7 @@ export default function Landing() {
         </div>
       </section>
       {/* Features Grid - Light Section */}
-      <section className="py-24 px-6 bg-white dark:bg-gray-900">
+      <section className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="text-center space-y-6">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
@@ -398,7 +387,7 @@ export default function Landing() {
         </div>
       </section>
       {/* How It Works - Numbered Steps */}
-      <section className="py-24 px-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-gray-900">
+      <section className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
         <div className="max-w-7xl mx-auto space-y-20">
           <div className="text-center space-y-6">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
@@ -457,7 +446,7 @@ export default function Landing() {
         </div>
       </section>
       {/* Testimonials */}
-      <section className="py-24 px-6 bg-gradient-to-b from-blue-900 to-black text-white">
+      <section className="py-24 px-6 bg-gradient-to-b from-blue-900/95 to-black/95 text-white backdrop-blur-lg">
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="text-center space-y-6">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold">
@@ -468,7 +457,7 @@ export default function Landing() {
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-10">
-            <div className="p-8 rounded-3xl bg-blue-800/40 backdrop-blur-sm border border-blue-700/50">
+            <div className="p-8 rounded-3xl bg-blue-800/60 backdrop-blur-md border border-blue-700/50">
               <div className="flex gap-1 mb-6">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="h-6 w-6 fill-yellow-400 text-yellow-400" />
@@ -479,7 +468,7 @@ export default function Landing() {
               </p>
               <p className="font-semibold">Ryan P. • Futures Trader</p>
             </div>
-            <div className="p-8 rounded-3xl bg-blue-800/40 backdrop-blur-sm border border-blue-700/50">
+            <div className="p-8 rounded-3xl bg-blue-800/60 backdrop-blur-md border border-blue-700/50">
               <div className="flex gap-1 mb-6">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="h-6 w-6 fill-yellow-400 text-yellow-400" />
@@ -490,7 +479,7 @@ export default function Landing() {
               </p>
               <p className="font-semibold">Lisa M. • Forex Swing Trader</p>
             </div>
-            <div className="p-8 rounded-3xl bg-blue-800/40 backdrop-blur-sm border border-blue-700/50">
+            <div className="p-8 rounded-3xl bg-blue-800/60 backdrop-blur-md border border-blue-700/50">
               <div className="flex gap-1 mb-6">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="h-6 w-6 fill-yellow-400 text-yellow-400" />
