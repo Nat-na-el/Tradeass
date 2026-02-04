@@ -1,26 +1,31 @@
-<head>
-  <meta charset="UTF-8" />
-  
-  <!-- Most important: mobile viewport -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
 
-  <!-- Title shown on home screen when added to phone -->
-  <title>Tradeass – Trading Journal</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
 
-  <!-- Favicon -->
-  <link rel="icon" href="/favicon.ico" />
+    <title>Tradeass – Trading Journal</title>
 
-  <!-- Prevent automatic phone number detection -->
-  <meta name="format-detection" content="telephone=no" />
+    <link rel="icon" href="/favicon.ico" />
 
-  <!-- Better experience when added to home screen (iOS / Android) -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="format-detection" content="telephone=no" />
 
-  <!-- Optional: theme color for browser UI (address bar) -->
-  <meta name="theme-color" content="#005f7f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
-  <!-- Optional: force dark mode if your app is dark-first -->
-  <!-- <meta name="color-scheme" content="dark light"> -->
-</head>
+    <meta name="theme-color" content="#005f7f" />
+  </head>
+
+  <body>
+    <!-- React mounts here -->
+    <div id="root"></div>
+
+    <!-- Vite entry file -->
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
