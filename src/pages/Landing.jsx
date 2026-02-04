@@ -483,6 +483,134 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      {/* Pricing Teaser */}
+      <section className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
+        <div className="max-w-7xl mx-auto space-y-16">
+          <div className="text-center space-y-6">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
+              Choose Your Plan
+            </h2>
+            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto">
+              Start free or upgrade for advanced features. Billed monthly or annually.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
+            <div className="p-8 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                Free
+              </h3>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">$0</p>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">Forever</p>
+              <ul className="space-y-3 text-gray-700 dark:text-gray-300 mb-6">
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Basic trade tracking</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Daily journals</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Offline access</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Community support</li>
+              </ul>
+              <Button variant="outline" className="w-full" onClick={() => navigate('/register')}>
+                Start Free
+              </Button>
+            </div>
+            <div className="p-8 rounded-3xl bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/30 dark:to-blue-950/30 border border-cyan-500 shadow-xl hover:shadow-2xl transition-all group relative">
+              <div className="absolute top-0 right-0 bg-cyan-500 text-white text-xs px-3 py-1 rounded-bl-md">Popular</div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                Pro
+              </h3>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">$19</p>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">Per month</p>
+              <ul className="space-y-3 text-gray-700 dark:text-gray-300 mb-6">
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Everything in Free</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> 60+ advanced reports</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> AI-powered insights</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Risk management tools</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Priority support</li>
+              </ul>
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={() => navigate('/register')}>
+                Get Pro
+              </Button>
+            </div>
+            <div className="p-8 rounded-3xl bg-gradient-to-br from-emerald-50 to-cyan-50 dark:from-emerald-950/30 dark:to-cyan-950/30 border border-emerald-500 shadow-lg hover:shadow-xl transition-all group">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                Enterprise
+              </h3>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Custom</p>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">Contact us</p>
+              <ul className="space-y-3 text-gray-700 dark:text-gray-300 mb-6">
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Everything in Pro</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Multi-user teams</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Custom integrations</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Dedicated account manager</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> On-premise deployment</li>
+              </ul>
+              <Button variant="outline" className="w-full" onClick={() => navigate('/contact')}>
+                Contact Sales
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+      {/* Blog Teaser */}
+      <section className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg">
+        <div className="max-w-7xl mx-auto space-y-16">
+          <div className="text-center space-y-6">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
+              Latest from Our Blog
+            </h2>
+            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto">
+              Expert tips, trading strategies, and insights to help you succeed in the markets.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
+            <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
+              <div className="mb-4">
+                <img src="/placeholder-blog-1.jpg" alt="Blog 1" className="w-full h-48 object-cover rounded-2xl" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                5 Common Trading Mistakes and How to Avoid Them
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                Learn from experienced traders on how to identify and fix common pitfalls in your trading strategy.
+              </p>
+              <Button variant="link" className="p-0 text-blue-600 hover:text-blue-700">
+                Read More <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
+              <div className="mb-4">
+                <img src="/placeholder-blog-2.jpg" alt="Blog 2" className="w-full h-48 object-cover rounded-2xl" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                The Power of Journaling in Trading Success
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                Discover how consistent journaling can transform your trading performance and mindset.
+              </p>
+              <Button variant="link" className="p-0 text-blue-600 hover:text-blue-700">
+                Read More <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
+              <div className="mb-4">
+                <img src="/placeholder-blog-3.jpg" alt="Blog 3" className="w-full h-48 object-cover rounded-2xl" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                AI in Trading: Future or Present?
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                Explore how AI is revolutionizing trading analytics and decision-making today.
+              </p>
+              <Button variant="link" className="p-0 text-blue-600 hover:text-blue-700">
+                Read More <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="text-center">
+            <Button variant="outline" className="text-lg px-8 py-4" onClick={() => navigate('/blog')}>
+              View All Posts
+            </Button>
+          </div>
+        </div>
+      </section>
       {/* Final CTA */}
       <section className="py-32 px-6 text-center bg-gradient-to-br from-blue-600 via-cyan-600 to-emerald-600 text-white">
         <div className="max-w-5xl mx-auto space-y-12">
