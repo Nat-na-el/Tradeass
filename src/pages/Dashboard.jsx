@@ -12,19 +12,22 @@ import {
 } from "date-fns";
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "../../Theme-provider"; // ← FIXED PATH: go up two levels from src/pages/
+import { useTheme } from "../../Theme-provider"; // ← Try this path first
+// If the above still fails, try one of these:
+// import { useTheme } from "../Theme-provider";
+// import { useTheme } from "../../contexts/Theme-provider";
+// import { useTheme } from "../contexts/Theme-provider";
+
 import {
   TrendingUp,
   TrendingDown,
   Activity,
-  DollarSign,
   Percent,
   Zap,
   BarChart3,
-  Plus,
 } from "lucide-react";
 
-// Simple animated number component (no custom hook, safe for build)
+// Safe animated number component (no custom hook issues)
 const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
   const [display, setDisplay] = useState(0);
 
