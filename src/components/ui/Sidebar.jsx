@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Menu,
@@ -12,14 +12,10 @@ import {
   Users,
   Settings,
   Calculator,
-  UserPlus,
-  Settings2,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
 import { useTheme } from "../../Theme-provider";
-import { signOut } from 'firebase/auth';
-import { auth } from '../../firebase'; // Adjust path if needed
 
 export default function Sidebar({
   open,
@@ -37,16 +33,6 @@ export default function Sidebar({
   const toggleSidebar = () => {
     setOpen((prev) => !prev);
     setIsAccountDropdownOpen(false);
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      localStorage.removeItem('currentAccountId');
-      window.location.href = '/login';
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
   };
 
   const toggleAccountDropdown = () => {
@@ -84,7 +70,7 @@ export default function Sidebar({
         <div className="flex items-center justify-end p-3 pt-2">
           <button
             onClick={toggleSidebar}
-            className="p-2 rounded-lg bg-amber-100 dark:bg-gray-800 text-amber-800 dark:text-gray-200 hover:bg-amber-200 dark:hover:bg-gray-700 transition-all duration-300 flex items-center justify-center"
+            className="p-2 rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 transition-all duration-300 flex items-center justify-center"
           >
             {open ? <X size={18} /> : <Menu size={18} />}
           </button>
@@ -92,30 +78,29 @@ export default function Sidebar({
 
         {/* ACCOUNT SECTION */}
         <div className="p-3 border-b border-amber-200/80 dark:border-gray-700">
-          {/* CURRENT ACCOUNT DISPLAY */}
           <div
             className={`flex items-center gap-2 p-2 rounded cursor-pointer ${
               open ? "justify-between" : "justify-center"
-            } hover:bg-amber-100/70 dark:hover:bg-gray-800 transition-colors`}
+            }`}
             onClick={toggleAccountDropdown}
           >
-            <div className="w-8 h-8 bg-amber-200 dark:bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-amber-900 dark:text-white text-xs font-bold">
+            <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-bold">
                 {currentAccount?.name?.charAt(0) || "A"}
               </span>
             </div>
             {open && (
               <>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-medium text-amber-900 dark:text-gray-200">
+                  <div className="text-xs font-medium text-gray-200">
                     {currentAccount?.name || "Account"}
                   </div>
                 </div>
                 <div className="flex items-center">
                   {isAccountDropdownOpen ? (
-                    <ChevronUp size={14} className="text-amber-700 dark:text-gray-400" />
+                    <ChevronUp size={14} className="text-gray-400" />
                   ) : (
-                    <ChevronDown size={14} className="text-amber-700 dark:text-gray-400" />
+                    <ChevronDown size={14} className="text-gray-400" />
                   )}
                 </div>
               </>
@@ -132,23 +117,23 @@ export default function Sidebar({
                     onSwitchAccount(account.id);
                     setIsAccountDropdownOpen(false);
                   }}
-                  className={`w-full text-left p-2 rounded text-xs font-normal transition-colors ${
+                  className={`w-full text-left p-2 rounded text-xs font-normal ${
                     currentAccount?.id === account.id
-                      ? "bg-amber-200/70 dark:bg-gray-700 text-amber-950 dark:text-white border-l-2 border-amber-500 dark:border-gray-300"
-                      : "text-amber-800 dark:text-gray-400 hover:bg-amber-100/70 dark:hover:bg-gray-800"
+                      ? "bg-gray-700 text-white border-l-2 border-gray-300"
+                      : "text-gray-400 hover:bg-gray-700 hover:text-white"
                   }`}
                 >
                   {account.name}
                 </button>
               ))}
 
-              <div className="pt-2 border-t border-amber-200/80 dark:border-gray-600 space-y-1">
+              <div className="pt-2 border-t border-gray-600 space-y-1">
                 <button
                   onClick={() => {
                     onCreateAccount();
                     setIsAccountDropdownOpen(false);
                   }}
-                  className="w-full p-2 text-xs bg-amber-100 dark:bg-gray-700 hover:bg-amber-200 dark:hover:bg-gray-600 text-amber-900 dark:text-gray-200 rounded transition-colors"
+                  className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
                 >
                   + New Account
                 </button>
@@ -157,7 +142,7 @@ export default function Sidebar({
                     onShowManage();
                     setIsAccountDropdownOpen(false);
                   }}
-                  className="w-full p-2 text-xs bg-amber-100 dark:bg-gray-700 hover:bg-amber-200 dark:hover:bg-gray-600 text-amber-900 dark:text-gray-200 rounded transition-colors"
+                  className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
                 >
                   Manage Accounts
                 </button>
@@ -175,8 +160,8 @@ export default function Sidebar({
               className={({ isActive }) =>
                 `flex items-center gap-3 p-2 rounded-lg text-sm transition-all duration-300 ${
                   isActive
-                    ? "bg-amber-200/60 dark:bg-gray-700 text-amber-950 dark:text-white shadow-inner"
-                    : "text-amber-800 dark:text-gray-400 hover:bg-amber-100/60 dark:hover:bg-gray-800 hover:text-amber-950 dark:hover:text-white"
+                    ? "bg-gray-700 text-white shadow-inner"
+                    : "text-gray-400 hover:bg-gray-700 hover:text-white"
                 } ${
                   open ? "justify-start pl-3" : "justify-center items-center"
                 }`.trim()
