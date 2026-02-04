@@ -12,12 +12,7 @@ import {
 } from "date-fns";
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "../../Theme-provider"; // ← Try this path first
-// If the above still fails, try one of these:
-// import { useTheme } from "../Theme-provider";
-// import { useTheme } from "../../contexts/Theme-provider";
-// import { useTheme } from "../contexts/Theme-provider";
-
+import { useTheme } from "../Theme-provider"; // ← correct path when file is in src/
 import {
   TrendingUp,
   TrendingDown,
@@ -27,7 +22,7 @@ import {
   BarChart3,
 } from "lucide-react";
 
-// Safe animated number component (no custom hook issues)
+// Safe animated number component
 const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
   const [display, setDisplay] = useState(0);
 
@@ -56,15 +51,13 @@ export default function Dashboard({ currentAccount }) {
     setLoading(true);
     try {
       const currentId = localStorage.getItem("currentAccountId") || "default";
-      console.log("🚀 DASHBOARD FETCHING FROM DB - ACCOUNT:", currentId);
       const res = await fetch(
         `https://tradeass-backend.onrender.com/api/trades?accountId=${currentId}`
       );
       const data = await res.json();
-      console.log("✅ DASHBOARD TRADES:", data);
       setTrades(data || []);
     } catch (err) {
-      console.error("❌ DASHBOARD ERROR:", err);
+      console.error("Dashboard fetch error:", err);
       setTrades([]);
     } finally {
       setLoading(false);
@@ -77,7 +70,6 @@ export default function Dashboard({ currentAccount }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Month navigation
   const prevMonth = () => setViewDate((d) => subMonths(d, 1));
   const nextMonth = () => setViewDate((d) => addMonths(d, 1));
   const jumpTo = (y, m) => setViewDate(new Date(y, m - 1, 1));
