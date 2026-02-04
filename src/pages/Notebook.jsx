@@ -17,6 +17,7 @@ import {
   FileText,
   Calendar,
 } from "lucide-react";
+import { format } from "date-fns"; // ← FIXED: missing import
 
 const NOTE_TAGS = [
   { value: "psychology", label: "Psychology", color: "indigo" },
@@ -107,7 +108,6 @@ export default function Notebook() {
 
   const addNote = () => {
     if (!newNote.trim()) return;
-
     const note = {
       id: `note-${Date.now()}`,
       content: newNote.trim(),
@@ -116,7 +116,6 @@ export default function Notebook() {
       date: new Date().toISOString(),
       isPinned: false,
     };
-
     saveNotes([note, ...notes]);
     setNewNote("");
     setNewTag("other");
@@ -401,7 +400,7 @@ export default function Notebook() {
                 className={`relative p-6 rounded-2xl border transition-all duration-300 group hover:shadow-2xl hover:-translate-y-1
                   ${isDark
                     ? "bg-gray-800/50 border-gray-700/50 backdrop-blur-md"
-                    : "bg-white/80 border-gray-200/50 backdrop-blur-md"} 
+                    : "bg-white/80 border-gray-200/50 backdrop-blur-md"}
                   ${note.isPinned ? "ring-2 ring-amber-500/50" : ""}`}
               >
                 {/* Selection checkbox */}
@@ -519,7 +518,9 @@ export default function Notebook() {
                     <div className="flex justify-between items-center pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
                       <div className="text-xs opacity-60 flex items-center gap-2">
                         <Calendar size={14} />
-                        {format(new Date(note.date), "dd MMM yyyy • HH:mm")}
+                        {note.date
+                          ? format(new Date(note.date), "dd MMM yyyy • HH:mm")
+                          : "No date"}
                       </div>
 
                       <div className="flex gap-2">
