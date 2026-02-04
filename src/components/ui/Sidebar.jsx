@@ -73,7 +73,7 @@ export default function Sidebar({
         fixed left-0 top-16 bottom-0 z-[999] transition-all duration-300
         border-r shadow-xl
         ${open ? "w-64" : "w-16"}
-        bg-amber-50 dark:bg-gray-900
+        bg-amber-50 dark:bg-gray-950
         border-amber-200/80 dark:border-gray-800
         text-amber-950 dark:text-gray-100
       `}
@@ -88,6 +88,7 @@ export default function Sidebar({
               bg-amber-100/60 dark:bg-gray-800
               hover:bg-amber-200/60 dark:hover:bg-gray-700
               text-amber-800 dark:text-gray-300
+              focus:outline-none focus:ring-2 focus:ring-amber-500/40 dark:focus:ring-indigo-500/40
             `}
           >
             {open ? <X size={18} /> : <Menu size={18} />}
@@ -101,7 +102,7 @@ export default function Sidebar({
               flex items-center gap-2.5 p-2.5 rounded-lg cursor-pointer
               ${open ? "justify-between" : "justify-center"}
               hover:bg-amber-100/60 dark:hover:bg-gray-800
-              transition-colors
+              transition-colors duration-200
             `}
             onClick={toggleAccountDropdown}
           >
@@ -140,7 +141,7 @@ export default function Sidebar({
                     setIsAccountDropdownOpen(false);
                   }}
                   className={`
-                    w-full text-left p-2.5 rounded-lg text-sm font-normal transition-colors
+                    w-full text-left p-2.5 rounded-lg text-sm font-normal transition-colors duration-200
                     ${
                       currentAccount?.id === account.id
                         ? "bg-amber-200/70 dark:bg-gray-700 text-amber-900 dark:text-white font-medium border-l-2 border-amber-500 dark:border-indigo-500"
@@ -209,12 +210,17 @@ export default function Sidebar({
           ))}
         </nav>
 
-        {/* Bottom logout (optional) */}
+        {/* Bottom logout (optional - only shown when sidebar is open) */}
         {open && (
           <div className="p-3 border-t border-amber-200/80 dark:border-gray-800">
             <button
               onClick={handleLogout}
-              className="w-full p-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className={`
+                w-full p-2.5 text-sm rounded-lg transition-colors duration-200
+                text-red-600 dark:text-red-400
+                hover:bg-red-50 dark:hover:bg-red-950/30
+                flex items-center justify-center gap-2
+              `}
             >
               <LogOut size={16} />
               Logout
