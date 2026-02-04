@@ -1,4 +1,4 @@
-/* src/index.css - full file (replace existing) */
+/* src/index.css - COMPLETE & FINAL VERSION */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -18,14 +18,14 @@
   --radius: 12px;
 }
 
-/* apply a dark background gradient similar to screenshot */
+/* Dark gradient base (used in dashboard, etc.) */
 .bg-tradezella {
   background: radial-gradient(
-      1200px 600px at 10% 5%,
-      rgba(28, 41, 68, 0.55),
-      transparent 20%
-    ),
-    linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+    1200px 600px at 10% 5%,
+    rgba(28, 41, 68, 0.55),
+    transparent 20%
+  ),
+  linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
 }
 
 /* Base page */
@@ -43,7 +43,7 @@ body,
   color: #e6eef8;
 }
 
-/* Scrollbar style */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
   height: 8px;
@@ -53,36 +53,22 @@ body,
   border-radius: 6px;
 }
 
-/* Card shadow & widgets */
+/* Cards & widgets */
 .card-ghost {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.02),
-    rgba(255, 255, 255, 0.01)
-  );
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
   border-radius: var(--radius);
   box-shadow: var(--card-shadow);
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
-
-/* Widget container helper */
 .widget {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.015),
-    rgba(255, 255, 255, 0.008)
-  );
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0.008));
   border: 1px solid rgba(255, 255, 255, 0.04);
   padding: 12px;
   border-radius: 12px;
 }
+.inner-outline { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02); }
 
-/* inner subtle outline used on some cards */
-.inner-outline {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
-}
-
-/* small pill style */
+/* Pills & KPIs */
 .pill {
   display: inline-block;
   padding: 6px 10px;
@@ -92,45 +78,27 @@ body,
   background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
   color: white;
 }
-
-/* KPI */
 .kpi-card {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.02),
-    rgba(255, 255, 255, 0.01)
-  );
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
   border-radius: 10px;
   padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
-/* header & sidebar helpers */
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+/* Layout helpers */
+.header { display: flex; align-items: center; justify-content: space-between; }
+.sidebar { background: linear-gradient(180deg, #07102a, #04101a); }
 
-/* Sidebar look */
-.sidebar {
-  background: linear-gradient(180deg, #07102a, #04101a);
-}
-
-/* button helpers */
+/* Buttons */
 .btn-primary {
   @apply bg-gradient-to-r from-indigo-600 to-pink-500 text-white font-semibold px-4 py-2 rounded-lg;
 }
 
-/* utility text colors */
-.text-muted {
-  color: rgba(255, 255, 255, 0.65);
-}
-.text-faint {
-  color: rgba(255, 255, 255, 0.48);
-}
+/* Text utilities */
+.text-muted { color: rgba(255, 255, 255, 0.65); }
+.text-faint { color: rgba(255, 255, 255, 0.48); }
 
-/* form input tweaks (radix classes may already set these) */
+/* Form inputs */
 input[type="date"],
 input[type="text"],
 input[type="number"],
@@ -142,77 +110,97 @@ textarea {
   padding: 8px;
 }
 
-/* responsiveness tweaks */
+/* Responsive grid fixes */
 @media (max-width: 1024px) {
-  .lg\\:col-span-8 {
-    grid-column: span 12 / span 12;
-  }
-  .lg\\:col-span-4 {
-    grid-column: span 12 / span 12;
-  }
-  .lg\\:col-span-2 {
-    grid-column: span 12 / span 12;
-  }
+  .lg\:col-span-8,
+  .lg\:col-span-4,
+  .lg\:col-span-2 { grid-column: span 12 / span 12; }
 }
 
 /* ────────────────────────────────────────────────
-   NEW ANIMATED BACKGROUND (added for Dashboard)
+   DASHBOARD ANIMATIONS (already present)
+   ──────────────────────────────────────────────── */
+@keyframes gradient-slow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.65; }
+}
+@keyframes pulse-slower {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.50; }
+}
+.animate-gradient-slow   { animation: gradient-slow 28s ease infinite; background-size: 180% 180%; }
+.animate-pulse-slow      { animation: pulse-slow 14s ease-in-out infinite; }
+.animate-pulse-slower    { animation: pulse-slower 22s ease-in-out infinite; }
+.bg-animated {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #312e81 50%, #4f46e5 75%, #0f172a 100%);
+}
+
+/* ────────────────────────────────────────────────
+   LANDING PAGE ANIMATIONS – PREMIUM & LUCRATIVE
    ──────────────────────────────────────────────── */
 
-/* Smooth moving gradient animation */
-@keyframes gradient-slow {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+/* Floating orbs (used as background blobs) */
+@keyframes float-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(60px, -60px) scale(1.1); }
+}
+@keyframes float-medium {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-80px, 80px) scale(1.15); }
+}
+@keyframes float-fast {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(50px, -50px) scale(1.08); }
 }
 
-/* Gentle pulsing overlays for depth */
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 0.35;
-  }
-  50% {
-    opacity: 0.65;
-  }
+/* Entrance animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(60px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.8; }
+  50%      { opacity: 1; }
 }
 
-@keyframes pulse-slower {
-  0%, 100% {
-    opacity: 0.25;
-  }
-  50% {
-    opacity: 0.50;
-  }
+/* Apply classes */
+.animate-float-slow     { animation: float-slow 24s ease-in-out infinite; }
+.animate-float-medium   { animation: float-medium 18s ease-in-out infinite; }
+.animate-float-fast     { animation: float-fast 14s ease-in-out infinite; }
+
+.animate-fade-in        { animation: fade-in 1.4s ease-out forwards; }
+.animate-slide-up       { animation: slide-up 1.2s ease-out forwards; }
+.animate-fade-in-up     { animation: fade-in-up 1s ease-out forwards; }
+.animate-pulse-glow     { animation: pulse-glow 6s ease-in-out infinite; }
+
+/* Stagger helpers */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+.delay-600 { animation-delay: 0.6s; }
+
+/* Extra polish – subtle hover lift for cards */
+.hover-lift {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
-/* Apply animations */
-.animate-gradient-slow {
-  animation: gradient-slow 28s ease infinite;
-  background-size: 180% 180%;
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 14s ease-in-out infinite;
-}
-
-.animate-pulse-slower {
-  animation: pulse-slower 22s ease-in-out infinite;
-}
-
-/* Optional: helper class for animated background container */
-.bg-animated {
-  background: linear-gradient(
-    135deg,
-    #0f172a 0%,
-    #1e293b 25%,
-    #312e81 50%,
-    #4f46e5 75%,
-    #0f172a 100%
-  );
-}
+/* Finished! */
