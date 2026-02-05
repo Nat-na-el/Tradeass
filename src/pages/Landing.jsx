@@ -365,10 +365,6 @@ export default function Landing() {
         className="pt-40 pb-32 px-6 md:px-12 lg:px-20 text-center relative overflow-hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 via-transparent to-cyan-100/40 dark:from-blue-950/60 dark:to-cyan-950/50 pointer-events-none" />
-        <div className="absolute inset-0 z-[-5] opacity-30">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(34,211,238,0.18),transparent_40%)]"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.15),transparent_40%)]"></div>
-        </div>
         <div className="max-w-6xl mx-auto relative z-10 space-y-10 md:space-y-12">
           <motion.h1 variants={fadeInUp} className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-none animate-fade-in bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400">
             Your Personal Trading Edge
