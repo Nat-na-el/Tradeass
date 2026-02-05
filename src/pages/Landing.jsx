@@ -254,40 +254,43 @@ export default function Landing() {
       <div className="absolute inset-0 z-[-10] pointer-events-none overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-950/90 via-teal-950 to-gray-950" />
         <div className="absolute inset-0 opacity-12 dark:opacity-15">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(6,182,212,0.1)_1px,transparent_1px),linear_gradient(to_bottom,rgba(6,182,212,0.1)_1px,transparent_1px)] bg-[size:50px_50px] animate-grid-move" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(6,182,212,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(6,182,212,0.1)_1px,transparent_1px)] bg-[size:50px_50px] animate-grid-move" />
         </div>
         <div className="absolute inset-0 flex justify-around items-end opacity-25 md:opacity-20 pointer-events-none">
-          {[...Array(20)].map((_, i) => (
+          {[...Array(30)].map((_, i) => (
             <div
               key={i}
-              className="w-4 sm:w-6 md:w-8 lg:w-12 bg-gradient-to-t from-transparent via-emerald-500/80 to-emerald-400/40 rounded-t-md animate-candle-rise"
+              className="w-3 sm:w-5 md:w-7 lg:w-10 bg-gradient-to-t from-transparent via-emerald-500/80 to-emerald-400/40 rounded-t-md animate-candle-rise"
               style={{
-                height: `${40 + Math.sin(i * 0.6) * 50 + 50}%`,
-                animationDelay: `${i * 0.6}s`,
-                animationDuration: `${10 + i * 1.4}s`,
+                height: `${30 + Math.sin(i * 0.5) * 60 + 50}%`,
+                animationDelay: `${i * 0.4}s`,
+                animationDuration: `${8 + i * 1.2}s`,
               }}
             />
           ))}
-          {[...Array(18)].map((_, i) => (
+          {[...Array(25)].map((_, i) => (
             <div
               key={`red-${i}`}
-              className="w-4 sm:w-6 md:w-8 lg:w-12 bg-gradient-to-b from-transparent via-red-500/70 to-red-400/30 rounded-b-md animate-candle-fall"
+              className="w-3 sm:w-5 md:w-7 lg:w-10 bg-gradient-to-b from-transparent via-red-500/70 to-red-400/30 rounded-b-md animate-candle-fall"
               style={{
-                height: `${35 + Math.cos(i * 0.8) * 45 + 40}%`,
-                animationDelay: `${i * 0.8 + 4}s`,
-                animationDuration: `${12 + i * 1.8}s`,
+                height: `${25 + Math.cos(i * 0.7) * 50 + 40}%`,
+                animationDelay: `${i * 0.6 + 3}s`,
+                animationDuration: `${10 + i * 1.5}s`,
               }}
             />
           ))}
         </div>
         <div className="absolute inset-0">
-          <div className="absolute w-[800px] sm:w-[1200px] md:w-[1600px] h-[800px] sm:h-[1200px] md:h-[1600px] bg-gradient-to-br from-blue-700/30 via-blue-600/20 to-transparent rounded-full blur-4xl animate-float-slow left-[-30%] sm:left-[-20%] top-[-20%] animate-pulse-glow" />
-          <div className="absolute w-[1000px] sm:w-[1500px] md:w-[2000px] h-[1000px] sm:h-[1500px] md:h-[2000px] bg-gradient-to-br from-cyan-700/25 via-teal-600/15 to-transparent rounded-full blur-4xl animate-float-medium right-[-35%] sm:right-[-25%] bottom-[-25%] animate-pulse-glow" style={{ animationDelay: '6s' }} />
-          <div className="absolute w-[700px] sm:w-[1000px] md:w-[1400px] h-[700px] sm:h-[1000px] md:h-[1400px] bg-gradient-to-br from-emerald-600/22 via-cyan-500/12 to-transparent rounded-full blur-4xl animate-float-fast left-[5%] sm:left-[15%] bottom-[0%] animate-pulse-glow" style={{ animationDelay: '10s' }} />
+          <div className="absolute w-[800px] sm:w-[1200px] md:w-[1600px] h-[800px] sm:h-[1200px] md:h-[1600px] bg-gradient-to-br from-blue-700/40 via-blue-600/30 to-transparent rounded-full blur-5xl animate-float-slow left-[-30%] sm:left-[-20%] top-[-20%] animate-pulse-glow" />
+          <div className="absolute w-[1000px] sm:w-[1500px] md:w-[2000px] h-[1000px] sm:h-[1500px] md:h-[2000px] bg-gradient-to-br from-cyan-700/35 via-teal-600/25 to-transparent rounded-full blur-5xl animate-float-medium right-[-35%] sm:right-[-25%] bottom-[-25%] animate-pulse-glow" style={{ animationDelay: '4s' }} />
+          <div className="absolute w-[700px] sm:w-[1000px] md:w-[1400px] h-[700px] sm:h-[1000px] md:h-[1400px] bg-gradient-to-br from-emerald-600/32 via-cyan-500/22 to-transparent rounded-full blur-5xl animate-float-fast left-[5%] sm:left-[15%] bottom-[0%] animate-pulse-glow" style={{ animationDelay: '8s' }} />
+          <div className="absolute w-[900px] sm:w-[1300px] md:w-[1700px] h-[900px] sm:h-[1300px] md:h-[1700px] bg-gradient-to-br from-purple-700/30 via-indigo-600/20 to-transparent rounded-full blur-4xl animate-float-slow right-[-20%] top-[-15%] animate-pulse-glow" style={{ animationDelay: '2s' }} />
+          <div className="absolute w-[600px] sm:w-[900px] md:w-[1200px] h-[600px] sm:h-[900px] md:h-[1200px] bg-gradient-to-br from-pink-600/25 via-red-500/15 to-transparent rounded-full blur-4xl animate-float-medium left-[-15%] bottom-[-10%] animate-pulse-glow" style={{ animationDelay: '12s' }} />
         </div>
-        <div className="absolute inset-0 opacity-12 dark:opacity-15">
-          <div className="absolute inset-0 bg-[linear_gradient(135deg,transparent_35%,rgba(34,197,94,0.15)_45%,transparent_55%)] animate-trend-move" />
-          <div className="absolute inset-0 bg-[linear_gradient(-135deg,transparent_35%,rgba(239,68,68,0.12)_45%,transparent_55%)] animate-trend-move-reverse" style={{ animationDelay: '8s' }} />
+        <div className="absolute inset-0 opacity-15 dark:opacity-20">
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_30%,rgba(34,197,94,0.2)_40%,transparent_50%)] animate-trend-move" />
+          <div className="absolute inset-0 bg-[linear-gradient(-135deg,transparent_30%,rgba(239,68,68,0.18)_40%,transparent_50%)] animate-trend-move-reverse" style={{ animationDelay: '6s' }} />
+          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_35%,rgba(6,182,212,0.15)_45%,transparent_55%)] animate-trend-move" style={{ animationDelay: '3s', animationDuration: '20s' }} />
         </div>
         <div className="absolute top-20 left-10 opacity-50">
           <div className="numCounter stock-counter1" data-value="123456"></div>
@@ -299,32 +302,46 @@ export default function Landing() {
           <div className="numCounter stock-counter3" data-value="2345678"></div>
         </div>
         <div className="absolute inset-0 pointer-events-none">
-          {[...Array(8)].map((_, i) => (
+          {[...Array(12)].map((_, i) => (
             <div
               key={i}
-              className="absolute text-4xl md:text-6xl font-bold text-green-400/30 animate-float-slow animate-pulse-glow"
+              className="absolute text-4xl md:text-6xl font-bold text-green-400/25 animate-float-slow animate-pulse-glow"
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
-                animationDelay: `${i * 2}s`,
-                animationDuration: `${15 + i * 3}s`,
+                animationDelay: `${i * 1.5}s`,
+                animationDuration: `${12 + i * 2.5}s`,
               }}
             >
               $
             </div>
           ))}
-          {[...Array(6)].map((_, i) => (
+          {[...Array(10)].map((_, i) => (
             <div
               key={`euro-${i}`}
-              className="absolute text-4xl md:text-6xl font-bold text-blue-400/30 animate-float-medium animate-pulse-glow"
+              className="absolute text-4xl md:text-6xl font-bold text-blue-400/25 animate-float-medium animate-pulse-glow"
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
-                animationDelay: `${i * 2.5 + 3}s`,
-                animationDuration: `${18 + i * 4}s`,
+                animationDelay: `${i * 2 + 2}s`,
+                animationDuration: `${15 + i * 3}s`,
               }}
             >
               €
+            </div>
+          ))}
+          {[...Array(8)].map((_, i) => (
+            <div
+              key={`btc-${i}`}
+              className="absolute text-3xl md:text-5xl font-bold text-orange-400/20 animate-float-fast animate-pulse-glow"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${i * 2.5 + 5}s`,
+                animationDuration: `${10 + i * 2}s`,
+              }}
+            >
+              Ƀ
             </div>
           ))}
         </div>
