@@ -43,16 +43,14 @@ import {
   Instagram,
   Youtube
 } from 'lucide-react';
-
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: { duration: 0.7, ease: "easeOut" }
   }
 };
-
 const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
@@ -63,21 +61,19 @@ const staggerContainer = {
     }
   }
 };
-
 export default function Landing() {
   const navigate = useNavigate();
   const [isLoaded, setIsLoaded] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
-
   useEffect(() => {
     // Simulate loading for smooth entrance animation
     setTimeout(() => setIsLoaded(true), 300);
-    
+   
     // Auto-rotate testimonials
     const interval = setInterval(() => {
       setActiveTestimonial(prev => (prev + 1) % testimonials.length);
     }, 6000);
-    
+   
     // Initialize flipping counter logic (adapted from CodePen)
     function Counter(selector, settings) {
       this.settings = Object.assign({
@@ -85,16 +81,16 @@ export default function Landing() {
         delay: 250,
         direction: ''
       }, settings || {});
-    
+   
       this.DOM = {};
       this.build(selector);
-    
+   
       this.DOM.scope.addEventListener('transitionend', e => {
         if (e.pseudoElement === "::before" && e.propertyName == 'margin-top') {
           e.target.classList.remove('blur');
         }
       });
-    
+   
       this.count();
     }
     Counter.prototype = {
@@ -104,16 +100,16 @@ export default function Landing() {
               : selector
                 ? selector
                 : this.DOM.scope;
-      
+     
         scopeElm.innerHTML = Array(this.settings.digits + 1)
             .join('<div><b data-value="0"></b></div>');
-      
+     
         this.DOM = {
           scope: scopeElm,
           digits: scopeElm.querySelectorAll('b')
         };
       },
-    
+   
       count: function(newVal) {
         var countTo, className,
             settings = this.settings,
@@ -148,13 +144,12 @@ export default function Landing() {
     };
     randomCount();
     const counterInterval = setInterval(randomCount, 4000);
-    
+   
     return () => {
       clearInterval(counterInterval);
       clearInterval(interval);
     };
   }, []);
-
   const features = [
     {
       icon: <BarChart3 className="w-8 h-8 text-blue-600 dark:text-cyan-400" />,
@@ -197,13 +192,11 @@ export default function Landing() {
       description: "Tag trades with setups, mistakes, lessons learned. Filter and review to improve faster."
     }
   ];
-
   const brokers = [
-    "Interactive Brokers", "TradeStation", "Thinkorswim (TD Ameritrade)", "NinjaTrader", 
-    "MetaTrader 4/5", "TradingView", "eToro", "OANDA", "Forex.com", "IG", 
+    "Interactive Brokers", "TradeStation", "Thinkorswim (TD Ameritrade)", "NinjaTrader",
+    "MetaTrader 4/5", "TradingView", "eToro", "OANDA", "Forex.com", "IG",
     "CMC Markets", "Saxo Bank", "Pepperstone", "IC Markets", "Eightcap"
   ];
-
   const testimonials = [
     {
       name: "Ryan P.",
@@ -255,11 +248,10 @@ export default function Landing() {
       rating: 5
     }
   ];
-
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-800">
       {/* Animated Trading-Themed Background */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+      <div className="absolute inset-0 z-[-10] pointer-events-none overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-950/90 via-teal-950 to-gray-950" />
         <div className="absolute inset-0 opacity-12 dark:opacity-15">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(6,182,212,0.1)_1px,transparent_1px),linear_gradient(to_bottom,rgba(6,182,212,0.1)_1px,transparent_1px)] bg-[size:50px_50px] animate-grid-move" />
@@ -337,7 +329,6 @@ export default function Landing() {
           ))}
         </div>
       </div>
-
       {/* Fixed Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
@@ -366,7 +357,6 @@ export default function Landing() {
           </div>
         </div>
       </header>
-
       {/* Hero Section */}
       <motion.section
         initial="hidden"
@@ -374,8 +364,8 @@ export default function Landing() {
         variants={staggerContainer}
         className="pt-40 pb-32 px-6 md:px-12 lg:px-20 text-center relative overflow-hidden"
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-100/30 via-transparent to-cyan-100/20 dark:from-blue-950/30 dark:to-cyan-950/20 pointer-events-none" />
-        <div className="absolute inset-0 z-0 opacity-30">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 via-transparent to-cyan-100/40 dark:from-blue-950/60 dark:to-cyan-950/50 pointer-events-none" />
+        <div className="absolute inset-0 z-[-5] opacity-30">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(34,211,238,0.18),transparent_40%)]"></div>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.15),transparent_40%)]"></div>
         </div>
@@ -426,9 +416,8 @@ export default function Landing() {
           </motion.div>
         </div>
       </motion.section>
-
       {/* Stats Bar */}
-      <section className="py-16 px-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-y border-gray-200 dark:border-gray-800">
+      <section className="py-16 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-y border-gray-200 dark:border-gray-800 relative z-10">
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           <div>
             <p className="text-5xl md:text-6xl font-bold text-blue-600 dark:text-cyan-400">1.4B+</p>
@@ -448,14 +437,13 @@ export default function Landing() {
           </div>
         </div>
       </section>
-
       {/* Features Grid */}
       <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg"
+        className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg relative z-10"
       >
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="text-center space-y-6">
@@ -487,14 +475,13 @@ export default function Landing() {
           </motion.div>
         </div>
       </motion.section>
-
       {/* How It Works */}
       <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg"
+        className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg relative z-10"
       >
         <div className="max-w-7xl mx-auto space-y-20">
           <div className="text-center space-y-6">
@@ -553,14 +540,13 @@ export default function Landing() {
           </motion.div>
         </div>
       </motion.section>
-
       {/* Supported Brokers */}
       <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-black"
+        className="py-24 px-6 bg-black relative z-10"
       >
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -584,14 +570,13 @@ export default function Landing() {
           </motion.div>
         </div>
       </motion.section>
-
       {/* Testimonials / Wall of Love */}
       <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-gradient-to-b from-blue-900/95 to-black/95 text-white backdrop-blur-lg"
+        className="py-24 px-6 bg-gradient-to-b from-blue-900/95 to-black/95 text-white backdrop-blur-lg relative z-10"
       >
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="text-center space-y-6">
@@ -641,8 +626,8 @@ export default function Landing() {
                   key={index}
                   onClick={() => setActiveTestimonial(index)}
                   className={`w-4 h-4 rounded-full transition-all duration-300 ${
-                    activeTestimonial === index 
-                      ? 'bg-cyan-500 scale-125' 
+                    activeTestimonial === index
+                      ? 'bg-cyan-500 scale-125'
                       : 'bg-gray-700 hover:bg-gray-500'
                   }`}
                 />
@@ -651,14 +636,13 @@ export default function Landing() {
           </div>
         </div>
       </motion.section>
-
       {/* Pricing Teaser */}
       <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg"
+        className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg relative z-10"
       >
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="text-center space-y-6">
@@ -724,14 +708,13 @@ export default function Landing() {
           </motion.div>
         </div>
       </motion.section>
-
       {/* Blog Teaser */}
       <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg"
+        className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg relative z-10"
       >
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="text-center space-y-6">
@@ -793,14 +776,13 @@ export default function Landing() {
           </div>
         </div>
       </motion.section>
-
       {/* Become a Partner */}
       <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-gradient-to-br from-purple-950 via-indigo-950 to-black"
+        className="py-24 px-6 bg-gradient-to-br from-purple-950 via-indigo-950 to-black relative z-10"
       >
         <div className="max-w-5xl mx-auto text-center">
           <motion.h2 variants={fadeInUp} className="text-4xl md:text-6xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
@@ -815,14 +797,13 @@ export default function Landing() {
           </motion.button>
         </div>
       </motion.section>
-
       {/* Careers */}
       <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-gradient-to-br from-indigo-950 via-purple-950 to-black"
+        className="py-24 px-6 bg-gradient-to-br from-indigo-950 via-purple-950 to-black relative z-10"
       >
         <div className="max-w-5xl mx-auto text-center">
           <motion.h2 variants={fadeInUp} className="text-4xl md:text-6xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
@@ -841,14 +822,13 @@ export default function Landing() {
           </motion.div>
         </div>
       </motion.section>
-
       {/* Contact & Support */}
       <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-black"
+        className="py-24 px-6 bg-black relative z-10"
       >
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <div>
@@ -902,9 +882,8 @@ export default function Landing() {
           </motion.div>
         </div>
       </motion.section>
-
       {/* Final CTA */}
-      <section className="py-32 px-6 text-center bg-gradient-to-br from-blue-600 via-cyan-600 to-emerald-600 text-white">
+      <section className="py-32 px-6 text-center bg-gradient-to-br from-blue-600 via-cyan-600 to-emerald-600 text-white relative z-10">
         <div className="max-w-5xl mx-auto space-y-12">
           <h2 className="text-5xl md:text-7xl font-extrabold leading-tight">
             Ready to Trade Smarter?
@@ -935,9 +914,8 @@ export default function Landing() {
           </Button>
         </div>
       </section>
-
       {/* Professional Footer */}
-      <footer className="py-16 px-6 bg-black text-gray-400 border-t border-gray-800">
+      <footer className="py-16 px-6 bg-black text-gray-400 border-t border-gray-800 relative z-10">
         <div className="max-w-7xl mx-auto grid md:grid-cols-5 gap-12 text-center md:text-left">
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
