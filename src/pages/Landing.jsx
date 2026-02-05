@@ -68,12 +68,12 @@ export default function Landing() {
   useEffect(() => {
     // Simulate loading for smooth entrance animation
     setTimeout(() => setIsLoaded(true), 300);
-   
+  
     // Auto-rotate testimonials
     const interval = setInterval(() => {
       setActiveTestimonial(prev => (prev + 1) % testimonials.length);
     }, 6000);
-   
+  
     // Initialize flipping counter logic (adapted from CodePen)
     function Counter(selector, settings) {
       this.settings = Object.assign({
@@ -81,16 +81,16 @@ export default function Landing() {
         delay: 250,
         direction: ''
       }, settings || {});
-   
+  
       this.DOM = {};
       this.build(selector);
-   
+  
       this.DOM.scope.addEventListener('transitionend', e => {
         if (e.pseudoElement === "::before" && e.propertyName == 'margin-top') {
           e.target.classList.remove('blur');
         }
       });
-   
+  
       this.count();
     }
     Counter.prototype = {
@@ -100,16 +100,16 @@ export default function Landing() {
               : selector
                 ? selector
                 : this.DOM.scope;
-     
+    
         scopeElm.innerHTML = Array(this.settings.digits + 1)
             .join('<div><b data-value="0"></b></div>');
-     
+    
         this.DOM = {
           scope: scopeElm,
           digits: scopeElm.querySelectorAll('b')
         };
       },
-   
+  
       count: function(newVal) {
         var countTo, className,
             settings = this.settings,
@@ -144,7 +144,7 @@ export default function Landing() {
     };
     randomCount();
     const counterInterval = setInterval(randomCount, 4000);
-   
+  
     return () => {
       clearInterval(counterInterval);
       clearInterval(interval);
@@ -878,24 +878,6 @@ export default function Landing() {
           </motion.div>
         </div>
       </motion.section>
-      {/* Final CTA */}
-      <section className="py-32 px-6 text-center bg-gradient-to-br from-blue-600 via-cyan-600 to-emerald-600 text-white relative z-10">
-        <div className="max-w-5xl mx-auto space-y-12">
-          <h2 className="text-5xl md:text-7xl font-extrabold leading-tight">
-            Ready to Trade Smarter?
-          </h2>
-          <p className="text-2xl md:text-3xl opacity-90 max-w-4xl mx-auto">
-            Unlock advanced analytics, AI insights, and risk tools to elevate your trading. Sign up now for unlimited access—no credit card needed.
-          </p>
-          <Button
-            size="xl"
-            onClick={() => navigate('/register')}
-            className="bg-white text-blue-700 hover:bg-gray-100 text-2xl md:text-3xl px-16 md:px-24 py-8 md:py-10 rounded-3xl shadow-2xl mt-8 transition-all"
-          >
-            Get Started Free
-          </Button>
-        </div>
-      </section>
       {/* Professional Footer */}
       <footer className="py-16 px-6 bg-black text-gray-400 border-t border-gray-800 relative z-10">
         <div className="max-w-7xl mx-auto grid md:grid-cols-5 gap-12 text-center md:text-left">
