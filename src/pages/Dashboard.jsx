@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 
 // ────────────────────────────────────────────────
-//  Animated number component - used for smooth counting effect
+// Animated number component
 // ────────────────────────────────────────────────
 const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
   const [display, setDisplay] = useState(0);
@@ -49,21 +49,19 @@ const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
 };
 
 // ────────────────────────────────────────────────
-//  Main Dashboard Component
+// Main Dashboard Component
 // ────────────────────────────────────────────────
 export default function Dashboard({ currentAccount }) {
-  // ─── Theme & UI state ────────────────────────────────────────
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const navigate = useNavigate();
 
-  // ─── Local state ─────────────────────────────────────────────
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewDate, setViewDate] = useState(new Date());
   const [showQuickAnalysis, setShowQuickAnalysis] = useState(false);
 
-  // ─── Fetch trades from backend ───────────────────────────────
+  // Fetch trades
   const refreshTrades = async () => {
     setLoading(true);
     try {
@@ -91,7 +89,6 @@ export default function Dashboard({ currentAccount }) {
   const prevMonth = () => setViewDate((d) => subMonths(d, 1));
   const nextMonth = () => setViewDate((d) => addMonths(d, 1));
   const jumpTo = (y, m) => setViewDate(new Date(y, m - 1, 1));
-
   const monthStart = startOfMonth(viewDate);
   const monthEnd = endOfMonth(viewDate);
 
@@ -121,11 +118,9 @@ export default function Dashboard({ currentAccount }) {
   const currentStreak = useMemo(() => {
     let streak = { type: "None", count: 0 };
     let current = null;
-
     for (const trade of [...weeklyTrades].reverse()) {
       const pnl = Number(trade.pnl) || 0;
       if (pnl === 0) continue;
-
       if (current === null) {
         current = pnl > 0 ? "Win" : "Loss";
         streak = { type: current, count: 1 };
@@ -138,7 +133,6 @@ export default function Dashboard({ currentAccount }) {
         break;
       }
     }
-
     return streak;
   }, [weeklyTrades]);
 
@@ -161,36 +155,28 @@ export default function Dashboard({ currentAccount }) {
         avgRR: "0.00",
       };
     }
-
     const profits = monthlyTrades
       .filter((t) => t.pnl > 0)
       .reduce((a, b) => a + Number(b.pnl), 0);
-
     const losses = monthlyTrades
       .filter((t) => t.pnl < 0)
       .reduce((a, b) => a + Math.abs(Number(b.pnl)), 0);
-
     const profitFactor = losses ? (profits / losses).toFixed(2) : "∞";
-
     const wins = monthlyTrades.filter((t) => t.pnl > 0).length;
     const total = monthlyTrades.length;
     const winRate = ((wins / total) * 100).toFixed(1);
-
     const expectancy = (
       monthlyTrades.reduce((a, b) => a + Number(b.pnl), 0) / total
     ).toFixed(2);
-
     const dailyPnL = {};
     monthlyTrades.forEach((t) => {
       const day = format(new Date(t.date), "yyyy-MM-dd");
       dailyPnL[day] = (dailyPnL[day] || 0) + Number(t.pnl || 0);
     });
-
     let bestDayPnL = 0;
     let bestDayDate = "—";
     let worstDayPnL = 0;
     let worstDayDate = "—";
-
     if (Object.keys(dailyPnL).length > 0) {
       const entries = Object.entries(dailyPnL);
       const bestEntry = entries.reduce((max, curr) =>
@@ -199,19 +185,16 @@ export default function Dashboard({ currentAccount }) {
       const worstEntry = entries.reduce((min, curr) =>
         curr[1] < min[1] ? curr : min
       );
-
       bestDayPnL = bestEntry[1].toFixed(2);
       bestDayDate = format(new Date(bestEntry[0]), "dd MMM");
       worstDayPnL = worstEntry[1].toFixed(2);
       worstDayDate = format(new Date(worstEntry[0]), "dd MMM");
     }
-
     const totalRR = monthlyTrades.reduce(
       (sum, t) => sum + (Number(t.rr) || 0),
       0
     );
     const avgRR = total ? (totalRR / total).toFixed(2) : "0.00";
-
     return {
       totalPnL: (profits - losses).toFixed(2),
       winRate,
@@ -231,12 +214,10 @@ export default function Dashboard({ currentAccount }) {
     };
   }, [monthlyTrades]);
 
-  // ─── Consistency Score = (Best daily win rate / Overall win rate) × 100 ──────
+  // ─── Consistency Score ───────────────────────────────────────
   const consistencyScore = useMemo(() => {
     if (!monthlyTrades.length) return 0;
-
     const dailyWinRates = {};
-
     monthlyTrades.forEach((t) => {
       const day = format(new Date(t.date), "yyyy-MM-dd");
       if (!dailyWinRates[day]) {
@@ -245,17 +226,13 @@ export default function Dashboard({ currentAccount }) {
       dailyWinRates[day].total += 1;
       if (t.pnl > 0) dailyWinRates[day].wins += 1;
     });
-
     let bestDailyWinRate = 0;
-
     Object.values(dailyWinRates).forEach(({ wins, total }) => {
       const rate = total > 0 ? (wins / total) * 100 : 0;
       if (rate > bestDailyWinRate) bestDailyWinRate = rate;
     });
-
     const overallWinRate = Number(monthlyStats.winRate);
     if (overallWinRate === 0) return 0;
-
     const score = Math.min(100, Math.round((bestDailyWinRate / overallWinRate) * 100));
     return score;
   }, [monthlyTrades, monthlyStats.winRate]);
@@ -275,13 +252,11 @@ export default function Dashboard({ currentAccount }) {
     const key = format(dateObj, "yyyy-MM-dd");
     const list = tradesByDate[key] || [];
     if (!list.length) return null;
-
     const pnl = list.reduce((s, t) => s + Number(t.pnl || 0), 0);
     const count = list.length;
     const wins = list.filter((t) => t.pnl > 0).length;
     const winRate = Math.round((wins / count) * 100) || 0;
     const rrAvg = list.reduce((s, t) => s + (Number(t.rr) || 0), 0) / count || 0;
-
     return { date: key, pnl, count, winRate, rrAvg };
   }
 
@@ -298,7 +273,6 @@ export default function Dashboard({ currentAccount }) {
       },
       { pnl: 0, count: 0, wins: 0 }
     );
-
     const winRate = sums.count ? Math.round((sums.wins / sums.count) * 100) : 0;
     return { pnl: +sums.pnl.toFixed(2), count: sums.count, winRate };
   }
@@ -328,15 +302,14 @@ export default function Dashboard({ currentAccount }) {
       .slice(0, 5);
   }, [trades]);
 
-  // ─── All-time total PnL (not monthly) ────────────────────────
+  // ─── All-time total PnL ──────────────────────────────────────
   const allTimePnL = useMemo(() => {
     if (!trades.length) return 0;
     return trades.reduce((sum, t) => sum + Number(t.pnl || 0), 0).toFixed(2);
   }, [trades]);
 
   // ─── Placeholder account info ────────────────────────────────
-  // In real app you should store these values when account is created
-  const initialBalance = 10000; // ← replace with real value from account data
+  const initialBalance = 10000;
   const accountCreatedAt = currentAccount?.createdAt || new Date("2024-01-01");
 
   // ─── Account growth percentage ───────────────────────────────
@@ -363,7 +336,7 @@ export default function Dashboard({ currentAccount }) {
               setShowQuickAnalysis(false);
               navigate("/trades/new");
             }}
-            className="mt-8 px-6 py-3 bg-gradient-to-r from-indigo-700 to-purple-800 hover:from-indigo-800 hover:to-purple-900 text-white rounded-xl shadow-lg transition-all"
+            className="mt-8 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition-all"
           >
             Add Your First Trade
           </button>
@@ -440,7 +413,6 @@ export default function Dashboard({ currentAccount }) {
             <Lightbulb size={22} className="text-yellow-400" />
             Instant Coaching Insights
           </h4>
-
           <div className="space-y-4 text-gray-300 text-sm leading-relaxed">
             {totalTrades < 15 && (
               <div className="flex items-start gap-3">
@@ -450,7 +422,6 @@ export default function Dashboard({ currentAccount }) {
                 </p>
               </div>
             )}
-
             {winRate < 50 && (
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-rose-400 mt-1 shrink-0" size={18} />
@@ -459,7 +430,6 @@ export default function Dashboard({ currentAccount }) {
                 </p>
               </div>
             )}
-
             {avgRR < 2 && (
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-amber-400 mt-1 shrink-0" size={18} />
@@ -468,21 +438,18 @@ export default function Dashboard({ currentAccount }) {
                 </p>
               </div>
             )}
-
             <div className="flex items-start gap-3">
               <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
               <p>
                 Review your last 5 losing trades in detail. Look for one repeating mistake (entry timing, sizing, stop placement, emotion). Fix that pattern first.
               </p>
             </div>
-
             <div className="flex items-start gap-3">
               <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
               <p>
                 Maintain risk at ≤1% per trade until win rate consistently exceeds 55%. Protect capital while you refine your edge.
               </p>
             </div>
-
             <div className="flex items-start gap-3">
               <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
               <p>
@@ -495,94 +462,73 @@ export default function Dashboard({ currentAccount }) {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-950">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
-          <p className="mt-4 text-gray-400">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
-      {/* Subtle striped background */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-gray-950">
-          {/* Diagonal faint stripes */}
-          <div
-            className="absolute inset-0 opacity-[0.04]"
-            style={{
-              backgroundImage: `
-                linear-gradient(45deg, transparent 25%, rgba(79,70,229,0.08) 25%, rgba(79,70,229,0.08) 50%, transparent 50%, transparent 75%, rgba(79,70,229,0.08) 75%, rgba(79,70,229,0.08) 100%),
-                linear-gradient(-45deg, transparent 25%, rgba(139,92,246,0.06) 25%, rgba(139,92,246,0.06) 50%, transparent 50%, transparent 75%, rgba(139,92,246,0.06) 75%, rgba(139,92,246,0.06) 100%)
-              `,
-              backgroundSize: "60px 60px",
-            }}
-          />
-        </div>
-      </div>
+      {/* Background – same as Daily Journal */}
+      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 pointer-events-none" />
 
-      <div className={`relative min-h-screen w-full p-4 sm:p-6 lg:p-8 overflow-y-auto ${isDark ? "text-gray-200 bg-transparent" : "text-gray-900 bg-gray-50"}`}>
+      <div className="relative min-h-screen w-full p-4 sm:p-6 lg:p-8 text-gray-100">
         {/* Header + Account Details */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-              <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
+              <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
                 Dashboard
               </h1>
-              <p className={`mt-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+              <p className="mt-1.5 text-gray-400">
                 {format(viewDate, "MMMM yyyy")} • {currentAccount?.name || "Account"}
               </p>
             </div>
 
             <button
               onClick={() => setShowQuickAnalysis(true)}
-              className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 font-medium transform hover:scale-[1.03] active:scale-95 ${
-                isDark
-                  ? "bg-gradient-to-r from-indigo-700 to-purple-800 hover:from-indigo-800 hover:to-purple-900 text-white"
-                  : "bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
-              }`}
+              className="flex items-center gap-2.5 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition-all duration-200"
             >
               <Zap size={18} />
               Quick Analysis
             </button>
           </div>
 
-          {/* Account Details Card */}
-          <Card className={`p-6 rounded-2xl shadow-xl border ${isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"}`}>
-            <h3 className={`text-lg font-semibold mb-5 flex items-center gap-2 ${isDark ? "text-gray-100" : "text-gray-900"}`}>
-              <DollarSign className="h-5 w-5 text-indigo-400" />
+          {/* Account Overview Card */}
+          <Card className="p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+            <h3 className="text-lg font-semibold mb-5 flex items-center gap-2 text-gray-900 dark:text-gray-100">
+              <DollarSign className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
               Account Overview
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
-                <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>Total PnL (All Time)</div>
-                <div className={`text-2xl font-bold mt-1 ${allTimePnL >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Total PnL (All Time)</div>
+                <div
+                  className={`text-2xl font-bold mt-1 ${
+                    allTimePnL >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                  }`}
+                >
                   {allTimePnL >= 0 ? "+" : ""}${Math.abs(allTimePnL)}
                 </div>
               </div>
 
               <div>
-                <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>Initial Balance</div>
-                <div className="text-2xl font-bold text-indigo-300 mt-1">
+                <div className="text-sm text-gray-600 dark:text-gray-400">Initial Balance</div>
+                <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
                   ${initialBalance.toLocaleString()}
                 </div>
               </div>
 
               <div>
-                <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>Account Growth</div>
-                <div className={`text-2xl font-bold mt-1 ${accountGrowth >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Account Growth</div>
+                <div
+                  className={`text-2xl font-bold mt-1 ${
+                    accountGrowth >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                  }`}
+                >
                   {accountGrowth}%
                 </div>
               </div>
 
               <div>
-                <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>Created</div>
-                <div className="text-xl font-medium text-gray-300 mt-1">
+                <div className="text-sm text-gray-600 dark:text-gray-400">Created</div>
+                <div className="text-xl font-medium text-gray-700 dark:text-gray-300 mt-1">
                   {format(new Date(accountCreatedAt), "dd MMM yyyy")}
                 </div>
               </div>
@@ -591,126 +537,108 @@ export default function Dashboard({ currentAccount }) {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-6 mb-10">
-          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
-            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="p-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-5 mb-8">
+          {[
+            {
+              title: "Monthly P&L",
+              value: monthlyStats.totalPnL,
+              prefix: monthlyStats.totalPnL >= 0 ? "+" : "-",
+              color: monthlyStats.totalPnL >= 0 ? "emerald" : "rose",
+              icon: TrendingUp,
+            },
+            {
+              title: "Win Rate",
+              value: Number(monthlyStats.winRate),
+              suffix: "%",
+              color: "indigo",
+              icon: Percent,
+              animated: true,
+            },
+            {
+              title: "Profit Factor",
+              value: monthlyStats.profitFactor,
+              color: "cyan",
+              icon: Activity,
+            },
+            {
+              title: "Consistency Score",
+              value: consistencyScore,
+              suffix: "/100",
+              color: "violet",
+              icon: Zap,
+            },
+            {
+              title: "Total Trades",
+              value: monthlyStats.totalTrades,
+              color: "violet",
+              icon: BarChart3,
+              animated: true,
+            },
+            {
+              title: "Expectancy",
+              value: monthlyStats.expectancy,
+              prefix: "$",
+              color: "teal",
+              icon: DollarSign,
+            },
+          ].map((stat, i) => (
+            <Card
+              key={i}
+              className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg hover:shadow-xl transition-all duration-200 group"
+            >
               <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
-                  Monthly P&L
+                <div className="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                  {stat.title}
                 </div>
-                <TrendingUp className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
+                <stat.icon className="h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors" />
               </div>
-              <div className={`text-3xl font-extrabold ${monthlyStats.totalPnL >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                {monthlyStats.totalPnL >= 0 ? "+" : "-"}${Math.abs(monthlyStats.totalPnL)}
+              <div
+                className={`text-2xl sm:text-3xl font-extrabold ${
+                  stat.color === "emerald"
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : stat.color === "rose"
+                    ? "text-rose-600 dark:text-rose-400"
+                    : stat.color === "indigo"
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : stat.color === "cyan"
+                    ? "text-cyan-600 dark:text-cyan-400"
+                    : stat.color === "violet"
+                    ? "text-violet-600 dark:text-violet-400"
+                    : "text-teal-600 dark:text-teal-400"
+                }`}
+              >
+                {stat.animated ? (
+                  <AnimatedNumber value={stat.value} decimals={stat.decimals || 0} />
+                ) : (
+                  <>
+                    {stat.prefix || ""}
+                    {stat.value}
+                    {stat.suffix || ""}
+                  </>
+                )}
               </div>
-            </div>
-          </Card>
-
-          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
-            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
-                  Win Rate
-                </div>
-                <Percent className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
-              </div>
-              <div className="text-3xl font-extrabold text-indigo-300">
-                <AnimatedNumber value={Number(monthlyStats.winRate)} decimals={1} />%
-              </div>
-            </div>
-          </Card>
-
-          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
-            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
-                  Profit Factor
-                </div>
-                <Activity className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
-              </div>
-              <div className="text-3xl font-extrabold text-cyan-300">
-                {monthlyStats.profitFactor}
-              </div>
-            </div>
-          </Card>
-
-          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
-            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
-                  Consistency Score
-                </div>
-                <Zap className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
-              </div>
-              <div className="text-3xl font-extrabold text-violet-300">
-                {consistencyScore}/100
-              </div>
-            </div>
-          </Card>
-
-          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
-            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
-                  Total Trades
-                </div>
-                <BarChart3 className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
-              </div>
-              <div className="text-3xl font-extrabold text-violet-300">
-                <AnimatedNumber value={monthlyStats.totalTrades} decimals={0} />
-              </div>
-            </div>
-          </Card>
-
-          <Card className={`relative overflow-hidden backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group ${
-            isDark ? "bg-gray-900/80 border-gray-700" : "bg-white/90 border-gray-200"
-          }`}>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`text-sm font-medium ${isDark ? "text-gray-400 group-hover:text-indigo-300" : "text-gray-600 group-hover:text-indigo-700"}`}>
-                  Expectancy
-                </div>
-                <DollarSign className={`h-5 w-5 ${isDark ? "text-gray-600 group-hover:text-indigo-400" : "text-gray-400 group-hover:text-indigo-600"}`} />
-              </div>
-              <div className="text-3xl font-extrabold text-teal-300">
-                ${monthlyStats.expectancy}
-              </div>
-            </div>
-          </Card>
+            </Card>
+          ))}
         </div>
 
         {/* Recent Trades + Highlights */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-          <Card className={`lg:col-span-2 backdrop-blur-md rounded-2xl shadow-lg p-5 lg:p-6 hover:shadow-2xl transition-all duration-300 ${
-            isDark ? "bg-gray-900/70 border-indigo-500/20" : "bg-white/90 border-gray-200"
-          }`}>
+          <Card className="lg:col-span-2 p-5 lg:p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg hover:shadow-xl transition-all duration-200">
             <div className="flex items-center justify-between mb-5">
-              <h3 className={`text-lg font-semibold flex items-center gap-2 ${isDark ? "text-gray-100" : "text-gray-900"}`}>
-                <Activity className="h-5 w-5 text-indigo-400" />
+              <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                <Activity className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
                 Recent Trades
               </h3>
               <button
                 onClick={() => navigate("/trades")}
-                className={`text-sm flex items-center gap-1 transition-colors ${
-                  isDark ? "text-indigo-400 hover:text-indigo-300" : "text-indigo-600 hover:text-indigo-700"
-                }`}
+                className="text-sm flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
               >
                 View All →
               </button>
             </div>
 
             {recentTrades.length === 0 ? (
-              <div className={`text-center py-12 rounded-xl ${isDark ? "text-gray-400 bg-gray-800/30" : "text-gray-600 bg-gray-100/50"}`}>
+              <div className="text-center py-12 rounded-xl bg-white/50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400">
                 No recent trades yet
               </div>
             ) : (
@@ -719,34 +647,30 @@ export default function Dashboard({ currentAccount }) {
                   <div
                     key={i}
                     onClick={() => navigate(`/trades?date=${format(new Date(trade.date), "yyyy-MM-dd")}`)}
-                    className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
-                      isDark
-                        ? "bg-gray-800/40 border-gray-700 hover:bg-gray-700/60"
-                        : "bg-gray-50 border-gray-200 hover:bg-gray-100"
-                    }`}
+                    className="flex items-center justify-between p-4 rounded-xl bg-white/60 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700/60 transition-all cursor-pointer"
                   >
                     <div className="flex items-center gap-4">
                       <div
                         className={`w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold shadow-sm ${
                           trade.pnl >= 0
-                            ? "bg-emerald-900/40 text-emerald-300"
-                            : "bg-rose-900/40 text-rose-300"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                            : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
                         }`}
                       >
                         {trade.pair?.slice(0, 2) || "T"}
                       </div>
                       <div>
-                        <div className={`font-semibold ${isDark ? "text-gray-100" : "text-gray-900"}`}>
+                        <div className="font-semibold text-gray-900 dark:text-gray-100">
                           {trade.pair} {trade.direction}
                         </div>
-                        <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">
                           {format(new Date(trade.date), "dd MMM yyyy • HH:mm")}
                         </div>
                       </div>
                     </div>
                     <div
                       className={`font-bold text-lg ${
-                        trade.pnl >= 0 ? "text-emerald-400" : "text-rose-400"
+                        trade.pnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                       }`}
                     >
                       {trade.pnl >= 0 ? "+" : ""}${Math.abs(Number(trade.pnl || 0)).toFixed(2)}
@@ -758,52 +682,52 @@ export default function Dashboard({ currentAccount }) {
           </Card>
 
           {/* Monthly Highlights */}
-          <Card className={`backdrop-blur-md rounded-2xl shadow-lg p-5 lg:p-6 ${isDark ? "bg-gray-900/70 border-indigo-500/20" : "bg-white/90 border-gray-200"}`}>
-            <h3 className={`text-lg font-semibold mb-5 flex items-center gap-2 ${isDark ? "text-gray-100" : "text-gray-900"}`}>
-              <BarChart3 className="h-5 w-5 text-indigo-400" />
+          <Card className="p-5 lg:p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg hover:shadow-xl transition-all duration-200">
+            <h3 className="text-lg font-semibold mb-5 flex items-center gap-2 text-gray-900 dark:text-gray-100">
+              <BarChart3 className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
               Monthly Highlights
             </h3>
 
             <div className="space-y-5">
               <div className="flex justify-between items-center">
-                <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Best Day</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Best Day</span>
                 <div className="text-right">
-                  <div className="font-bold text-emerald-400">
+                  <div className="font-bold text-emerald-600 dark:text-emerald-400">
                     +${monthlyStats.bestDayPnL}
                   </div>
-                  <div className={`text-xs ${isDark ? "text-gray-500" : "text-gray-500"}`}>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
                     {monthlyStats.bestDayDate}
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Worst Day</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Worst Day</span>
                 <div className="text-right">
-                  <div className="font-bold text-rose-400">
+                  <div className="font-bold text-rose-600 dark:text-rose-400">
                     ${monthlyStats.worstDayPnL}
                   </div>
-                  <div className={`text-xs ${isDark ? "text-gray-500" : "text-gray-500"}`}>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
                     {monthlyStats.worstDayDate}
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Avg R:R</span>
-                <span className="font-bold text-purple-300">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Avg R:R</span>
+                <span className="font-bold text-purple-600 dark:text-purple-400">
                   {monthlyStats.avgRR}
                 </span>
               </div>
 
-              <div className="pt-4 border-t border-gray-800">
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex justify-between items-center mb-2">
-                  <span className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>Win Rate</span>
-                  <span className="text-xl font-bold text-indigo-300">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Win Rate</span>
+                  <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
                     <AnimatedNumber value={Number(monthlyStats.winRate)} decimals={1} />%
                   </span>
                 </div>
-                <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-1000 ease-out"
                     style={{ width: `${monthlyStats.winRate}%` }}
@@ -815,7 +739,7 @@ export default function Dashboard({ currentAccount }) {
         </div>
 
         {/* Calendar */}
-        <Card className={`backdrop-blur-md rounded-2xl shadow-lg p-5 lg:p-6 ${isDark ? "bg-gray-900/70 border-indigo-500/20" : "bg-white/90 border-gray-200"}`}>
+        <Card className="p-5 lg:p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div className="flex items-center gap-3">
               <button
@@ -849,7 +773,7 @@ export default function Dashboard({ currentAccount }) {
                 ▶
               </button>
             </div>
-            <span className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+            <span className="text-sm font-medium text-gray-400 dark:text-gray-400">
               Tap a day to view trades
             </span>
           </div>
@@ -926,9 +850,11 @@ export default function Dashboard({ currentAccount }) {
                     })}
 
                     {/* Weekly Summary */}
-                    <div className={`aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-center items-center border ${
-                      isDark ? "bg-gray-800/50 border-gray-700" : "bg-gray-100/50 border-gray-200"
-                    }`}>
+                    <div
+                      className={`aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-center items-center border ${
+                        isDark ? "bg-gray-800/50 border-gray-700" : "bg-gray-100/50 border-gray-200"
+                      }`}
+                    >
                       <div className={`text-xs mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
                         W{wi + 1}
                       </div>
@@ -955,11 +881,7 @@ export default function Dashboard({ currentAccount }) {
         {/* Floating Quick Add Button */}
         <button
           onClick={() => navigate("/trades/new")}
-          className={`fixed bottom-6 right-6 z-[1000] w-14 h-14 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center transform hover:scale-110 active:scale-95 ${
-            isDark
-              ? "bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white hover:shadow-purple-500/40"
-              : "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white hover:shadow-indigo-500/40"
-          }`}
+          className="fixed bottom-6 right-6 z-[1000] w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg transition-all duration-200 flex items-center justify-center transform hover:scale-110 active:scale-95"
           aria-label="Add New Trade"
         >
           <span className="text-3xl font-bold leading-none">+</span>
@@ -967,20 +889,16 @@ export default function Dashboard({ currentAccount }) {
 
         {/* Quick Analysis Modal */}
         {showQuickAnalysis && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[2000] p-4 backdrop-blur-md">
-            <div className={`border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
-              isDark ? "bg-gray-900/95 border-indigo-500/30" : "bg-white/95 border-gray-200"
-            }`}>
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[2000] p-4">
+            <div className="w-full max-w-3xl rounded-2xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-2xl overflow-hidden">
               <div className="p-6 sm:p-8">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                  <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
                     Quick Analysis
                   </h2>
                   <button
                     onClick={() => setShowQuickAnalysis(false)}
-                    className={`p-2 rounded-full transition-colors ${
-                      isDark ? "text-gray-400 hover:text-white hover:bg-gray-800" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                    }`}
+                    className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     <X size={28} />
                   </button>
@@ -988,12 +906,10 @@ export default function Dashboard({ currentAccount }) {
 
                 {quickAnalysisContent()}
 
-                <div className="mt-8 pt-6 border-t flex justify-end">
+                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
                   <button
                     onClick={() => setShowQuickAnalysis(false)}
-                    className={`px-6 py-3 rounded-xl transition-all ${
-                      isDark ? "bg-gray-800 hover:bg-gray-700 border-gray-700" : "bg-gray-100 hover:bg-gray-50 border-gray-200"
-                    }`}
+                    className="px-6 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-xl transition-colors"
                   >
                     Close
                   </button>
