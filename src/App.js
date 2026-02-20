@@ -34,6 +34,7 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  getDoc,
 } from "firebase/firestore";
 
 // ManageAccountsModal – now uses Firestore data passed from parent
@@ -292,7 +293,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// AppContent – main app shell with Firestore accounts
+// Main content – FloatingWidgets removed
 function AppContent() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
