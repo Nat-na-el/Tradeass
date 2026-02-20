@@ -17,15 +17,20 @@ export default function Topbar() {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const navigate = useNavigate();
 
-  // Get current account name safely
+  // Get current account name safely (from localStorage – you can remove if fully migrating accounts)
   const currentId = localStorage.getItem('currentAccountId');
   const accounts = JSON.parse(localStorage.getItem('accounts') || '[]');
   const currentAccount = accounts.find((acc) => acc.id === currentId);
   const accountName = currentAccount ? currentAccount.name : 'Guest';
 
-  const handleLogoutConfirm = () => {
+  const handleLogoutConfirm = async () => {
     setShowLogoutDialog(false);
-    auth.signOut(); // Firebase sign out → ProtectedRoute will redirect
+    try {
+      await auth.signOut(); // Firebase sign out → triggers onAuthStateChanged in App.js → redirects to Landing
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Optional: show error toast/notification
+    }
   };
 
   const handleSettingsClick = () => {
@@ -44,13 +49,13 @@ export default function Topbar() {
           rounded-2xl transition-all duration-300
         `}
       >
-        {/* Left side */}
+        {/* Left side – Forgex branding */}
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-md bg-gradient-to-br from-indigo-600 to-indigo-400 flex items-center justify-center font-bold text-white text-sm sm:text-base">
-            TZ
+            F
           </div>
           <div className="hidden sm:block">
-            <div className="text-sm font-semibold text-gray-900 dark:text-white">TRADEASS</div>
+            <div className="text-sm font-semibold text-gray-900 dark:text-white">FORGEX</div>
             <div className="text-xs text-gray-500 dark:text-gray-300 -mt-0.5">
               Trading Dashboard
             </div>
@@ -114,7 +119,7 @@ export default function Topbar() {
       <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <DialogContent className="max-w-md bg-white text-slate-900 dark:bg-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-6">
           <DialogHeader>
-            <DialogTitle>Confirm Logout</DialogTitle>
+            <DialogTitle>Confirm Logout – Forgex</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-slate-600 dark:text-slate-300">
