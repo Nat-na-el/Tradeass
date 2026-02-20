@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Trash2, Download, Edit, Plus, Loader2 } from "lucide-react";
 import { useTheme } from "../Theme-provider";
 import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
-import { db, auth } from "../firebase"; // ← make sure path is correct
+import { db, auth } from "../firebase";
 import {
   collection,
   addDoc,
@@ -48,8 +48,9 @@ export default function DailyJournal() {
   const refreshTrades = async () => {
     const user = auth.currentUser;
     if (!user) {
-      setError("Please log in to view trades");
+      setTrades([]);
       setLoading(false);
+      setError("Please log in to see your trades");
       return;
     }
 
@@ -62,14 +63,14 @@ export default function DailyJournal() {
         orderBy("createdAt", "desc")
       );
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({
+      const loadedTrades = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-      setTrades(data);
+      setTrades(loadedTrades);
     } catch (err) {
-      console.error("❌ DailyJournal fetch error:", err);
-      setError("Failed to load trades: " + (err.message || "Check connection"));
+      console.error("❌ Firestore fetch error:", err);
+      setError("Could not load trades. " + (err.message || ""));
     } finally {
       setLoading(false);
     }
@@ -84,7 +85,6 @@ export default function DailyJournal() {
         setLoading(false);
       }
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -97,15 +97,7 @@ export default function DailyJournal() {
   // Today's metrics (unchanged)
   const metrics = useMemo(() => {
     if (!todayTrades.length) {
-      return {
-        net: 0,
-        wins: 0,
-        losses: 0,
-        winRate: 0,
-        avgPnL: 0,
-        expectancy: 0,
-        total: 0,
-      };
+      return { net: 0, wins: 0, losses: 0, winRate: 0, avgPnL: 0, expectancy: 0, total: 0 };
     }
     const total = todayTrades.length;
     let net = 0;
@@ -128,7 +120,7 @@ export default function DailyJournal() {
     };
   }, [todayTrades]);
 
-  // Add or update trade in Firestore
+  // Save or update trade in Firestore
   const saveTrade = async (e) => {
     if (e) e.preventDefault();
     setError(null);
@@ -136,20 +128,25 @@ export default function DailyJournal() {
 
     const user = auth.currentUser;
     if (!user) {
-      setError("You must be logged in to save trades");
+      setError("Please log in first");
       return;
     }
 
     const payload = {
-      ...form,
       date: form.date || formatDateInput(),
+      pair: form.pair?.toUpperCase() || "",
+      direction: form.direction || "Long",
+      entry: Number(form.entry) || 0,
+      exit: Number(form.exit) || 0,
+      stopLoss: Number(form.stopLoss) || 0,
+      takeProfit: Number(form.takeProfit) || 0,
       pnl: Number(form.pnl) || 0,
       rr: form.rr || "",
+      notes: form.notes || "",
     };
 
     try {
       if (editingTrade) {
-        // Update existing
         const tradeRef = doc(db, "users", user.uid, "trades", editingTrade.id);
         await updateDoc(tradeRef, {
           ...payload,
@@ -157,13 +154,12 @@ export default function DailyJournal() {
         });
         setSuccessMsg("Trade updated successfully!");
       } else {
-        // Add new
         await addDoc(collection(db, "users", user.uid, "trades"), {
           ...payload,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
-        setSuccessMsg("Trade added successfully!");
+        setSuccessMsg("Trade saved successfully!");
       }
 
       setModalOpen(false);
@@ -183,12 +179,12 @@ export default function DailyJournal() {
 
       await refreshTrades();
     } catch (err) {
-      console.error("Save error:", err);
-      setError(err.message || "Failed to save trade. Check your connection.");
+      console.error("Save failed:", err);
+      setError(err.message || "Could not save trade. Check connection.");
     }
   };
 
-  // Delete single trade from Firestore
+  // Delete single trade
   const deleteTrade = async (id) => {
     const user = auth.currentUser;
     if (!user) return;
@@ -198,8 +194,8 @@ export default function DailyJournal() {
       setSuccessMsg("Trade deleted");
       await refreshTrades();
     } catch (err) {
-      console.error("Delete error:", err);
-      setError("Failed to delete trade");
+      console.error("Delete failed:", err);
+      setError("Could not delete trade");
     }
 
     setDeleteModalOpen(false);
@@ -232,7 +228,7 @@ export default function DailyJournal() {
     setModalOpen(true);
   };
 
-  // Export to CSV (unchanged – still works with Firestore data)
+  // Export CSV (unchanged)
   const exportCSV = () => {
     if (!todayTrades.length) return;
 
@@ -343,7 +339,7 @@ export default function DailyJournal() {
         </div>
       )}
 
-      {/* Quick Stats – unchanged */}
+      {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-5 mb-8">
         <div className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
           <div className="text-xs font-medium opacity-70 mb-1">Net P&L</div>
@@ -465,7 +461,7 @@ export default function DailyJournal() {
         </div>
       )}
 
-      {/* Add/Edit Modal – UI unchanged, save now uses Firestore */}
+      {/* Add/Edit Modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] p-4">
           <div
@@ -477,7 +473,6 @@ export default function DailyJournal() {
                 {editingTrade ? "Edit Trade" : "Add New Trade"}
               </h3>
               <form onSubmit={saveTrade} className="space-y-5">
-                {/* All your form fields are unchanged – only onSubmit uses Firestore now */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Date</label>
@@ -504,12 +499,127 @@ export default function DailyJournal() {
                     />
                   </div>
                 </div>
-                {/* ... rest of your form fields (direction, R:R, entry, exit, PnL, SL, TP, notes) ... */}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Direction</label>
+                    <select
+                      value={form.direction}
+                      onChange={(e) => setForm({ ...form, direction: e.target.value })}
+                      className={`w-full p-3 rounded-lg border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none`}
+                    >
+                      <option value="Long">Long</option>
+                      <option value="Short">Short</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">R:R (optional)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="2.5"
+                      value={form.rr || ""}
+                      onChange={(e) => setForm({ ...form, rr: e.target.value })}
+                      className={`w-full p-3 rounded-lg border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none`}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Entry</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      placeholder="1.08500"
+                      value={form.entry}
+                      onChange={(e) => setForm({ ...form, entry: e.target.value })}
+                      className={`w-full p-3 rounded-lg border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none`}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Exit</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      placeholder="1.09000"
+                      value={form.exit}
+                      onChange={(e) => setForm({ ...form, exit: e.target.value })}
+                      className={`w-full p-3 rounded-lg border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">PnL</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="45.50"
+                      value={form.pnl || ""}
+                      onChange={(e) => setForm({ ...form, pnl: e.target.value })}
+                      className={`w-full p-3 rounded-lg border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none`}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Stop Loss</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      placeholder="1.08200"
+                      value={form.stopLoss}
+                      onChange={(e) => setForm({ ...form, stopLoss: e.target.value })}
+                      className={`w-full p-3 rounded-lg border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Take Profit</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      placeholder="1.09500"
+                      value={form.takeProfit}
+                      onChange={(e) => setForm({ ...form, takeProfit: e.target.value })}
+                      className={`w-full p-3 rounded-lg border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none`}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Notes / Thoughts</label>
+                  <textarea
+                    placeholder="What went well? What to improve? Emotional state?..."
+                    value={form.notes}
+                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                    className={`w-full p-3 rounded-lg border min-h-[100px] ${
+                      isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                    } focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none`}
+                  />
+                </div>
+
                 {error && (
                   <div className="p-3 bg-red-100/80 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
                     {error}
                   </div>
                 )}
+
                 <div className="flex gap-4 pt-4">
                   <button
                     type="submit"
@@ -534,7 +644,7 @@ export default function DailyJournal() {
         </div>
       )}
 
-      {/* Delete Confirmation – unchanged */}
+      {/* Delete Confirmation */}
       {deleteModalOpen && (
         <DeleteConfirmModal
           title={tradeToDelete ? "Delete Trade" : "Clear Today's Trades"}
