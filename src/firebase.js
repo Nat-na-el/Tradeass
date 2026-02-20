@@ -14,21 +14,21 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Authentication (you already had this)
+// Auth exports (you already had these)
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Firestore Database – this is the new part
+// Firestore – the database
 export const db = getFirestore(app);
 
-// Enable offline support (data saves even without internet, syncs later)
+// Enable offline persistence (saves work even if internet drops, syncs later)
 enableIndexedDbPersistence(db)
   .catch((err) => {
     if (err.code === 'failed-precondition') {
-      console.log("Offline mode: only one tab can use persistence at a time.");
+      console.warn('Persistence failed: multiple tabs open');
     } else if (err.code === 'unimplemented') {
-      console.log("This browser does not support offline persistence.");
+      console.warn('Persistence not supported in this browser');
     }
   });
 
-console.log("Firebase + Firestore connected successfully");
+console.log("Firebase + Firestore initialized");
