@@ -23,8 +23,10 @@ import QuantitativeAnalysis from "./pages/QuantitativeAnalysis";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
+import { db, auth } from "./firebase";
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 
-// ManageAccountsModal (unchanged)
+// ManageAccountsModal (updated to Firestore)
 function ManageAccountsModal({
   accounts,
   onClose,
@@ -35,15 +37,7 @@ function ManageAccountsModal({
 }) {
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
-  const deleteAccount = (accountId) => {
-    if (!window.confirm("Delete this account? All data will be lost!")) return;
-    onDeleteAccount(accountId);
-  };
-  const resetAccount = (accountId) => {
-    if (!window.confirm("Reset all trades/notes/journals for this account?")) return;
-    onResetAccount(accountId);
-  };
-  if (accounts.length === 0) return null;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
@@ -56,84 +50,75 @@ function ManageAccountsModal({
           </button>
         </div>
         <div className="space-y-3 mb-4">
-          {accounts.map((account) => {
-            const trades = JSON.parse(localStorage.getItem(`${account.id}_trades`) || "[]");
-            const journals = JSON.parse(localStorage.getItem(`${account.id}_journals`) || "[]");
-            const notes = JSON.parse(localStorage.getItem(`${account.id}_notes`) || "[]");
-            const totalTrades = trades.length;
-            const totalJournals = journals.length;
-            const totalNotes = notes.length;
-            const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
-            return (
-              <div key={account.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    {editingId === account.id ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="flex-1 p-1 border rounded dark:bg-gray-600"
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => {
-                            onRenameAccount(account.id, editName || account.name);
-                            setEditingId(null);
-                            setEditName("");
-                          }}
-                          className="px-2 py-1 bg-gray-500 text-white rounded text-xs"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">
-                            {account.name.charAt(0)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-medium block">{account.name}</span>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-                            <div>{totalTrades} trades • ${totalPnL.toFixed(2)} P&L</div>
-                            <div>{totalJournals} journals • {totalNotes} notes</div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-1 ml-2">
-                    <button
-                      onClick={() => {
-                        setEditingId(account.id);
-                        setEditName(account.name);
-                      }}
-                      className="p-1 text-gray-600 hover:bg-gray-100 rounded"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => resetAccount(account.id)}
-                      className="p-1 text-gray-600 hover:bg-gray-100 rounded"
-                    >
-                      🔄
-                    </button>
-                    {accounts.length > 1 && (
+          {accounts.map((account) => (
+            <div key={account.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  {editingId === account.id ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="flex-1 p-1 border rounded dark:bg-gray-600"
+                        autoFocus
+                      />
                       <button
-                        onClick={() => deleteAccount(account.id)}
-                        className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                        onClick={() => {
+                          onRenameAccount(account.id, editName || account.name);
+                          setEditingId(null);
+                          setEditName("");
+                        }}
+                        className="px-2 py-1 bg-gray-500 text-white rounded text-xs"
                       >
-                        🗑️
+                        Save
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">
+                          {account.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium block">{account.name}</span>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
+                          <div>{account.totalTrades} trades • ${account.totalPnL.toFixed(2)} P&L</div>
+                          <div>{account.totalJournals} journals • {account.totalNotes} notes</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-1 ml-2">
+                  <button
+                    onClick={() => {
+                      setEditingId(account.id);
+                      setEditName(account.name);
+                    }}
+                    className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => resetAccount(account.id)}
+                    className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                  >
+                    🔄
+                  </button>
+                  {accounts.length > 1 && (
+                    <button
+                      onClick={() => deleteAccount(account.id)}
+                      className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                    >
+                      🗑️
+                    </button>
+                  )}
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
         <button
           onClick={onCreateAccount}
@@ -146,7 +131,7 @@ function ManageAccountsModal({
   );
 }
 
-// EditBalancePNL (unchanged)
+// EditBalancePNL (updated to Firestore)
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -155,59 +140,71 @@ function EditBalancePNL({ onSaved }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
     if (location.state?.accountId) {
-      const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-      const account = accounts.find((a) => a.id === location.state.accountId);
-      if (account) {
-        setForm({
-          name: account.name,
-          startingBalance: account.startingBalance,
-        });
-        setIsNewAccount(false);
-      }
+      // Edit existing
+      const loadAccount = async () => {
+        const accountRef = doc(db, "users", user.uid, "accounts", location.state.accountId);
+        const accountSnap = await getDoc(accountRef);
+        if (accountSnap.exists()) {
+          const data = accountSnap.data();
+          setForm({
+            name: data.name,
+            startingBalance: data.startingBalance,
+          });
+          setIsNewAccount(false);
+        }
+      };
+      loadAccount();
     } else {
+      // New
       setIsNewAccount(true);
       setForm({
         name: `Account ${Date.now().toString().slice(-3)}`,
         startingBalance: 10000,
       });
     }
-  }, [location]);
+  }, [location, navigate]);
 
   const saveAccount = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-    if (isNewAccount) {
-      const newAccountId = `acc-${Date.now()}`;
-      const newAccount = {
-        id: newAccountId,
-        name: form.name,
-        startingBalance: Number(form.startingBalance),
-        totalPnL: 0,
-        createdAt: new Date().toISOString(),
-      };
-      accounts.unshift(newAccount);
-      localStorage.setItem(`${newAccountId}_trades`, JSON.stringify([]));
-      localStorage.setItem(`${newAccountId}_notes`, JSON.stringify([]));
-      localStorage.setItem(`${newAccountId}_journals`, JSON.stringify([]));
-      localStorage.setItem(`dashboard_${newAccountId}`, JSON.stringify({}));
-      localStorage.setItem("currentAccountId", newAccountId);
-      localStorage.setItem("accounts", JSON.stringify(accounts));
-      navigate("/dashboard", { replace: true });
-    } else {
-      const accountIndex = accounts.findIndex(
-        (a) => a.id === location.state.accountId
-      );
-      accounts[accountIndex] = { ...accounts[accountIndex], ...form };
-      localStorage.setItem("accounts", JSON.stringify(accounts));
-      navigate("/dashboard", { replace: true });
-    }
+    const user = auth.currentUser;
+    if (!user) return;
 
-    setIsSubmitting(false);
-    if (onSaved) onSaved();
+    try {
+      if (isNewAccount) {
+        // Add new account
+        const accountRef = await addDoc(collection(db, "users", user.uid, "accounts"), {
+          name: form.name,
+          startingBalance: Number(form.startingBalance),
+          totalPnL: 0,
+          createdAt: serverTimestamp(),
+        });
+        localStorage.setItem("currentAccountId", accountRef.id); // optional – keep for multi-account
+        navigate("/dashboard", { replace: true });
+      } else {
+        // Update existing
+        const accountRef = doc(db, "users", user.uid, "accounts", location.state.accountId);
+        await updateDoc(accountRef, {
+          name: form.name,
+          startingBalance: Number(form.startingBalance),
+        });
+        navigate("/dashboard", { replace: true });
+      }
+      if (onSaved) onSaved();
+    } catch (err) {
+      console.error("Account save error:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -237,9 +234,7 @@ function EditBalancePNL({ onSaved }) {
             <input
               type="number"
               value={form.startingBalance}
-              onChange={(e) =>
-                setForm({ ...form, startingBalance: Number(e.target.value) })
-              }
+              onChange={(e) => setForm({ ...form, startingBalance: Number(e.target.value) })}
               className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 p-2 bg-white dark:bg-gray-700"
               required
               disabled={isSubmitting}
@@ -259,7 +254,7 @@ function EditBalancePNL({ onSaved }) {
               disabled={isSubmitting}
               className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md disabled:opacity-50"
             >
-              {isSubmitting ? "Creating..." : isNewAccount ? "Create" : "Save"}
+              {isSubmitting ? "Saving..." : isNewAccount ? "Create" : "Save"}
             </button>
           </div>
         </form>
@@ -268,7 +263,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// Main content – FloatingWidgets removed
+// AppContent (updated to Firestore for accounts, remove FloatingWidgets)
 function AppContent() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -278,83 +273,129 @@ function AppContent() {
   const location = useLocation();
 
   useEffect(() => {
-    initializeAccounts();
+    const user = auth.currentUser;
+    if (!user) {
+      setAccounts([]);
+      setCurrentAccount(null);
+      return;
+    }
+
+    const loadAccounts = async () => {
+      const q = query(collection(db, "users", user.uid, "accounts"), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      const loadedAccounts = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setAccounts(loadedAccounts);
+
+      // Set current account to first one if none selected
+      let currentId = localStorage.getItem("currentAccountId");
+      if (!currentId || !loadedAccounts.find((a) => a.id === currentId)) {
+        currentId = loadedAccounts[0]?.id || null;
+        if (currentId) localStorage.setItem("currentAccountId", currentId);
+      }
+
+      setCurrentAccount(loadedAccounts.find((a) => a.id === currentId));
+    };
+
+    loadAccounts();
   }, []);
 
-  useEffect(() => {
-    const currentId = localStorage.getItem("currentAccountId");
-    const isLoggedIn = !!currentId;
-    const publicPaths = ["/", "/login", "/register"];
-
-    if (isLoggedIn && publicPaths.includes(location.pathname)) {
-      navigate("/dashboard", { replace: true });
-    }
-    if (!isLoggedIn && !publicPaths.includes(location.pathname)) {
-      navigate("/login", { replace: true });
-    }
-  }, [location.pathname, navigate]);
-
   const initializeAccounts = () => {
-    let storedAccounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-    let currentId = localStorage.getItem("currentAccountId");
-
-    if (!currentId || !storedAccounts.find((a) => a.id === currentId)) {
-      currentId = storedAccounts[0]?.id || null;
-      if (currentId) {
-        localStorage.setItem("currentAccountId", currentId);
-      }
-    }
-
-    setAccounts(storedAccounts);
-    const current = storedAccounts.find((a) => a.id === currentId);
-    setCurrentAccount(current);
+    // No longer needed – now in useEffect with Firestore
   };
 
   const createAccount = () => {
     navigate("/edit-balance-pnl");
   };
 
-  const switchAccount = (accountId) => {
+  const switchAccount = async (accountId) => {
     localStorage.setItem("currentAccountId", accountId);
+    setCurrentAccount(accounts.find((a) => a.id === accountId));
     navigate("/dashboard", { replace: true });
   };
 
-  const deleteAccount = (accountId) => {
-    let updated = accounts.filter((a) => a.id !== accountId);
-    localStorage.removeItem(`${accountId}_trades`);
-    localStorage.removeItem(`${accountId}_notes`);
-    localStorage.removeItem(`${accountId}_journals`);
-    localStorage.removeItem(`dashboard_${accountId}`);
+  const deleteAccount = async (accountId) => {
+    if (!window.confirm("Delete this account? All data will be lost!")) return;
 
-    const currentId = localStorage.getItem("currentAccountId");
-    if (currentId === accountId || updated.length === 0) {
-      localStorage.removeItem("currentAccountId");
-      localStorage.setItem("accounts", JSON.stringify(updated));
-      navigate("/", { replace: true });
-      return;
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      // Delete account document
+      await deleteDoc(doc(db, "users", user.uid, "accounts", accountId));
+      
+      // You can add deletion of subcollections if needed (trades, notes, journals) – but Firestore doesn't auto-delete them, so use a function if required
+      // For now, we assume data is tied to account, but Firestore subcollections are separate
+
+      const updated = accounts.filter((a) => a.id !== accountId);
+      setAccounts(updated);
+      if (localStorage.getItem("currentAccountId") === accountId || updated.length === 0) {
+        localStorage.removeItem("currentAccountId");
+        navigate("/", { replace: true });
+        return;
+      }
+
+      switchAccount(updated[0].id);
+    } catch (err) {
+      console.error("Delete account error:", err);
     }
-
-    localStorage.setItem("accounts", JSON.stringify(updated));
-    navigate("/dashboard", { replace: true });
   };
 
-  const resetAccount = (accountId) => {
-    localStorage.setItem(`${accountId}_trades`, JSON.stringify([]));
-    localStorage.setItem(`${accountId}_notes`, JSON.stringify([]));
-    localStorage.setItem(`${accountId}_journals`, JSON.stringify([]));
-    localStorage.setItem(`dashboard_${accountId}`, JSON.stringify({}));
-    navigate("/dashboard", { replace: true });
+  const resetAccount = async (accountId) => {
+    if (!window.confirm("Reset all trades/notes/journals for this account?")) return;
+
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      // Delete all trades
+      const tradesQ = query(collection(db, "users", user.uid, "trades"));
+      const tradesSnap = await getDocs(tradesQ);
+      tradesSnap.forEach(async (d) => await deleteDoc(d.ref));
+
+      // Delete notes
+      const notesQ = query(collection(db, "users", user.uid, "notes"));
+      const notesSnap = await getDocs(notesQ);
+      notesSnap.forEach(async (d) => await deleteDoc(d.ref));
+
+      // Delete journals
+      const journalsQ = query(collection(db, "users", user.uid, "journals"));
+      const journalsSnap = await getDocs(journalsQ);
+      journalsSnap.forEach(async (d) => await deleteDoc(d.ref));
+
+      // Reset totalPnL in account
+      await updateDoc(doc(db, "users", user.uid, "accounts", accountId), {
+        totalPnL: 0,
+      });
+
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      console.error("Reset account error:", err);
+    }
   };
 
-  const renameAccount = (accountId, newName) => {
-    const updated = accounts.map((a) =>
-      a.id === accountId ? { ...a, name: newName } : a
-    );
-    localStorage.setItem("accounts", JSON.stringify(updated));
-    navigate("/dashboard", { replace: true });
+  const renameAccount = async (accountId, newName) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      await updateDoc(doc(db, "users", user.uid, "accounts", accountId), {
+        name: newName,
+      });
+      const updated = accounts.map((a) =>
+        a.id === accountId ? { ...a, name: newName } : a
+      );
+      setAccounts(updated);
+      setCurrentAccount(updated.find((a) => a.id === accountId));
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      console.error("Rename account error:", err);
+    }
   };
 
-  const isLoggedIn = !!localStorage.getItem("currentAccountId");
+  const isLoggedIn = !!auth.currentUser;
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-100">
@@ -412,7 +453,6 @@ function AppContent() {
               </main>
             </div>
 
-            {/* FloatingWidgets removed */}
             {showManageModal && (
               <ManageAccountsModal
                 accounts={accounts}
