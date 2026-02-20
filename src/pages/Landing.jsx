@@ -43,6 +43,7 @@ import {
   Instagram,
   Youtube
 } from 'lucide-react';
+
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
   visible: {
@@ -51,6 +52,7 @@ const fadeInUp = {
     transition: { duration: 0.7, ease: "easeOut" }
   }
 };
+
 const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
@@ -61,10 +63,12 @@ const staggerContainer = {
     }
   }
 };
+
 export default function Landing() {
   const navigate = useNavigate();
   const [isLoaded, setIsLoaded] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
+
   useEffect(() => {
     // Simulate loading for smooth entrance animation
     setTimeout(() => setIsLoaded(true), 300);
@@ -93,6 +97,7 @@ export default function Landing() {
   
       this.count();
     }
+
     Counter.prototype = {
       build: function(selector) {
         var scopeElm = typeof selector == 'string'
@@ -132,10 +137,12 @@ export default function Landing() {
         });
       }
     };
+
     // Create counters for background
     new Counter('.stock-counter1', { digits: 6, direction: 'rtl', delay: 200 });
     new Counter('.stock-counter2', { digits: 5, direction: 'rtl', delay: 150 });
     new Counter('.stock-counter3', { digits: 7, direction: 'rtl', delay: 250 });
+
     // Randomly update counters every few seconds
     const randomCount = () => {
       document.querySelector('.stock-counter1').dataset.value = Math.floor(Math.random() * 1000000) + 100000;
@@ -150,6 +157,7 @@ export default function Landing() {
       clearInterval(interval);
     };
   }, []);
+
   const features = [
     {
       icon: <BarChart3 className="w-8 h-8 text-blue-600 dark:text-cyan-400" />,
@@ -159,489 +167,412 @@ export default function Landing() {
     {
       icon: <LineChart className="w-8 h-8 text-cyan-600 dark:text-cyan-400" />,
       title: "60+ Performance Reports",
-      description: "Win rate by setup/time/day, expectancy, R-multiple distribution, PNL curves, drawdown analysis, heatmaps, streak detection exportable to CSV/PDF for deeper review."
+      description: "Win rate by setup/time/day, expectancy, profit factor, R multiples distribution, Monte Carlo simulations, equity curves, correlation matrices – all interactive and exportable."
     },
     {
-      icon: <BookOpen className="w-8 h-8 text-blue-600 dark:text-cyan-400" />,
-      title: "Deep Daily Journals",
-      description: "Structured daily reviews with mood, confidence, market context, and free notes. Attach screenshots, link trades, spot emotional patterns, and build long-term discipline."
+      icon: <NotebookPen className="w-8 h-8 text-purple-600 dark:text-purple-400" />,
+      title: "AI-Powered Journaling",
+      description: "Auto-generate post-trade analysis with AI. Get sentiment scoring, pattern detection, and personalized coaching. Journal templates for psychology, risk, and strategy reviews."
     },
     {
-      icon: <Brain className="w-8 h-8 text-green-600 dark:text-emerald-400" />,
-      title: "AI-Powered Insights",
-      description: "Smart pattern detection: 'Win rate drops 21% after lunch', 'This setup has 2.4 R:R but only 38% win rate', personalized tips, risk warnings, and psychology suggestions."
+      icon: <ChartLine className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />,
+      title: "Advanced Backtesting",
+      description: "Backtest strategies with walk-forward optimization, Monte Carlo robustness testing, multi-timeframe analysis, and portfolio correlation. Import custom data or use 20+ built-in datasets."
     },
     {
-      icon: <Target className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />,
-      title: "Risk & Money Management",
-      description: "Built-in position sizing calculator, risk % tracker, max drawdown alerts, equity curve monitoring, and stop/target suggestions to protect capital and enforce discipline."
+      icon: <Target className="w-8 h-8 text-amber-600 dark:text-amber-400" />,
+      title: "Goal Tracking System",
+      description: "Set smart trading goals with progress tracking, milestone rewards, and AI reminders. Track drawdown limits, consistency streaks, and custom KPIs with visual dashboards."
     },
     {
-      icon: <Lock className="w-8 h-8 text-teal-600 dark:text-teal-400" />,
-      title: "100% Private • Offline-First",
-      description: "No servers, no tracking, no subscriptions. All data stored locally in your browser. Work offline, sync when online your trading stays yours forever."
-    },
-    {
-      icon: <Users className="w-8 h-8 text-rose-400" />,
-      title: "Community & Mentorship",
-      description: "Connect with other traders, share journals (anonymously), and access mentor feedback."
-    },
-    {
-      icon: <MessageCircle className="w-8 h-8 text-sky-400" />,
-      title: "Trade Review System",
-      description: "Tag trades with setups, mistakes, lessons learned. Filter and review to improve faster."
+      icon: <Users className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />,
+      title: "Community Challenges",
+      description: "Join monthly trading challenges with leaderboards, peer reviews, and prizes. Compete in prop firm simulations, risk management marathons, or consistency streaks."
     }
   ];
-  const brokers = [
-    "Interactive Brokers", "TradeStation", "Thinkorswim (TD Ameritrade)", "NinjaTrader",
-    "MetaTrader 4/5", "TradingView", "eToro", "OANDA", "Forex.com", "IG",
-    "CMC Markets", "Saxo Bank", "Pepperstone", "IC Markets", "Eightcap"
-  ];
+
   const testimonials = [
     {
-      name: "Ryan P.",
-      role: "Futures Trader",
-      text: "Switched from spreadsheets to Tradeass my win rate jumped 18% in 3 months. The AI insights are scary good.",
-      avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+      name: "Alex Chen",
+      role: "Full-Time Forex Trader",
+      image: "https://randomuser.me/api/portraits/men/32.jpg",
+      content: "Forgex transformed my trading. The AI journal insights alone doubled my win rate in 3 months. It's like having a 24/7 mentor analyzing every move.",
       rating: 5
     },
     {
-      name: "Lisa M.",
-      role: "Forex Swing Trader",
-      text: "Offline mode + privacy is unbeatable. Finally a journal I actually use every day.",
-      avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+      name: "Sarah Thompson",
+      role: "Crypto Swing Trader",
+      image: "https://randomuser.me/api/portraits/women/44.jpg",
+      content: "The backtesting suite is unreal. I optimized my strategy and went from breakeven to 28% monthly returns. Privacy focus is perfect for serious traders.",
       rating: 5
     },
     {
-      name: "David K.",
-      role: "Stock Day Trader",
-      text: "The reports and backtesting tools helped me cut my max drawdown in half. Worth every second.",
-      avatar: "https://randomuser.me/api/portraits/men/62.jpg",
+      name: "Michael Rodriguez",
+      role: "Stock Options Trader",
+      image: "https://randomuser.me/api/portraits/men/75.jpg",
+      content: "Multi-account tracking saved me hours every week. The performance reports are more detailed than my broker's platform. Absolute game-changer.",
       rating: 5
     },
     {
-      name: "Alex M.",
-      role: "Full-time Futures Trader",
-      text: "This journal changed how I review my sessions. I finally see my recurring mistakes instead of just staring at PnL numbers.",
-      avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-      rating: 5
-    },
-    {
-      name: "Sarah K.",
-      role: "Swing Forex Trader",
-      text: "The emotional tracking + setup tagging feature is gold. I cut my revenge trading by 70% in two months.",
-      avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-      rating: 5
-    },
-    {
-      name: "Michael R.",
-      role: "Options & Stocks Day Trader",
-      text: "Best analytics I've used. The expectancy calculator and R-multiple breakdown made me realize I was overtrading low-probability setups.",
-      avatar: "https://randomuser.me/api/portraits/men/62.jpg",
-      rating: 5
-    },
-    {
-      name: "Elena V.",
-      role: "Beginner Crypto Trader",
-      text: "As a newbie, the daily prompts forced me to reflect properly. I went from -42% to +18% in 4 months.",
-      avatar: "https://randomuser.me/api/portraits/women/68.jpg",
+      name: "Emily Patel",
+      role: "Futures Day Trader",
+      image: "https://randomuser.me/api/portraits/women/65.jpg",
+      content: "The psychology journaling with AI sentiment analysis helped me conquer emotional trading. Now I'm consistently profitable after years of struggle.",
       rating: 5
     }
   ];
+
+  const pricingPlans = [
+    {
+      name: "Starter",
+      price: 0,
+      period: "forever",
+      features: [
+        "Basic trade logging",
+        "5 performance reports",
+        "Single account tracking",
+        "Community challenges",
+        "Standard journaling",
+        "CSV export"
+      ],
+      buttonText: "Get Started Free",
+      buttonVariant: "outline",
+      buttonAction: () => navigate('/register')
+    },
+    {
+      name: "Pro",
+      price: 19,
+      period: "month",
+      features: [
+        "Unlimited trade logging",
+        "60+ advanced reports",
+        "Multi-account tracking",
+        "AI-powered insights",
+        "Advanced backtesting",
+        "Priority support",
+        "Custom dashboards",
+        "Broker integration"
+      ],
+      buttonText: "Start Free Trial",
+      buttonVariant: "default",
+      popular: true,
+      buttonAction: () => navigate('/register')
+    },
+    {
+      name: "Elite",
+      price: 49,
+      period: "month",
+      features: [
+        "Everything in Pro",
+        "Unlimited backtests",
+        "AI strategy optimizer",
+        "Personal AI coach",
+        "Team collaboration",
+        "Custom API access",
+        "White-label reports",
+        "Dedicated account manager"
+      ],
+      buttonText: "Contact Sales",
+      buttonVariant: "default",
+      buttonAction: () => window.location.href = 'mailto:sales@forgex.com'
+    }
+  ];
+
+  const howItWorks = [
+    {
+      step: 1,
+      title: "Log Your Trades",
+      description: "Record every detail in seconds. Add screenshots, emotions, and market conditions.",
+      icon: <BookOpen className="w-12 h-12 text-blue-500" />
+    },
+    {
+      step: 2,
+      title: "AI Analysis",
+      description: "Get instant insights on patterns, mistakes, and optimization opportunities.",
+      icon: <Brain className="w-12 h-12 text-purple-500" />
+    },
+    {
+      step: 3,
+      title: "Track Progress",
+      description: "Watch your performance improve with detailed reports and goal tracking.",
+      icon: <TrendingUp className="w-12 h-12 text-green-500" />
+    },
+    {
+      step: 4,
+      title: "Level Up",
+      description: "Join challenges, get coaching, and become consistently profitable.",
+      icon: <Trophy className="w-12 h-12 text-yellow-500" />
+    }
+  ];
+
+  const faqs = [
+    {
+      question: "How secure is my trading data?",
+      answer: "Forgex uses bank-grade encryption and never shares your data. All analysis happens on-device or in our secure cloud with zero human access."
+    },
+    {
+      question: "Can I import my existing trades?",
+      answer: "Yes! Import from CSV, MT4/5 reports, TradingView, or direct broker sync for supported platforms."
+    },
+    {
+      question: "Is AI really useful for trading?",
+      answer: "Absolutely. Our AI detects hidden patterns in your trades that humans often miss, like time-of-day biases or correlated mistakes."
+    },
+    {
+      question: "What markets does Forgex support?",
+      answer: "All markets: Forex, stocks, crypto, futures, options, CFDs, and custom instruments."
+    },
+    {
+      question: "Can I use Forgex on mobile?",
+      answer: "Yes! Fully responsive web app with PWA support. Native apps coming soon."
+    },
+    {
+      question: "What's the cancellation policy?",
+      answer: "Cancel anytime. No contracts. Get a pro-rated refund for annual plans."
+    }
+  ];
+
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-800">
-      {/* Animated Trading-Themed Background */}
-      <div className="absolute inset-0 z-[-10] pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-950/90 via-teal-950 to-gray-950" />
-        <div className="absolute inset-0 opacity-12 dark:opacity-15">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(6,182,212,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(6,182,212,0.1)_1px,transparent_1px)] bg-[size:50px_50px] animate-grid-move" />
+    <div className="relative min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-white overflow-hidden">
+      {/* Background Effects */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        {/* Stock Market Counters */}
+        <div className="absolute top-1/4 left-1/4 opacity-20 scale-150 blur-md animate-pulse-slow">
+          <div className="stock-counter stock-counter1" data-value="123456"></div>
         </div>
-        <div className="absolute inset-0 flex justify-around items-end opacity-25 md:opacity-20 pointer-events-none">
-          {[...Array(30)].map((_, i) => (
-            <div
-              key={i}
-              className="w-3 sm:w-5 md:w-7 lg:w-10 bg-gradient-to-t from-transparent via-emerald-500/80 to-emerald-400/40 rounded-t-md animate-candle-rise"
-              style={{
-                height: `${30 + Math.sin(i * 0.5) * 60 + 50}%`,
-                animationDelay: `${i * 0.4}s`,
-                animationDuration: `${8 + i * 1.2}s`,
-              }}
-            />
-          ))}
-          {[...Array(25)].map((_, i) => (
-            <div
-              key={`red-${i}`}
-              className="w-3 sm:w-5 md:w-7 lg:w-10 bg-gradient-to-b from-transparent via-red-500/70 to-red-400/30 rounded-b-md animate-candle-fall"
-              style={{
-                height: `${25 + Math.cos(i * 0.7) * 50 + 40}%`,
-                animationDelay: `${i * 0.6 + 3}s`,
-                animationDuration: `${10 + i * 1.5}s`,
-              }}
-            />
-          ))}
+        <div className="absolute bottom-1/3 right-1/3 opacity-20 scale-125 blur-md animate-pulse-slow delay-500">
+          <div className="stock-counter stock-counter2" data-value="78901"></div>
         </div>
-        <div className="absolute inset-0">
-          <div className="absolute w-[800px] sm:w-[1200px] md:w-[1600px] h-[800px] sm:h-[1200px] md:h-[1600px] bg-gradient-to-br from-blue-700/40 via-blue-600/30 to-transparent rounded-full blur-5xl animate-float-slow left-[-30%] sm:left-[-20%] top-[-20%] animate-pulse-glow" />
-          <div className="absolute w-[1000px] sm:w-[1500px] md:w-[2000px] h-[1000px] sm:h-[1500px] md:h-[2000px] bg-gradient-to-br from-cyan-700/35 via-teal-600/25 to-transparent rounded-full blur-5xl animate-float-medium right-[-35%] sm:right-[-25%] bottom-[-25%] animate-pulse-glow" style={{ animationDelay: '4s' }} />
-          <div className="absolute w-[700px] sm:w-[1000px] md:w-[1400px] h-[700px] sm:h-[1000px] md:h-[1400px] bg-gradient-to-br from-emerald-600/32 via-cyan-500/22 to-transparent rounded-full blur-5xl animate-float-fast left-[5%] sm:left-[15%] bottom-[0%] animate-pulse-glow" style={{ animationDelay: '8s' }} />
-          <div className="absolute w-[900px] sm:w-[1300px] md:w-[1700px] h-[900px] sm:h-[1300px] md:h-[1700px] bg-gradient-to-br from-purple-700/30 via-indigo-600/20 to-transparent rounded-full blur-4xl animate-float-slow right-[-20%] top-[-15%] animate-pulse-glow" style={{ animationDelay: '2s' }} />
-          <div className="absolute w-[600px] sm:w-[900px] md:w-[1200px] h-[600px] sm:h-[900px] md:h-[1200px] bg-gradient-to-br from-pink-600/25 via-red-500/15 to-transparent rounded-full blur-4xl animate-float-medium left-[-15%] bottom-[-10%] animate-pulse-glow" style={{ animationDelay: '12s' }} />
+        <div className="absolute top-2/3 left-2/3 opacity-20 scale-200 blur-md animate-pulse-slow delay-1000">
+          <div className="stock-counter stock-counter3" data-value="2345678"></div>
         </div>
-        <div className="absolute inset-0 opacity-15 dark:opacity-20">
-          <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_30%,rgba(34,197,94,0.2)_40%,transparent_50%)] animate-trend-move" />
-          <div className="absolute inset-0 bg-[linear-gradient(-135deg,transparent_30%,rgba(239,68,68,0.18)_40%,transparent_50%)] animate-trend-move-reverse" style={{ animationDelay: '6s' }} />
-          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_35%,rgba(6,182,212,0.15)_45%,transparent_55%)] animate-trend-move" style={{ animationDelay: '3s', animationDuration: '20s' }} />
-        </div>
-        <div className="absolute top-20 left-10 opacity-50">
-          <div className="numCounter stock-counter1" data-value="123456"></div>
-        </div>
-        <div className="absolute top-40 right-20 opacity-50">
-          <div className="numCounter stock-counter2" data-value="78901"></div>
-        </div>
-        <div className="absolute bottom-32 left-1/3 opacity-50">
-          <div className="numCounter stock-counter3" data-value="2345678"></div>
-        </div>
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(12)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute text-4xl md:text-6xl font-bold text-green-400/25 animate-float-slow animate-pulse-glow"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${i * 1.5}s`,
-                animationDuration: `${12 + i * 2.5}s`,
-              }}
-            >
-              $
-            </div>
-          ))}
-          {[...Array(10)].map((_, i) => (
-            <div
-              key={`euro-${i}`}
-              className="absolute text-4xl md:text-6xl font-bold text-blue-400/25 animate-float-medium animate-pulse-glow"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${i * 2 + 2}s`,
-                animationDuration: `${15 + i * 3}s`,
-              }}
-            >
-              €
-            </div>
-          ))}
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={`btc-${i}`}
-              className="absolute text-3xl md:text-5xl font-bold text-orange-400/20 animate-float-fast animate-pulse-glow"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${i * 2.5 + 5}s`,
-                animationDuration: `${10 + i * 2}s`,
-              }}
-            >
-              Ƀ
-            </div>
-          ))}
-        </div>
+        
+        {/* Floating Particles */}
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full bg-blue-500/10 blur-xl animate-float"
+            style={{
+              width: `${Math.random() * 40 + 20}px`,
+              height: `${Math.random() * 40 + 20}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDuration: `${Math.random() * 20 + 10}s`,
+              animationDelay: `${Math.random() * 5}s`
+            }}
+          ></div>
+        ))}
       </div>
-      {/* Fixed Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-              T
-            </div>
-            <span className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Tradeass
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/login')}
-              className="hidden sm:inline-flex text-blue-700 dark:text-cyan-300 hover:bg-blue-100/50 dark:hover:bg-cyan-900/30"
-            >
-              Sign In
-            </Button>
-            <Button
-              onClick={() => navigate('/register')}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md transition-all"
-            >
-              Get Started Free
-            </Button>
-          </div>
-        </div>
-      </header>
+
       {/* Hero Section */}
       <motion.section
         initial="hidden"
         animate={isLoaded ? "visible" : "hidden"}
         variants={staggerContainer}
-        className="pt-40 pb-32 px-6 md:px-12 lg:px-20 text-center relative overflow-hidden"
+        className="relative z-10 min-h-screen flex flex-col justify-center px-6 lg:px-12 py-20"
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 via-transparent to-cyan-100/40 dark:from-blue-950/60 dark:to-cyan-950/50 pointer-events-none" />
-        <div className="max-w-6xl mx-auto relative z-10 space-y-10 md:space-y-12">
-          <motion.h1 variants={fadeInUp} className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-none animate-fade-in bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400">
-            Your Personal Trading Edge
-            <br />
-            <span className="text-gray-900 dark:text-white">Master Your Trading Psychology and Performance</span>
-          </motion.h1>
-          <motion.p variants={fadeInUp} className="text-xl sm:text-2xl md:text-3xl text-gray-700 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed">
-            The most powerful, private, offline-first trading journal. Track every trade, reflect deeply, analyze with precision, and turn data into consistent profits built for serious traders.
-          </motion.p>
-          <motion.div variants={fadeInUp} className="pt-6 md:pt-10 flex flex-col sm:flex-row gap-5 justify-center">
-            <Button
-              size="xl"
-              onClick={() => navigate('/register')}
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-lg md:text-xl px-10 md:px-14 py-6 md:py-8 rounded-2xl shadow-2xl group transition-all duration-300"
-            >
-              Start Free No Card Needed
-              <ArrowRight className="ml-3 h-6 w-6 transition-transform group-hover:translate-x-2" />
-            </Button>
-            <Button
-              size="xl"
-              variant="outline"
-              onClick={() => navigate('/login')}
-              className="text-lg md:text-xl px-10 md:px-14 py-6 md:py-8 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-cyan-950/30 rounded-2xl"
-            >
-              Sign In to Your Journal
-            </Button>
+        <div className="max-w-6xl mx-auto text-center lg:text-left lg:flex lg:items-center lg:gap-12">
+          <motion.div variants={fadeInUp} className="lg:w-1/2 mb-12 lg:mb-0">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-black mb-8 leading-tight">
+              Master Your Trades
+              <br />
+              <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                Become Profitable
+              </span>
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-2xl mx-auto lg:mx-0">
+              The AI-powered trading journal that turns data into edge. Track, analyze, and optimize your performance like never before.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+              <Button
+                onClick={() => navigate('/register')}
+                className="group h-14 px-8 text-lg font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:brightness-110 transition-all duration-300 rounded-xl shadow-lg shadow-blue-900/30"
+              >
+                Start Free Trial
+                <ChevronRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/login')}
+                className="h-14 px-8 text-lg font-bold text-white border-white/20 hover:border-white/40 hover:bg-white/5 rounded-xl"
+              >
+                Log In
+              </Button>
+            </div>
+            <div className="mt-10 flex justify-center lg:justify-start gap-6 text-sm text-gray-400">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-green-400" />
+                <span>Bank-Grade Security</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Infinity className="h-5 w-5 text-blue-400" />
+                <span>Unlimited Storage</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Globe className="h-5 w-5 text-purple-400" />
+                <span>Works Everywhere</span>
+              </div>
+            </div>
           </motion.div>
-          <motion.div variants={fadeInUp} className="pt-12 flex flex-wrap justify-center gap-6 md:gap-12 text-sm md:text-base text-gray-600 dark:text-gray-400">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 md:h-6 md:w-6 text-green-500" />
-              <span>100% Private • No Servers</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Infinity className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
-              <span>Unlimited Trades & Journals</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 md:h-6 md:w-6 text-cyan-500" />
-              <span>Instant Setup • Offline Ready</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Globe className="h-5 w-5 md:h-6 md:w-6 text-purple-500" />
-              <span>Supports 15+ Brokers</span>
+          <motion.div variants={fadeInUp} className="lg:w-1/2 relative">
+            <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-blue-900/30 border border-white/10 p-4 backdrop-blur-sm bg-black/30">
+              {/* Mock Dashboard Preview */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-3 bg-black/40 rounded-xl">
+                    <div className="text-sm text-gray-400">Win Rate</div>
+                    <div className="text-2xl font-bold text-green-400">68%</div>
+                  </div>
+                  <div className="p-3 bg-black/40 rounded-xl">
+                    <div className="text-sm text-gray-400">PnL</div>
+                    <div className="text-2xl font-bold text-green-400">+$4,280</div>
+                  </div>
+                  <div className="p-3 bg-black/40 rounded-xl">
+                    <div className="text-sm text-gray-400">R:R Avg</div>
+                    <div className="text-2xl font-bold text-purple-400">2.8</div>
+                  </div>
+                </div>
+                <div className="h-40 bg-black/40 rounded-xl flex items-center justify-center text-gray-400">
+                  <LineChart className="h-16 w-16" />
+                  <span className="ml-2">Performance Chart</span>
+                </div>
+                <div className="p-3 bg-black/40 rounded-xl">
+                  <div className="text-sm text-gray-400 mb-2">Recent Trade</div>
+                  <div className="flex justify-between">
+                    <span>EUR/USD Long</span>
+                    <span className="text-green-400">+$420</span>
+                  </div>
+                </div>
+              </div>
+              <div className="absolute -inset-8 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 blur-3xl opacity-50 animate-pulse-slow"></div>
             </div>
           </motion.div>
         </div>
       </motion.section>
-      {/* Stats Bar */}
-      <section className="py-16 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-y border-gray-200 dark:border-gray-800 relative z-10">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          <div>
-            <p className="text-5xl md:text-6xl font-bold text-blue-600 dark:text-cyan-400">1.4B+</p>
-            <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 mt-2">Trades Tracked</p>
-          </div>
-          <div>
-            <p className="text-5xl md:text-6xl font-bold text-blue-600 dark:text-cyan-400">120K+</p>
-            <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 mt-2">Active Traders</p>
-          </div>
-          <div>
-            <p className="text-5xl md:text-6xl font-bold text-blue-600 dark:text-cyan-400">4.9/5</p>
-            <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 mt-2">Average Rating</p>
-          </div>
-          <div>
-            <p className="text-5xl md:text-6xl font-bold text-blue-600 dark:text-cyan-400">99.9%</p>
-            <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 mt-2">Uptime & Privacy</p>
-          </div>
-        </div>
-      </section>
-      {/* Features Grid */}
+
+      {/* Features Section */}
       <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg relative z-10"
+        className="py-24 px-6 relative z-10"
       >
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center space-y-6">
-            <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500">
-              Built for Traders Who Want Results
-            </motion.h2>
-            <motion.p variants={fadeInUp} className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto">
-              Tradeass gives you everything modern traders need from deep analytics to psychological reflection in one clean, private app.
-            </motion.p>
-          </div>
-          <motion.div variants={staggerContainer} className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
+        <div className="max-w-7xl mx-auto">
+          <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl font-bold text-center mb-6">
+            Built for Winners
+          </motion.h2>
+          <motion.p variants={fadeInUp} className="text-xl text-gray-300 text-center mb-16 max-w-3xl mx-auto">
+            Everything serious traders need. Nothing you don't. AI-powered tools that turn your data into real edge.
+          </motion.p>
+          <motion.div variants={staggerContainer} className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
                 variants={fadeInUp}
-                className="p-8 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group"
+                className="group p-8 rounded-2xl bg-black/30 border border-white/10 hover:border-blue-500/30 hover:bg-black/50 transition-all duration-300 backdrop-blur-md shadow-xl hover:shadow-2xl hover:shadow-blue-900/20"
               >
-                <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mb-6">
+                <div className="mb-6 p-4 w-fit rounded-xl bg-gradient-to-br from-black/50 to-gray-900/50 border border-white/5 group-hover:border-blue-500/20 transition-colors">
                   {feature.icon}
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {feature.description}
-                </p>
+                <h3 className="text-xl font-bold mb-4 group-hover:text-blue-400 transition-colors">{feature.title}</h3>
+                <p className="text-gray-300">{feature.description}</p>
               </motion.div>
             ))}
           </motion.div>
         </div>
       </motion.section>
+
       {/* How It Works */}
       <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg relative z-10"
-      >
-        <div className="max-w-7xl mx-auto space-y-20">
-          <div className="text-center space-y-6">
-            <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
-              From First Trade to Consistent Profits
-            </motion.h2>
-            <motion.p variants={fadeInUp} className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto">
-              Tradeass makes it simple to build better habits and sharper decisions — step by step.
-            </motion.p>
-          </div>
-          <motion.div variants={staggerContainer} className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
-            <motion.div variants={fadeInUp} className="space-y-6 text-center">
-              <div className="w-20 h-20 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-cyan-400 text-4xl font-bold shadow-lg">
-                1
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Sign Up & Setup
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Create account in seconds. Set starting balance, add brokers or import CSV. Create as many accounts as you trade.
-              </p>
-            </motion.div>
-            <motion.div variants={fadeInUp} className="space-y-6 text-center">
-              <div className="w-20 h-20 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-cyan-400 text-4xl font-bold shadow-lg">
-                2
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Log Trades & Reflect
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Record every detail. Write daily journals, attach screenshots, rate confidence, tag setups build complete context.
-              </p>
-            </motion.div>
-            <motion.div variants={fadeInUp} className="space-y-6 text-center">
-              <div className="w-20 h-20 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-cyan-400 text-4xl font-bold shadow-lg">
-                3
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Analyze Deeply
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Instant dashboards, 60+ reports, AI insights, pattern detection uncover what really drives your results.
-              </p>
-            </motion.div>
-            <motion.div variants={fadeInUp} className="space-y-6 text-center">
-              <div className="w-20 h-20 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-cyan-400 text-4xl font-bold shadow-lg">
-                4
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Improve & Scale
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Take challenges, run backtests, get mentor feedback, track progress turn data into rules and consistent profits.
-              </p>
-            </motion.div>
-          </motion.div>
-        </div>
-      </motion.section>
-      {/* Supported Brokers */}
-      <motion.section
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={staggerContainer}
-        className="py-24 px-6 bg-black relative z-10"
+        className="py-24 px-6 bg-gradient-to-b from-transparent to-black relative z-10"
       >
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl font-bold mb-6">
-              Works With Your Broker
-            </motion.h2>
-            <motion.p variants={fadeInUp} className="text-xl text-gray-400 max-w-3xl mx-auto">
-              Import trades automatically or manually from 15+ popular platforms.
-            </motion.p>
-          </div>
-          <motion.div variants={staggerContainer} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {brokers.map((broker, index) => (
+          <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl font-bold text-center mb-16">
+            From Trader to Master in 4 Steps
+          </motion.h2>
+          <div className="grid md:grid-cols-4 gap-8">
+            {howItWorks.map((step, index) => (
               <motion.div
                 key={index}
                 variants={fadeInUp}
-                className="bg-gray-900/50 border border-gray-800 rounded-xl p-6 text-center hover:border-cyan-500/50 transition-colors duration-300"
+                className="relative p-6 rounded-2xl bg-black/30 border border-white/10 backdrop-blur-md"
               >
-                <p className="text-lg font-medium">{broker}</p>
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold px-4 py-1 rounded-full shadow-md">
+                  Step {step.step}
+                </div>
+                <div className="text-center mb-4 mt-4">
+                  {step.icon}
+                </div>
+                <h3 className="text-xl font-bold text-center mb-4">{step.title}</h3>
+                <p className="text-gray-300 text-center">{step.description}</p>
+                {index < howItWorks.length - 1 && (
+                  <div className="hidden md:block absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 text-blue-500">
+                    <ArrowRight size={32} />
+                  </div>
+                )}
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </motion.section>
-      {/* Testimonials / Wall of Love */}
+
+      {/* Testimonials */}
       <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-gradient-to-b from-blue-900/95 to-black/95 text-white backdrop-blur-lg relative z-10"
+        className="py-24 px-6 relative z-10"
       >
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center space-y-6">
-            <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl lg:text-6xl font-bold">
-              Traders Trust Tradeass
-            </motion.h2>
-            <motion.p variants={fadeInUp} className="text-xl md:text-2xl text-gray-300 max-w-4xl mx-auto">
-              Real results from real traders using Tradeass every day.
-            </motion.p>
-          </div>
-          <div className="relative">
-            <div className="overflow-hidden">
+        <div className="max-w-7xl mx-auto text-center">
+          <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl font-bold mb-16">
+            Traders Love Forgex
+          </motion.h2>
+          <div className="relative max-w-4xl mx-auto">
+            {testimonials.map((testimonial, index) => (
               <motion.div
-                animate={{ x: `-${activeTestimonial * 100}%` }}
-                transition={{ duration: 0.7, ease: "easeInOut" }}
-                className="flex"
+                key={index}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: index === activeTestimonial ? 1 : 0 }}
+                transition={{ duration: 0.5 }}
+                className="absolute top-0 left-0 w-full"
               >
-                {testimonials.map((testimonial, index) => (
-                  <div key={index} className="min-w-full px-4">
-                    <div className="bg-blue-800/60 backdrop-blur-md border border-blue-700/50 rounded-3xl p-8 md:p-12 max-w-4xl mx-auto">
-                      <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-                        <img
-                          src={testimonial.avatar}
-                          alt={testimonial.name}
-                          className="w-24 h-24 rounded-full border-4 border-blue-700 flex-shrink-0"
-                        />
-                        <div>
-                          <div className="flex gap-1 mb-6">
-                            {[...Array(testimonial.rating)].map((_, i) => (
-                              <Star key={i} className="h-6 w-6 fill-yellow-400 text-yellow-400" />
-                            ))}
-                          </div>
-                          <p className="text-lg italic mb-6">
-                            "{testimonial.text}"
-                          </p>
-                          <p className="font-semibold">{testimonial.name} • {testimonial.role}</p>
-                        </div>
+                <div className="p-8 rounded-2xl bg-black/30 border border-white/10 backdrop-blur-md shadow-2xl">
+                  <div className="flex justify-center mb-6">
+                    <div className="relative">
+                      <img
+                        src={testimonial.image}
+                        alt={testimonial.name}
+                        className="w-20 h-20 rounded-full shadow-lg"
+                      />
+                      <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full p-1 shadow-md">
+                        <CheckCircle2 className="h-4 w-4 text-white" />
                       </div>
                     </div>
                   </div>
-                ))}
+                  <div className="flex justify-center mb-4">
+                    {Array(5).fill(0).map((_, i) => (
+                      <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
+                    ))}
+                  </div>
+                  <p className="text-lg text-gray-200 mb-6 italic">"{testimonial.content}"</p>
+                  <div className="text-sm font-semibold">{testimonial.name}</div>
+                  <div className="text-sm text-gray-400">{testimonial.role}</div>
+                </div>
               </motion.div>
-            </div>
-            <div className="flex justify-center gap-3 mt-10">
+            ))}
+            <div className="flex justify-center gap-2 mt-8">
               {testimonials.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setActiveTestimonial(index)}
-                  className={`w-4 h-4 rounded-full transition-all duration-300 ${
-                    activeTestimonial === index
-                      ? 'bg-cyan-500 scale-125'
-                      : 'bg-gray-700 hover:bg-gray-500'
+                  className={`h-2 w-2 rounded-full transition-all ${
+                    index === activeTestimonial ? "bg-blue-500 w-6" : "bg-gray-600"
                   }`}
                 />
               ))}
@@ -649,267 +580,210 @@ export default function Landing() {
           </div>
         </div>
       </motion.section>
-      {/* Pricing Teaser */}
+
+      {/* Pricing Section */}
       <motion.section
+        id="pricing"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={staggerContainer}
-        className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg relative z-10"
+        className="py-24 px-6 relative z-10"
       >
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center space-y-6">
-            <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
-              Choose Your Plan
-            </motion.h2>
-            <motion.p variants={fadeInUp} className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto">
-              Start free or upgrade for advanced features. Billed monthly or annually.
-            </motion.p>
-          </div>
-          <motion.div variants={staggerContainer} className="grid md:grid-cols-3 gap-8 lg:gap-12">
-            <motion.div variants={fadeInUp} className="p-8 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Free
-              </h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">$0</p>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">Forever</p>
-              <ul className="space-y-3 text-gray-700 dark:text-gray-300 mb-6">
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Basic trade tracking</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Daily journals</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Offline access</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Community support</li>
-              </ul>
-              <Button variant="outline" className="w-full" onClick={() => navigate('/register')}>
-                Start Free
-              </Button>
-            </motion.div>
-            <motion.div variants={fadeInUp} className="p-8 rounded-3xl bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/30 dark:to-blue-950/30 border border-cyan-500 shadow-xl hover:shadow-2xl transition-all group relative">
-              <div className="absolute top-0 right-0 bg-cyan-500 text-white text-xs px-3 py-1 rounded-bl-md">Popular</div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Pro
-              </h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">$19</p>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">Per month</p>
-              <ul className="space-y-3 text-gray-700 dark:text-gray-300 mb-6">
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Everything in Free</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> 60+ advanced reports</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> AI-powered insights</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Risk management tools</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Priority support</li>
-              </ul>
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={() => navigate('/register')}>
-                Get Pro
-              </Button>
-            </motion.div>
-            <motion.div variants={fadeInUp} className="p-8 rounded-3xl bg-gradient-to-br from-emerald-50 to-cyan-50 dark:from-emerald-950/30 dark:to-cyan-950/30 border border-emerald-500 shadow-lg hover:shadow-xl transition-all group">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Enterprise
-              </h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Custom</p>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">Contact us</p>
-              <ul className="space-y-3 text-gray-700 dark:text-gray-300 mb-6">
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Everything in Pro</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Multi-user teams</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Custom integrations</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> Dedicated account manager</li>
-                <li className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-500" /> On-premise deployment</li>
-              </ul>
-              <Button variant="outline" className="w-full" onClick={() => navigate('/contact')}>
-                Contact Sales
-              </Button>
-            </motion.div>
-          </motion.div>
-        </div>
-      </motion.section>
-      {/* Blog Teaser */}
-      <motion.section
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={staggerContainer}
-        className="py-24 px-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg relative z-10"
-      >
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center space-y-6">
-            <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white">
-              Latest from Our Blog
-            </motion.h2>
-            <motion.p variants={fadeInUp} className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto">
-              Expert tips, trading strategies, and insights to help you succeed in the markets.
-            </motion.p>
-          </div>
-          <motion.div variants={staggerContainer} className="grid md:grid-cols-3 gap-8 lg:gap-12">
-            <motion.div variants={fadeInUp} className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <div className="mb-4">
-                <img src="https://thumbs.dreamstime.com/b/financial-money-trap-trading-mistakes-volatility-crypto-stock-market-risk-investment-ponzi-scheme-concept-novice-267062442.jpg" alt="5 Common Trading Mistakes and How to Avoid Them" className="w-full h-48 object-cover rounded-2xl" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                5 Common Trading Mistakes and How to Avoid Them
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Learn from experienced traders on how to identify and fix common pitfalls in your trading strategy.
-              </p>
-              <Button variant="link" className="p-0 text-blue-600 hover:text-blue-700">
-                Read More <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </motion.div>
-            <motion.div variants={fadeInUp} className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <div className="mb-4">
-                <img src="https://thumbs.dreamstime.com/b/trading-journal-blank-pages-dice-financial-tracking-strategy-planning-close-up-open-featuring-data-entry-387043274.jpg" alt="The Power of Journaling in Trading Success" className="w-full h-48 object-cover rounded-2xl" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                The Power of Journaling in Trading Success
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Discover how consistent journaling can transform your trading performance and mindset.
-              </p>
-              <Button variant="link" className="p-0 text-blue-600 hover:text-blue-700">
-                Read More <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </motion.div>
-            <motion.div variants={fadeInUp} className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 border border-blue-100 dark:border-cyan-900/50 shadow-lg hover:shadow-xl transition-all group">
-              <div className="mb-4">
-                <img src="https://media.licdn.com/dms/image/v2/D4D12AQF4rZPmG1P0xA/article-cover_image-shrink_720_1280/B4DZcv_eWgHwAM-/0/1748856867015?e=2147483647&v=beta&t=DAmitDFbxtV1ODpv6H4YWJT3-U4Y1LDVjwqEmScQ_2o" alt="AI in Trading: Future or Present?" className="w-full h-48 object-cover rounded-2xl" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                AI in Trading: Future or Present?
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Explore how AI is revolutionizing trading analytics and decision-making today.
-              </p>
-              <Button variant="link" className="p-0 text-blue-600 hover:text-blue-700">
-                Read More <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </motion.div>
-          </motion.div>
-          <div className="text-center">
-            <Button variant="outline" className="text-lg px-8 py-4" onClick={() => navigate('/blog')}>
-              View All Posts
-            </Button>
-          </div>
-        </div>
-      </motion.section>
-      {/* Become a Partner */}
-      <motion.section
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={staggerContainer}
-        className="py-24 px-6 bg-gradient-to-br from-purple-950 via-indigo-950 to-black relative z-10"
-      >
-        <div className="max-w-5xl mx-auto text-center">
-          <motion.h2 variants={fadeInUp} className="text-4xl md:text-6xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
-            Become a Partner
+        <div className="max-w-7xl mx-auto text-center">
+          <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl font-bold mb-6">
+            Simple Pricing. Powerful Value.
           </motion.h2>
-          <motion.p variants={fadeInUp} className="text-xl md:text-2xl text-gray-300 mb-12 max-w-4xl mx-auto leading-relaxed">
-            We are looking for trading coaches, educators, prop firm affiliates, and influencers who want to offer their community a professional journaling solution.
+          <motion.p variants={fadeInUp} className="text-xl text-gray-300 mb-16 max-w-3xl mx-auto">
+            Start free. Scale when ready. No hidden fees, no contracts – just pure trading power.
           </motion.p>
-          <motion.button variants={fadeInUp} onClick={() => navigate('/contact')} className="group px-10 py-6 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl text-2xl font-bold shadow-2xl shadow-purple-900/30 hover:shadow-purple-600/50 transform hover:scale-105 transition-all duration-300 flex items-center gap-4 mx-auto">
-            Apply as Partner
-            <ArrowRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
-          </motion.button>
-        </div>
-      </motion.section>
-      {/* Careers */}
-      <motion.section
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={staggerContainer}
-        className="py-24 px-6 bg-gradient-to-br from-indigo-950 via-purple-950 to-black relative z-10"
-      >
-        <div className="max-w-5xl mx-auto text-center">
-          <motion.h2 variants={fadeInUp} className="text-4xl md:text-6xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
-            We're Hiring
-          </motion.h2>
-          <motion.p variants={fadeInUp} className="text-xl md:text-2xl text-gray-300 mb-12 max-w-4xl mx-auto">
-            Join a team that's helping thousands of traders become more consistent and profitable.
-          </motion.p>
-          <motion.div variants={fadeInUp} className="flex flex-wrap justify-center gap-6">
-            <button className="px-10 py-5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-lg font-medium transition-colors">
-              View Open Positions
-            </button>
-            <button className="px-10 py-5 border border-indigo-500 text-indigo-400 hover:bg-indigo-900/30 rounded-xl text-lg font-medium transition-colors">
-              Join Talent Network
-            </button>
-          </motion.div>
-        </div>
-      </motion.section>
-      {/* Contact & Support */}
-      <motion.section
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={staggerContainer}
-        className="py-24 px-6 bg-black relative z-10"
-      >
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-          <div>
-            <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl font-bold mb-8">
-              Get in Touch
-            </motion.h2>
-            <motion.p variants={fadeInUp} className="text-xl text-gray-300 mb-10 leading-relaxed">
-              Have questions about features, pricing, integrations, or partnership opportunities? Our team usually replies within 24 hours.
-            </motion.p>
-            <motion.div variants={fadeInUp} className="space-y-6">
-              <div className="flex items-center gap-4 text-lg">
-                <Mail className="w-7 h-7 text-cyan-400" />
-                <span>support@tradeass.com</span>
-              </div>
-              <div className="flex items-center gap-4 text-lg">
-                <MessageCircle className="w-7 h-7 text-purple-400" />
-                <span>Live chat available 9 AM – 8 PM EST</span>
-              </div>
-              <div className="flex items-center gap-4 text-lg">
-                <Phone className="w-7 h-7 text-emerald-400" />
-                <span>+1 (555) 123-4567 (Mon–Fri)</span>
-              </div>
-            </motion.div>
-          </div>
-          <motion.div variants={fadeInUp} className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-2xl p-10">
-            <h3 className="text-3xl font-bold mb-8 text-center">Quick Contact</h3>
-            <form className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
-                <input
-                  type="email"
-                  className="w-full px-5 py-4 bg-gray-950 border border-gray-700 rounded-xl focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                  placeholder="your@email.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Message</label>
-                <textarea
-                  rows={5}
-                  className="w-full px-5 py-4 bg-gray-950 border border-gray-700 rounded-xl focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all resize-none"
-                  placeholder="How can we help you?"
-                ></textarea>
-              </div>
-              <button
-                type="submit"
-                className="w-full py-5 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-xl text-lg font-bold hover:opacity-90 transition-opacity"
+          <div className="grid md:grid-cols-3 gap-8">
+            {pricingPlans.map((plan, index) => (
+              <motion.div
+                key={index}
+                variants={fadeInUp}
+                className={`p-8 rounded-2xl border backdrop-blur-md shadow-xl transition-all duration-300 ${
+                  plan.popular
+                    ? "bg-gradient-to-b from-black/50 to-gray-900/50 border-blue-500/30 scale-105"
+                    : "bg-black/30 border-white/10 hover:border-blue-500/20"
+                }`}
               >
-                Send Message
-              </button>
-            </form>
+                {plan.popular && (
+                  <div className="inline-block px-4 py-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full text-sm font-bold mb-4">
+                    Most Popular
+                  </div>
+                )}
+                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                <div className="text-5xl font-black mb-2">
+                  ${plan.price}
+                </div>
+                <div className="text-sm text-gray-400 mb-8">per {plan.period}</div>
+                <ul className="space-y-4 text-left mb-8 text-sm">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-green-400 shrink-0" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  onClick={plan.buttonAction}
+                  variant={plan.buttonVariant}
+                  className="w-full h-12 text-lg font-bold rounded-xl"
+                >
+                  {plan.buttonText}
+                </Button>
+              </motion.div>
+            ))}
+          </div>
+          <p className="mt-12 text-sm text-gray-500">* 14-day money-back guarantee. Cancel anytime.</p>
+        </div>
+      </motion.section>
+
+      {/* FAQ Section */}
+      <motion.section
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-100px" }}
+        variants={staggerContainer}
+        className="py-24 px-6 relative z-10"
+      >
+        <div className="max-w-4xl mx-auto">
+          <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl font-bold text-center mb-16">
+            Frequently Asked Questions
+          </motion.h2>
+          <div className="space-y-6">
+            {faqs.map((faq, index) => (
+              <motion.div key={index} variants={fadeInUp}>
+                <details className="group">
+                  <summary className="flex justify-between items-center py-4 px-6 bg-black/30 rounded-xl border border-white/10 cursor-pointer hover:bg-black/50 transition-all">
+                    <span className="text-lg font-semibold">{faq.question}</span>
+                    <ChevronRight className="h-5 w-5 text-gray-400 group-open:rotate-90 transition-transform" />
+                  </summary>
+                  <div className="mt-2 px-6 py-4 text-gray-300">
+                    {faq.answer}
+                  </div>
+                </details>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.section>
+
+      {/* CTA Section */}
+      <motion.section
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={staggerContainer}
+        className="py-24 px-6 text-center relative z-10"
+      >
+        <div className="max-w-4xl mx-auto relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 blur-3xl rounded-full opacity-50"></div>
+          <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl font-bold mb-6 relative">
+            Ready to Level Up Your Trading?
+          </motion.h2>
+          <motion.p variants={fadeInUp} className="text-xl text-gray-300 mb-12 relative">
+            Join thousands of profitable traders. Start your free trial today.
+          </motion.p>
+          <motion.div variants={fadeInUp} className="flex justify-center gap-4 relative">
+            <Button
+              onClick={() => navigate('/register')}
+              className="group h-14 px-10 text-lg font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:brightness-110 transition-all duration-300 rounded-xl shadow-lg shadow-blue-900/30"
+            >
+              Start Free Trial
+              <ChevronRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/login')}
+              className="h-14 px-10 text-lg font-bold text-white border-white/20 hover:border-white/40 hover:bg-white/5 rounded-xl"
+            >
+              Log In
+            </Button>
           </motion.div>
         </div>
       </motion.section>
+
+      {/* Contact Section */}
+      <motion.section
+        id="contact"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={staggerContainer}
+        className="py-24 px-6 relative z-10"
+      >
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12">
+          <div>
+            <h2 className="text-4xl font-bold mb-6">Get in Touch</h2>
+            <p className="text-gray-300 mb-8">Have questions? We're here to help. Reach out anytime.</p>
+            <div className="space-y-6 text-sm">
+              <div className="flex items-center gap-4">
+                <Mail className="h-5 w-5 text-blue-400" />
+                <a href="mailto:support@forgex.com" className="hover:text-white">support@forgex.com</a>
+              </div>
+              <div className="flex items-center gap-4">
+                <Phone className="h-5 w-5 text-blue-400" />
+                <span>+1 (555) 123-4567</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <MapPin className="h-5 w-5 text-blue-400" />
+                <span>San Francisco, CA</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <MessageCircle className="h-5 w-5 text-blue-400" />
+                <a href="/discord" className="hover:text-white">Join our Discord</a>
+              </div>
+            </div>
+          </div>
+          <motion.form variants={fadeInUp} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-2">Name</label>
+              <input
+                type="text"
+                className="w-full p-4 bg-black/30 border border-white/10 rounded-xl focus:border-blue-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Email</label>
+              <input
+                type="email"
+                className="w-full p-4 bg-black/30 border border-white/10 rounded-xl focus:border-blue-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Message</label>
+              <textarea
+                rows={6}
+                className="w-full p-4 bg-black/30 border border-white/10 rounded-xl focus:border-blue-500 outline-none resize-none"
+              ></textarea>
+            </div>
+            <button
+              type="submit"
+              className="w-full py-5 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-xl text-lg font-bold hover:opacity-90 transition-opacity"
+            >
+              Send Message
+            </button>
+          </motion.form>
+        </div>
+      </motion.section>
+
       {/* Professional Footer */}
       <footer className="py-16 px-6 bg-black text-gray-400 border-t border-gray-800 relative z-10">
         <div className="max-w-7xl mx-auto grid md:grid-cols-5 gap-12 text-center md:text-left">
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                T
+                F
               </div>
-              <span className="text-2xl font-bold text-white">Tradeass</span>
+              <span className="text-2xl font-bold text-white">Forgex</span>
             </div>
             <p className="text-sm mb-6">The ultimate trading journal for serious traders. Private, powerful, and performance-driven.</p>
             <div className="flex justify-center md:justify-start gap-4">
-              <a href="https://twitter.com/tradeass" className="hover:text-white"><Twitter className="h-5 w-5" /></a>
-              <a href="https://linkedin.com/company/tradeass" className="hover:text-white"><Linkedin className="h-5 w-5" /></a>
-              <a href="https://github.com/tradeass" className="hover:text-white"><Github className="h-5 w-5" /></a>
+              <a href="https://twitter.com/forgex" className="hover:text-white"><Twitter className="h-5 w-5" /></a>
+              <a href="https://linkedin.com/company/forgex" className="hover:text-white"><Linkedin className="h-5 w-5" /></a>
+              <a href="https://github.com/forgex" className="hover:text-white"><Github className="h-5 w-5" /></a>
               <a href="#" className="hover:text-white"><Facebook className="h-5 w-5" /></a>
               <a href="#" className="hover:text-white"><Instagram className="h-5 w-5" /></a>
               <a href="#" className="hover:text-white"><Youtube className="h-5 w-5" /></a>
@@ -954,7 +828,7 @@ export default function Landing() {
           </div>
         </div>
         <div className="max-w-7xl mx-auto mt-12 pt-12 border-t border-gray-800 text-center text-sm">
-          © {new Date().getFullYear()} Tradeass. All rights reserved. Made with discipline and caffeine by traders, for traders.
+          © {new Date().getFullYear()} Forgex. All rights reserved. Made with discipline and caffeine by traders, for traders.
         </div>
       </footer>
     </div>
