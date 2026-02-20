@@ -24,9 +24,19 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 import { db, auth } from "./firebase";
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  serverTimestamp,
+} from "firebase/firestore";
 
-// ManageAccountsModal (updated to Firestore)
+// ManageAccountsModal – now uses Firestore data passed from parent
 function ManageAccountsModal({
   accounts,
   onClose,
@@ -38,12 +48,24 @@ function ManageAccountsModal({
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
 
+  const deleteAccount = (accountId) => {
+    if (!window.confirm("Delete this account? All data will be lost!")) return;
+    onDeleteAccount(accountId);
+  };
+
+  const resetAccount = (accountId) => {
+    if (!window.confirm("Reset all trades/notes/journals for this account?")) return;
+    onResetAccount(accountId);
+  };
+
+  if (accounts.length === 0) return null;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
-            Manage Accounts
+            Manage Accounts – Forgex
           </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             ✕
@@ -84,8 +106,8 @@ function ManageAccountsModal({
                       <div>
                         <span className="font-medium block">{account.name}</span>
                         <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-                          <div>{account.totalTrades} trades • ${account.totalPnL.toFixed(2)} P&L</div>
-                          <div>{account.totalJournals} journals • {account.totalNotes} notes</div>
+                          <div>{account.totalTrades || 0} trades • ${account.totalPnL?.toFixed(2) || "0.00"} P&L</div>
+                          <div>{account.totalJournals || 0} journals • {account.totalNotes || 0} notes</div>
                         </div>
                       </div>
                     </div>
@@ -131,12 +153,12 @@ function ManageAccountsModal({
   );
 }
 
-// EditBalancePNL (updated to Firestore)
+// EditBalancePNL – now creates/updates account in Firestore
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ name: "", startingBalance: 10000 });
-  const [isNewAccount, setIsNewAccount] = useState(false);
+  const [isNewAccount, setIsNewAccount] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -146,8 +168,9 @@ function EditBalancePNL({ onSaved }) {
       return;
     }
 
+    // If editing existing account
     if (location.state?.accountId) {
-      // Edit existing
+      setIsNewAccount(false);
       const loadAccount = async () => {
         const accountRef = doc(db, "users", user.uid, "accounts", location.state.accountId);
         const accountSnap = await getDoc(accountRef);
@@ -157,15 +180,14 @@ function EditBalancePNL({ onSaved }) {
             name: data.name,
             startingBalance: data.startingBalance,
           });
-          setIsNewAccount(false);
         }
       };
       loadAccount();
     } else {
-      // New
+      // New account
       setIsNewAccount(true);
       setForm({
-        name: `Account ${Date.now().toString().slice(-3)}`,
+        name: `Account ${Date.now().toString().slice(-4)}`,
         startingBalance: 10000,
       });
     }
@@ -177,74 +199,81 @@ function EditBalancePNL({ onSaved }) {
     setIsSubmitting(true);
 
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) {
+      alert("Not logged in");
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       if (isNewAccount) {
-        // Add new account
+        // Create new
         const accountRef = await addDoc(collection(db, "users", user.uid, "accounts"), {
-          name: form.name,
+          name: form.name.trim(),
           startingBalance: Number(form.startingBalance),
           totalPnL: 0,
           createdAt: serverTimestamp(),
         });
-        localStorage.setItem("currentAccountId", accountRef.id); // optional – keep for multi-account
+        localStorage.setItem("currentAccountId", accountRef.id); // keep for now
         navigate("/dashboard", { replace: true });
       } else {
         // Update existing
         const accountRef = doc(db, "users", user.uid, "accounts", location.state.accountId);
         await updateDoc(accountRef, {
-          name: form.name,
+          name: form.name.trim(),
           startingBalance: Number(form.startingBalance),
         });
         navigate("/dashboard", { replace: true });
       }
+
       if (onSaved) onSaved();
     } catch (err) {
       console.error("Account save error:", err);
+      alert("Error saving account: " + err.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
-        <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-100">
-          {isNewAccount ? "New Account" : "Edit Account"}
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-md">
+        <h3 className="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100">
+          {isNewAccount ? "Create New Account – Forgex" : "Edit Account"}
         </h3>
-        <form onSubmit={saveAccount}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <form onSubmit={saveAccount} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Account Name
             </label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 p-2 bg-white dark:bg-gray-700"
+              className="w-full p-3 rounded-lg border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none"
               required
               disabled={isSubmitting}
             />
           </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Starting Balance
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Starting Balance ($)
             </label>
             <input
               type="number"
+              step="0.01"
               value={form.startingBalance}
               onChange={(e) => setForm({ ...form, startingBalance: Number(e.target.value) })}
-              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 p-2 bg-white dark:bg-gray-700"
+              className="w-full p-3 rounded-lg border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none"
               required
               disabled={isSubmitting}
             />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={() => navigate("/dashboard", { replace: true })}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+              className="px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
               disabled={isSubmitting}
             >
               Cancel
@@ -252,9 +281,9 @@ function EditBalancePNL({ onSaved }) {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md disabled:opacity-50"
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-50"
             >
-              {isSubmitting ? "Saving..." : isNewAccount ? "Create" : "Save"}
+              {isSubmitting ? "Saving..." : isNewAccount ? "Create Account" : "Save Changes"}
             </button>
           </div>
         </form>
@@ -263,7 +292,7 @@ function EditBalancePNL({ onSaved }) {
   );
 }
 
-// AppContent (updated to Firestore for accounts, remove FloatingWidgets)
+// AppContent – main app shell with Firestore accounts
 function AppContent() {
   const [open, setOpen] = useState(true);
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -272,6 +301,7 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Load accounts from Firestore when user is authenticated
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) {
@@ -281,36 +311,48 @@ function AppContent() {
     }
 
     const loadAccounts = async () => {
-      const q = query(collection(db, "users", user.uid, "accounts"), orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const loadedAccounts = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setAccounts(loadedAccounts);
+      try {
+        const q = query(collection(db, "users", user.uid, "accounts"), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        const loaded = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setAccounts(loaded);
 
-      // Set current account to first one if none selected
-      let currentId = localStorage.getItem("currentAccountId");
-      if (!currentId || !loadedAccounts.find((a) => a.id === currentId)) {
-        currentId = loadedAccounts[0]?.id || null;
-        if (currentId) localStorage.setItem("currentAccountId", currentId);
+        // Set current account
+        let currentId = localStorage.getItem("currentAccountId");
+        if (!currentId || !loaded.find((a) => a.id === currentId)) {
+          currentId = loaded[0]?.id || null;
+          if (currentId) localStorage.setItem("currentAccountId", currentId);
+        }
+        setCurrentAccount(loaded.find((a) => a.id === currentId));
+      } catch (err) {
+        console.error("Load accounts error:", err);
       }
-
-      setCurrentAccount(loadedAccounts.find((a) => a.id === currentId));
     };
 
     loadAccounts();
   }, []);
 
-  const initializeAccounts = () => {
-    // No longer needed – now in useEffect with Firestore
-  };
+  // Auth-based redirect
+  useEffect(() => {
+    const isLoggedIn = !!auth.currentUser;
+    const publicPaths = ["/", "/login", "/register"];
+
+    if (isLoggedIn && publicPaths.includes(location.pathname)) {
+      navigate("/dashboard", { replace: true });
+    }
+    if (!isLoggedIn && !publicPaths.includes(location.pathname)) {
+      navigate("/login", { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   const createAccount = () => {
     navigate("/edit-balance-pnl");
   };
 
-  const switchAccount = async (accountId) => {
+  const switchAccount = (accountId) => {
     localStorage.setItem("currentAccountId", accountId);
     setCurrentAccount(accounts.find((a) => a.id === accountId));
     navigate("/dashboard", { replace: true });
@@ -323,14 +365,10 @@ function AppContent() {
     if (!user) return;
 
     try {
-      // Delete account document
       await deleteDoc(doc(db, "users", user.uid, "accounts", accountId));
-      
-      // You can add deletion of subcollections if needed (trades, notes, journals) – but Firestore doesn't auto-delete them, so use a function if required
-      // For now, we assume data is tied to account, but Firestore subcollections are separate
-
       const updated = accounts.filter((a) => a.id !== accountId);
       setAccounts(updated);
+
       if (localStorage.getItem("currentAccountId") === accountId || updated.length === 0) {
         localStorage.removeItem("currentAccountId");
         navigate("/", { replace: true });
@@ -350,7 +388,7 @@ function AppContent() {
     if (!user) return;
 
     try {
-      // Delete all trades
+      // Delete trades
       const tradesQ = query(collection(db, "users", user.uid, "trades"));
       const tradesSnap = await getDocs(tradesQ);
       tradesSnap.forEach(async (d) => await deleteDoc(d.ref));
@@ -365,11 +403,16 @@ function AppContent() {
       const journalsSnap = await getDocs(journalsQ);
       journalsSnap.forEach(async (d) => await deleteDoc(d.ref));
 
-      // Reset totalPnL in account
+      // Reset totalPnL
       await updateDoc(doc(db, "users", user.uid, "accounts", accountId), {
         totalPnL: 0,
       });
 
+      // Refresh UI
+      const updated = accounts.map((a) =>
+        a.id === accountId ? { ...a, totalPnL: 0 } : a
+      );
+      setAccounts(updated);
       navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("Reset account error:", err);
@@ -382,16 +425,18 @@ function AppContent() {
 
     try {
       await updateDoc(doc(db, "users", user.uid, "accounts", accountId), {
-        name: newName,
+        name: newName.trim(),
       });
       const updated = accounts.map((a) =>
-        a.id === accountId ? { ...a, name: newName } : a
+        a.id === accountId ? { ...a, name: newName.trim() } : a
       );
       setAccounts(updated);
-      setCurrentAccount(updated.find((a) => a.id === accountId));
+      if (localStorage.getItem("currentAccountId") === accountId) {
+        setCurrentAccount({ ...currentAccount, name: newName.trim() });
+      }
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      console.error("Rename account error:", err);
+      console.error("Rename error:", err);
     }
   };
 
