@@ -20,6 +20,17 @@ import {
   AlertCircle,
 } from "lucide-react";
 import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
+import { db, auth } from "../firebase";
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  updateDoc,
+  doc,
+  deleteDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 
 export default function Trades() {
   const { theme } = useTheme();
@@ -27,6 +38,7 @@ export default function Trades() {
 
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -49,21 +61,35 @@ export default function Trades() {
   });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tradeToDelete, setTradeToDelete] = useState(null);
-  const [message, setMessage] = useState({ text: "", type: "success" }); // feedback
+  const [message, setMessage] = useState({ text: "", type: "success" });
 
-  // Fetch trades
+  // Fetch trades from Firestore
   const refreshTrades = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      setTrades([]);
+      setLoading(false);
+      setError("Please log in to view your trades");
+      return;
+    }
+
     setLoading(true);
+    setError(null);
+
     try {
-      const currentId = localStorage.getItem("currentAccountId") || "default";
-      const res = await fetch(
-        `https://tradeass-backend.onrender.com/api/trades?accountId=${currentId}`
+      const q = query(
+        collection(db, "users", user.uid, "trades"),
+        orderBy("createdAt", "desc")
       );
-      if (!res.ok) throw new Error("Failed to fetch trades");
-      const data = await res.json();
-      setTrades(data || []);
+      const snapshot = await getDocs(q);
+      const loadedTrades = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setTrades(loadedTrades);
     } catch (err) {
-      console.error("Trades fetch error:", err);
+      console.error("❌ Trades fetch error:", err);
+      setError("Failed to load trades: " + (err.message || "Check connection"));
       setTrades([]);
     } finally {
       setLoading(false);
@@ -71,7 +97,15 @@ export default function Trades() {
   };
 
   useEffect(() => {
-    refreshTrades();
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        refreshTrades();
+      } else {
+        setTrades([]);
+        setLoading(false);
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   // Filtered & Sorted trades
@@ -137,27 +171,23 @@ export default function Trades() {
     setEditModalOpen(true);
   };
 
-  // Save edited trade
+  // Save edited trade to Firestore
   const saveEdit = async (e) => {
     e.preventDefault();
     if (!editingTrade) return;
 
-    try {
-      const currentId = localStorage.getItem("currentAccountId") || "default";
-      const res = await fetch(
-        `https://tradeass-backend.onrender.com/api/trades/${editingTrade.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...editForm,
-            accountId: currentId,
-            date: editingTrade.date, // keep original date
-          }),
-        }
-      );
+    const user = auth.currentUser;
+    if (!user) {
+      setMessage({ text: "You must be logged in", type: "error" });
+      return;
+    }
 
-      if (!res.ok) throw new Error("Failed to update trade");
+    try {
+      const tradeRef = doc(db, "users", user.uid, "trades", editingTrade.id);
+      await updateDoc(tradeRef, {
+        ...editForm,
+        updatedAt: serverTimestamp(),
+      });
 
       setMessage({ text: "Trade updated successfully!", type: "success" });
       setTimeout(() => setMessage({ text: "", type: "success" }), 4000);
@@ -166,25 +196,31 @@ export default function Trades() {
       setEditingTrade(null);
       await refreshTrades();
     } catch (err) {
+      console.error("Update error:", err);
       setMessage({ text: "Error updating trade: " + err.message, type: "error" });
     }
   };
 
+  // Delete trade from Firestore
   const deleteTrade = async (id) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
     try {
-      const currentId = localStorage.getItem("currentAccountId") || "default";
-      await fetch(
-        `https://tradeass-backend.onrender.com/api/trades/${id}?accountId=${currentId}`,
-        { method: "DELETE" }
-      );
+      await deleteDoc(doc(db, "users", user.uid, "trades", id));
+      setMessage({ text: "Trade deleted", type: "success" });
+      setTimeout(() => setMessage({ text: "", type: "success" }), 4000);
       await refreshTrades();
     } catch (err) {
       console.error("Delete failed:", err);
+      setMessage({ text: "Failed to delete trade", type: "error" });
     }
+
     setDeleteModalOpen(false);
     setTradeToDelete(null);
   };
 
+  // Export to CSV (unchanged – uses filteredTrades from Firestore)
   const exportCSV = () => {
     if (!filteredTrades.length) return;
 
@@ -215,11 +251,12 @@ export default function Trades() {
     ]);
 
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `trades-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `forgex-trades-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
   };
 
@@ -234,13 +271,12 @@ export default function Trades() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 lg:mb-8 gap-4">
         <div>
           <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-            Trade History
+            Forgex Trade History
           </h1>
           <p className="text-sm sm:text-base mt-1 opacity-80">
             View, analyze, and edit your executed trades
           </p>
         </div>
-
         <div className="flex flex-wrap gap-3">
           <Button
             onClick={() => navigate("/trades/new")}
@@ -248,10 +284,9 @@ export default function Trades() {
           >
             <Plus size={18} className="mr-2" /> Add Trade
           </Button>
-
           <Button
             onClick={exportCSV}
-            disabled={!filteredTrades.length}
+            disabled={!filteredTrades.length || loading}
             className="bg-gray-700 hover:bg-gray-800 text-white shadow-md disabled:opacity-50"
           >
             <Download size={18} className="mr-2" /> Export CSV
@@ -259,40 +294,19 @@ export default function Trades() {
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6 mb-8">
-        <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
-          <div className="text-xs font-medium opacity-70 mb-1">Total P&L</div>
-          <div
-            className={`text-2xl lg:text-3xl font-bold ${
-              Number(stats.totalPnL) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-            }`}
-          >
-            {Number(stats.totalPnL) >= 0 ? "+" : "-"}${Math.abs(Number(stats.totalPnL)).toFixed(2)}
-          </div>
-        </Card>
-
-        <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
-          <div className="text-xs font-medium opacity-70 mb-1">Win Rate</div>
-          <div className="text-2xl lg:text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-            {stats.winRate}%
-          </div>
-        </Card>
-
-        <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
-          <div className="text-xs font-medium opacity-70 mb-1">Total Trades</div>
-          <div className="text-2xl lg:text-3xl font-bold text-violet-600 dark:text-violet-400">
-            {stats.totalTrades}
-          </div>
-        </Card>
-
-        <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
-          <div className="text-xs font-medium opacity-70 mb-1">Avg R:R</div>
-          <div className="text-2xl lg:text-3xl font-bold text-cyan-600 dark:text-cyan-400">
-            {stats.avgRR}
-          </div>
-        </Card>
-      </div>
+      {/* Feedback message */}
+      {message.text && (
+        <div
+          className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
+            message.type === "success"
+              ? "bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/50"
+              : "bg-rose-100/80 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800/50"
+          }`}
+        >
+          {message.type === "success" ? <Check size={20} /> : <AlertCircle size={20} />}
+          {message.text}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col lg:flex-row gap-4 mb-8">
@@ -367,22 +381,46 @@ export default function Trades() {
         </div>
       </div>
 
-      {/* Feedback message */}
-      {message.text && (
-        <div
-          className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
-            message.type === "success"
-              ? "bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/50"
-              : "bg-rose-100/80 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800/50"
-          }`}
-        >
-          {message.type === "success" ? <Check size={20} /> : <AlertCircle size={20} />}
-          {message.text}
-        </div>
-      )}
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6 mb-8">
+        <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+          <div className="text-xs font-medium opacity-70 mb-1">Total P&L</div>
+          <div
+            className={`text-2xl lg:text-3xl font-bold ${
+              Number(stats.totalPnL) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+            }`}
+          >
+            {Number(stats.totalPnL) >= 0 ? "+" : "-"}${Math.abs(Number(stats.totalPnL)).toFixed(2)}
+          </div>
+        </Card>
+        <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+          <div className="text-xs font-medium opacity-70 mb-1">Win Rate</div>
+          <div className="text-2xl lg:text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+            {stats.winRate}%
+          </div>
+        </Card>
+        <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+          <div className="text-xs font-medium opacity-70 mb-1">Total Trades</div>
+          <div className="text-2xl lg:text-3xl font-bold text-violet-600 dark:text-violet-400">
+            {stats.totalTrades}
+          </div>
+        </Card>
+        <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+          <div className="text-xs font-medium opacity-70 mb-1">Avg R:R</div>
+          <div className="text-2xl lg:text-3xl font-bold text-cyan-600 dark:text-cyan-400">
+            {stats.avgRR}
+          </div>
+        </Card>
+      </div>
 
       {/* Trades List */}
-      {filteredTrades.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        </div>
+      ) : error ? (
+        <div className="text-center py-16 text-rose-400">{error}</div>
+      ) : filteredTrades.length === 0 ? (
         <Card className="p-10 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
           <p className="text-xl font-medium opacity-70 mb-2">No trades found</p>
           <p className="opacity-60 mb-6">
@@ -416,7 +454,6 @@ export default function Trades() {
                     >
                       {trade.pair?.slice(0, 2) || "?"}
                     </div>
-
                     <div>
                       <div className="font-semibold text-lg">
                         {trade.pair || "—"} • {trade.direction || "—"}
@@ -429,7 +466,6 @@ export default function Trades() {
                       </div>
                     </div>
                   </div>
-
                   {trade.notes && (
                     <div className="text-sm opacity-80 line-clamp-2 mt-1">
                       <FileText size={14} className="inline mr-1" />
@@ -437,14 +473,11 @@ export default function Trades() {
                     </div>
                   )}
                 </div>
-
                 <div className="flex items-center gap-6 sm:gap-10">
                   <div className="text-right min-w-[100px]">
                     <div
                       className={`text-xl font-bold ${
-                        Number(trade.pnl || 0) >= 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-rose-600 dark:text-rose-400"
+                        Number(trade.pnl || 0) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                       }`}
                     >
                       {Number(trade.pnl || 0) >= 0 ? "+" : ""}$
@@ -452,7 +485,6 @@ export default function Trades() {
                     </div>
                     {trade.rr && <div className="text-xs opacity-70">R:R {trade.rr}</div>}
                   </div>
-
                   <div className="flex gap-2">
                     <Button
                       size="icon"
@@ -462,7 +494,6 @@ export default function Trades() {
                     >
                       <Eye size={18} />
                     </Button>
-
                     <Button
                       size="icon"
                       variant="outline"
@@ -471,7 +502,6 @@ export default function Trades() {
                     >
                       <Edit size={18} />
                     </Button>
-
                     <Button
                       size="icon"
                       variant="destructive"
@@ -503,15 +533,10 @@ export default function Trades() {
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
                   Trade Details
                 </h2>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSelectedTrade(null)}
-                >
+                <Button variant="ghost" size="icon" onClick={() => setSelectedTrade(null)}>
                   <X size={24} />
                 </Button>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
@@ -520,7 +545,6 @@ export default function Trades() {
                       {selectedTrade.pair || "—"} • {selectedTrade.direction || "—"}
                     </div>
                   </div>
-
                   <div>
                     <div className="text-sm opacity-70 mb-1">Date & Time</div>
                     <div className="text-lg">
@@ -529,7 +553,6 @@ export default function Trades() {
                         : "—"}
                     </div>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm opacity-70 mb-1">Entry</div>
@@ -540,7 +563,6 @@ export default function Trades() {
                       <div className="text-lg font-medium">{selectedTrade.exit || "—"}</div>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm opacity-70 mb-1">Stop Loss</div>
@@ -551,7 +573,6 @@ export default function Trades() {
                       <div className="text-lg">{selectedTrade.takeProfit || "—"}</div>
                     </div>
                   </div>
-
                   <div>
                     <div className="text-sm opacity-70 mb-1">Risk:Reward</div>
                     <div className="text-xl font-bold text-violet-600 dark:text-violet-400">
@@ -559,7 +580,6 @@ export default function Trades() {
                     </div>
                   </div>
                 </div>
-
                 <div className="space-y-4">
                   <div>
                     <div className="text-sm opacity-70 mb-1">Profit & Loss</div>
@@ -574,7 +594,6 @@ export default function Trades() {
                       {Math.abs(Number(selectedTrade.pnl || 0)).toFixed(2)}
                     </div>
                   </div>
-
                   {selectedTrade.notes && (
                     <div>
                       <div className="text-sm opacity-70 mb-2 flex items-center gap-2">
@@ -588,7 +607,6 @@ export default function Trades() {
                 </div>
               </div>
             </div>
-
             <div className="p-5 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-4">
               <Button variant="outline" onClick={() => openEdit(selectedTrade)}>
                 <Edit size={16} className="mr-2" /> Edit Trade
@@ -617,7 +635,6 @@ export default function Trades() {
                   <X size={24} />
                 </Button>
               </div>
-
               <form onSubmit={saveEdit} className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
@@ -630,7 +647,6 @@ export default function Trades() {
                       } focus:ring-2 focus:ring-indigo-500 outline-none`}
                     />
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Direction</label>
                     <select
@@ -659,7 +675,6 @@ export default function Trades() {
                       } focus:ring-2 focus:ring-indigo-500 outline-none`}
                     />
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Exit</label>
                     <input
@@ -672,7 +687,6 @@ export default function Trades() {
                       } focus:ring-2 focus:ring-indigo-500 outline-none`}
                     />
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium mb-1.5">PnL</label>
                     <input
@@ -700,7 +714,6 @@ export default function Trades() {
                       } focus:ring-2 focus:ring-indigo-500 outline-none`}
                     />
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Take Profit</label>
                     <input
@@ -713,7 +726,6 @@ export default function Trades() {
                       } focus:ring-2 focus:ring-indigo-500 outline-none`}
                     />
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium mb-1.5">R:R</label>
                     <input
