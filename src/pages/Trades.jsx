@@ -268,7 +268,7 @@ export default function Trades() {
           ? "bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-gray-100"
           : "bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900"}`}
     >
-      {/* Header – NO Add Trade button */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 lg:mb-8 gap-4">
         <div>
           <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
@@ -303,12 +303,12 @@ export default function Trades() {
         </div>
       )}
 
-      {/* Filters – improved spacing, no overlap */}
+      {/* Filters – icons fixed, no overlap */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Date Filter */}
         <div>
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
-            <Calendar size={16} className="shrink-0" /> Filter by Date
+            <Calendar size={17} className="shrink-0" /> Filter by Date
           </label>
           <div className="relative">
             <input
@@ -317,20 +317,20 @@ export default function Trades() {
               onChange={(e) =>
                 setSearchParams(e.target.value ? { date: e.target.value } : {})
               }
-              className={`w-full p-3.5 pl-12 rounded-xl border transition-all ${
+              className={`w-full p-3.5 pl-14 rounded-xl border transition-all ${
                 isDark
                   ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
                   : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
               } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
             />
-            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+            <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={17} />
           </div>
         </div>
 
         {/* Search */}
         <div>
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
-            <Search size={16} className="shrink-0" /> Search Pair / Notes
+            <Search size={17} className="shrink-0" /> Search Pair / Notes
           </label>
           <div className="relative">
             <input
@@ -338,19 +338,19 @@ export default function Trades() {
               placeholder="EURUSD, revenge trade, FOMO..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full p-3.5 pl-12 pr-12 rounded-xl border transition-all ${
+              className={`w-full p-3.5 pl-14 pr-14 rounded-xl border transition-all ${
                 isDark
                   ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
                   : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
               } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
             />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={17} />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
               >
-                <X size={18} />
+                <X size={17} />
               </button>
             )}
           </div>
@@ -359,7 +359,7 @@ export default function Trades() {
         {/* Sort */}
         <div>
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
-            <SortAsc size={16} className="shrink-0" /> Sort By
+            <SortAsc size={17} className="shrink-0" /> Sort By
           </label>
           <select
             value={sortBy}
@@ -771,7 +771,7 @@ export default function Trades() {
         </div>
       )}
 
-      {/* Delete Confirmation – now correctly connected */}
+      {/* Delete Confirmation */}
       {deleteModalOpen && (
         <DeleteConfirmModal
           isOpen={deleteModalOpen}
@@ -781,6 +781,7 @@ export default function Trades() {
           }}
           onConfirm={() => deleteTrade(tradeToDelete)}
           title="Delete Trade"
+          message="Are you sure you want to delete this trade? This action cannot be undone."
         />
       )}
     </div>
