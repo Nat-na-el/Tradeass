@@ -219,7 +219,7 @@ export default function Trades() {
     setTradeToDelete(null);
   };
 
-  // Export to CSV (unchanged – uses filteredTrades from Firestore)
+  // Export to CSV
   const exportCSV = () => {
     if (!filteredTrades.length) return;
 
@@ -303,6 +303,7 @@ export default function Trades() {
 
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        {/* Date Filter */}
         <div>
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
             <Calendar size={16} /> Filter by Date
@@ -324,6 +325,7 @@ export default function Trades() {
           </div>
         </div>
 
+        {/* Search */}
         <div>
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
             <Search size={16} /> Search Pair / Notes
@@ -352,6 +354,7 @@ export default function Trades() {
           </div>
         </div>
 
+        {/* Sort */}
         <div>
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
             <SortAsc size={16} /> Sort By
