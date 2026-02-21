@@ -7,12 +7,10 @@ import { useTheme } from "../Theme-provider";
 import {
   Trash2,
   Eye,
-  Search,
   Download,
   SortAsc,
   SortDesc,
   X,
-  Calendar,
   FileText,
   Edit,
   Check,
@@ -109,14 +107,16 @@ export default function Trades() {
     return () => unsubscribe();
   }, []);
 
-  // Filtered & Sorted trades
+  // Filtered & Sorted trades – now fully working
   const filteredTrades = useMemo(() => {
     let result = trades;
 
+    // Date filter
     if (selectedDate) {
       result = result.filter((t) => t.date?.startsWith(selectedDate));
     }
 
+    // Text search – works in real time
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -127,6 +127,7 @@ export default function Trades() {
       );
     }
 
+    // Sorting
     result = [...result].sort((a, b) => {
       if (sortBy === "date-desc") return new Date(b.date) - new Date(a.date);
       if (sortBy === "date-asc") return new Date(a.date) - new Date(b.date);
@@ -303,34 +304,31 @@ export default function Trades() {
         </div>
       )}
 
-      {/* Filters – icons fixed, no overlap */}
+      {/* Filters – icons removed, spacing improved, functionality fixed */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Date Filter */}
         <div>
-          <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
-            <Calendar size={17} className="shrink-0" /> Filter by Date
+          <label className="block text-sm font-medium mb-2 opacity-80">
+            Filter by Date
           </label>
-          <div className="relative">
-            <input
-              type="date"
-              value={selectedDate || ""}
-              onChange={(e) =>
-                setSearchParams(e.target.value ? { date: e.target.value } : {})
-              }
-              className={`w-full p-3.5 pl-14 rounded-xl border transition-all ${
-                isDark
-                  ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
-                  : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
-              } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
-            />
-            <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={17} />
-          </div>
+          <input
+            type="date"
+            value={selectedDate || ""}
+            onChange={(e) =>
+              setSearchParams(e.target.value ? { date: e.target.value } : {})
+            }
+            className={`w-full p-3.5 rounded-xl border transition-all ${
+              isDark
+                ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
+                : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
+            } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
+          />
         </div>
 
         {/* Search */}
         <div>
-          <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
-            <Search size={17} className="shrink-0" /> Search Pair / Notes
+          <label className="block text-sm font-medium mb-2 opacity-80">
+            Search Pair / Notes
           </label>
           <div className="relative">
             <input
@@ -338,19 +336,18 @@ export default function Trades() {
               placeholder="EURUSD, revenge trade, FOMO..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full p-3.5 pl-14 pr-14 rounded-xl border transition-all ${
+              className={`w-full p-3.5 pr-10 rounded-xl border transition-all ${
                 isDark
                   ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
                   : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
               } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
             />
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={17} />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
               >
-                <X size={17} />
+                <X size={18} />
               </button>
             )}
           </div>
@@ -358,8 +355,8 @@ export default function Trades() {
 
         {/* Sort */}
         <div>
-          <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
-            <SortAsc size={17} className="shrink-0" /> Sort By
+          <label className="block text-sm font-medium mb-2 opacity-80">
+            Sort By
           </label>
           <select
             value={sortBy}
