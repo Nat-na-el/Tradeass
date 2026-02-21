@@ -208,19 +208,19 @@ export default function Trades() {
 
     try {
       await deleteDoc(doc(db, "users", user.uid, "trades", id));
-      setMessage({ text: "Trade deleted", type: "success" });
+      setMessage({ text: "Trade deleted successfully", type: "success" });
       setTimeout(() => setMessage({ text: "", type: "success" }), 4000);
       await refreshTrades();
     } catch (err) {
       console.error("Delete failed:", err);
-      setMessage({ text: "Failed to delete trade", type: "error" });
+      setMessage({ text: "Failed to delete trade: " + err.message, type: "error" });
     }
 
     setDeleteModalOpen(false);
     setTradeToDelete(null);
   };
 
-  // Export to CSV (unchanged – uses filteredTrades from Firestore)
+  // Export to CSV
   const exportCSV = () => {
     if (!filteredTrades.length) return;
 
@@ -297,10 +297,10 @@ export default function Trades() {
       {/* Feedback message */}
       {message.text && (
         <div
-          className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
+          className={`mb-6 p-4 rounded-xl flex items-center gap-3 shadow-sm ${
             message.type === "success"
-              ? "bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/50"
-              : "bg-rose-100/80 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800/50"
+              ? "bg-emerald-100/90 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700"
+              : "bg-rose-100/90 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700"
           }`}
         >
           {message.type === "success" ? <Check size={20} /> : <AlertCircle size={20} />}
@@ -308,8 +308,9 @@ export default function Trades() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col lg:flex-row gap-4 mb-8">
+      {/* Filters – fixed icon/text overlap */}
+      <div className="flex flex-col lg:flex-row gap-5 mb-8">
+        {/* Date Filter */}
         <div className="flex-1 max-w-xs">
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
             <Calendar size={16} /> Filter by Date
@@ -321,16 +322,17 @@ export default function Trades() {
               onChange={(e) =>
                 setSearchParams(e.target.value ? { date: e.target.value } : {})
               }
-              className={`w-full p-3 pl-10 rounded-xl border ${
+              className={`w-full p-3.5 pl-12 rounded-xl border transition-all ${
                 isDark
-                  ? "bg-gray-800/60 border-gray-700 text-gray-100"
-                  : "bg-white/80 border-gray-300 text-gray-900"
-              } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                  ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
+                  : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
+              } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
             />
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           </div>
         </div>
 
+        {/* Search */}
         <div className="flex-1">
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
             <Search size={16} /> Search Pair / Notes
@@ -341,17 +343,17 @@ export default function Trades() {
               placeholder="EURUSD, revenge trade, FOMO..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full p-3 pl-10 rounded-xl border ${
+              className={`w-full p-3.5 pl-12 rounded-xl border transition-all ${
                 isDark
-                  ? "bg-gray-800/60 border-gray-700 text-gray-100"
-                  : "bg-white/80 border-gray-300 text-gray-900"
-              } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                  ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
+                  : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
+              } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
             />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
               >
                 <X size={18} />
               </button>
@@ -359,6 +361,7 @@ export default function Trades() {
           </div>
         </div>
 
+        {/* Sort */}
         <div className="w-full lg:w-48">
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
             <SortAsc size={16} /> Sort By
@@ -366,11 +369,11 @@ export default function Trades() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className={`w-full p-3 rounded-xl border ${
+            className={`w-full p-3.5 rounded-xl border transition-all ${
               isDark
-                ? "bg-gray-800/60 border-gray-700 text-gray-100"
-                : "bg-white/80 border-gray-300 text-gray-900"
-            } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
+                : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
+            } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
           >
             <option value="date-desc">Newest First</option>
             <option value="date-asc">Oldest First</option>
@@ -491,6 +494,7 @@ export default function Trades() {
                       variant="outline"
                       onClick={() => setSelectedTrade(trade)}
                       className="h-10 w-10 rounded-lg"
+                      disabled={loading}
                     >
                       <Eye size={18} />
                     </Button>
@@ -499,6 +503,7 @@ export default function Trades() {
                       variant="outline"
                       onClick={() => openEdit(trade)}
                       className="h-10 w-10 rounded-lg"
+                      disabled={loading}
                     >
                       <Edit size={18} />
                     </Button>
@@ -510,6 +515,7 @@ export default function Trades() {
                         setDeleteModalOpen(true);
                       }}
                       className="h-10 w-10 rounded-lg"
+                      disabled={loading}
                     >
                       <Trash2 size={18} />
                     </Button>
@@ -756,6 +762,7 @@ export default function Trades() {
                   <Button
                     type="submit"
                     className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                    disabled={loading}
                   >
                     Save Changes
                   </Button>
@@ -764,6 +771,7 @@ export default function Trades() {
                     variant="outline"
                     onClick={() => setEditModalOpen(false)}
                     className="flex-1"
+                    disabled={loading}
                   >
                     Cancel
                   </Button>
