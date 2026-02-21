@@ -18,13 +18,14 @@ export default function DeleteConfirmModal({
 }) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
+      <DialogContent
         className={`
           max-w-md 
           bg-white text-slate-900 
-          dark:bg-gray-900 dark:text-white 
-          border border-slate-300 dark:border-gray-700 
+          dark:bg-blue-950 dark:text-white 
+          border border-slate-300 dark:border-blue-800/40 
           rounded-2xl shadow-2xl p-6
+          backdrop-blur-sm
         `}
       >
         <DialogHeader>
@@ -44,9 +45,9 @@ export default function DeleteConfirmModal({
             variant="outline"
             onClick={onClose}
             className={`
-              border border-slate-400 dark:border-gray-600 
-              text-slate-700 dark:text-gray-300 
-              hover:bg-slate-100 dark:hover:bg-gray-800
+              border border-slate-400 dark:border-blue-700/60 
+              text-slate-700 dark:text-slate-300 
+              hover:bg-slate-100 dark:hover:bg-blue-900/30
               transition-colors
             `}
           >
