@@ -50,14 +50,14 @@ const PRIORITY_COLORS = {
 
 const MarkdownRenderer = ({ text }) => {
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none">
+    <div className="prose prose-sm dark:prose-invert max-w-none break-words">
       {text.split("\n").map((line, i) => {
         if (line.startsWith("- ")) {
-          return <li key={i}>{line.slice(2)}</li>;
+          return <li key={i} className="ml-4">{line.slice(2)}</li>;
         }
         if (line.startsWith("> ")) {
           return (
-            <blockquote key={i} className="border-l-4 border-indigo-500 pl-3 italic opacity-90">
+            <blockquote key={i} className="border-l-4 border-indigo-500 pl-3 italic opacity-90 my-2">
               {line.slice(2)}
             </blockquote>
           );
@@ -65,6 +65,7 @@ const MarkdownRenderer = ({ text }) => {
         return (
           <p
             key={i}
+            className="my-1"
             dangerouslySetInnerHTML={{
               __html: line
                 .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
@@ -99,7 +100,7 @@ export default function Notebook() {
   const [filterTag, setFilterTag] = useState("");
   const [sortBy, setSortBy] = useState("newest");
 
-  // Fetch notes from Firestore
+  // Fetch notes
   const refreshNotes = async () => {
     const user = auth.currentUser;
     if (!user) {
@@ -173,7 +174,7 @@ export default function Notebook() {
     }
   };
 
-  // Start editing note
+  // Start editing
   const startEdit = (note) => {
     setEditingId(note.id);
     setEditContent(note.content || "");
@@ -250,14 +251,14 @@ export default function Notebook() {
 
   return (
     <div
-      className={`min-h-screen w-full p-4 sm:p-6 lg:p-8 transition-colors duration-300
+      className={`min-h-screen w-full p-4 sm:p-6 transition-colors duration-300
         ${isDark
           ? "bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-gray-100"
           : "bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900"}`}
     >
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 lg:mb-8 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
               Notebook
@@ -268,39 +269,39 @@ export default function Notebook() {
           </div>
         </div>
 
-        {/* Feedback messages */}
+        {/* Feedback */}
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-rose-100/80 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 flex items-center gap-3">
+          <div className="p-4 rounded-xl bg-rose-100/80 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 flex items-center gap-3">
             <AlertCircle size={20} />
             {error}
           </div>
         )}
         {successMsg && (
-          <div className="mb-6 p-4 rounded-xl bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 flex items-center gap-3">
+          <div className="p-4 rounded-xl bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 flex items-center gap-3">
             <Check size={20} />
             {successMsg}
           </div>
         )}
 
         {/* Add New Note Form */}
-        <Card className="p-6 mb-8 bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+        <Card className="p-5 sm:p-6 bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
           <div className="space-y-5">
             <textarea
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
               placeholder="Write your trading thought, idea, review or lesson here...\n\nSupports **bold**, *italic*, - lists, > quotes"
-              className={`w-full p-4 rounded-xl border min-h-[140px] text-base ${
+              className={`w-full p-4 rounded-xl border min-h-[140px] text-base resize-y focus:ring-2 focus:ring-indigo-500 outline-none ${
                 isDark ? "bg-gray-800 border-gray-700 text-gray-100" : "bg-white border-gray-300 text-gray-900"
-              } focus:ring-2 focus:ring-indigo-500 outline-none resize-y`}
+              }`}
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <Label className="block text-sm font-medium mb-1.5">Tag</Label>
                 <select
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
-                  className={`w-full p-3 rounded-xl border ${
+                  className={`w-full p-3 rounded-xl border text-sm ${
                     isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
                   } focus:ring-2 focus:ring-indigo-500 outline-none`}
                 >
@@ -317,7 +318,7 @@ export default function Notebook() {
                 <select
                   value={newPriority}
                   onChange={(e) => setNewPriority(e.target.value)}
-                  className={`w-full p-3 rounded-xl border ${
+                  className={`w-full p-3 rounded-xl border text-sm ${
                     isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
                   } focus:ring-2 focus:ring-indigo-500 outline-none`}
                 >
@@ -331,10 +332,10 @@ export default function Notebook() {
                 <Button
                   onClick={addNote}
                   disabled={!newNote.trim() || loading}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 h-11"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 h-11 text-base"
                 >
                   {loading ? (
-                    <Loader2 className="animate-spin mr-2" size={18} />
+                    <Loader2 className="animate-spin mr-2 h-5 w-5" />
                   ) : (
                     <Plus size={18} className="mr-2" />
                   )}
@@ -346,7 +347,7 @@ export default function Notebook() {
         </Card>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <Label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
               <Search size={16} /> Search Notes
@@ -357,6 +358,11 @@ export default function Notebook() {
                 placeholder="Search in content..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                className={`w-full p-3 rounded-xl border text-sm ${
+                  isDark
+                    ? "bg-gray-800/60 border-gray-700 text-gray-100"
+                    : "bg-white/80 border-gray-300 text-gray-900"
+                } focus:ring-2 focus:ring-indigo-500 outline-none`}
               />
               {searchQuery && (
                 <button
@@ -376,7 +382,7 @@ export default function Notebook() {
             <select
               value={filterTag}
               onChange={(e) => setFilterTag(e.target.value)}
-              className={`w-full p-3 rounded-xl border ${
+              className={`w-full p-3 rounded-xl border text-sm ${
                 isDark
                   ? "bg-gray-800/60 border-gray-700 text-gray-100"
                   : "bg-white/80 border-gray-300 text-gray-900"
@@ -398,7 +404,7 @@ export default function Notebook() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className={`w-full p-3 rounded-xl border ${
+              className={`w-full p-3 rounded-xl border text-sm ${
                 isDark
                   ? "bg-gray-800/60 border-gray-700 text-gray-100"
                   : "bg-white/80 border-gray-300 text-gray-900"
@@ -420,12 +426,12 @@ export default function Notebook() {
         ) : error ? (
           <div className="text-center py-16 text-rose-400">{error}</div>
         ) : filteredNotes.length === 0 ? (
-          <Card className="p-10 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
-            <p className="text-xl font-medium opacity-70 mb-2">No notes yet</p>
-            <p className="opacity-60 mb-6">Start capturing your trading thoughts above</p>
+          <Card className="p-8 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
+            <p className="text-lg sm:text-xl font-medium opacity-70 mb-3">No notes yet</p>
+            <p className="text-sm opacity-60 mb-5">Start capturing your trading thoughts above</p>
           </Card>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredNotes.map((note) => {
               const tagInfo = NOTE_TAGS.find((t) => t.value === note.tag) || NOTE_TAGS[NOTE_TAGS.length - 1];
               const prioColor = PRIORITY_COLORS[note.priority || "medium"];
@@ -433,14 +439,14 @@ export default function Notebook() {
               return (
                 <Card
                   key={note.id}
-                  className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md hover:shadow-xl transition-all duration-200 group"
+                  className="p-4 sm:p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md hover:shadow-xl transition-all duration-200 group"
                 >
                   {editingId === note.id ? (
                     <div className="space-y-4">
                       <textarea
                         value={editContent}
                         onChange={(e) => setEditContent(e.target.value)}
-                        className={`w-full p-3 rounded-xl border min-h-[140px] ${
+                        className={`w-full p-3 rounded-xl border min-h-[140px] text-sm ${
                           isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
                         } focus:ring-2 focus:ring-indigo-500 outline-none`}
                       />
@@ -473,18 +479,18 @@ export default function Notebook() {
                         </select>
                       </div>
 
-                      <div className="flex gap-3 pt-4">
+                      <div className="flex flex-col sm:flex-row gap-3 pt-4">
                         <Button
                           onClick={saveEdit}
                           disabled={!editContent.trim()}
-                          className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                          className="flex-1 bg-indigo-600 hover:bg-indigo-700 py-5 sm:py-4"
                         >
                           Save Changes
                         </Button>
                         <Button
                           variant="outline"
                           onClick={() => setEditingId(null)}
-                          className="flex-1"
+                          className="flex-1 py-5 sm:py-4"
                         >
                           Cancel
                         </Button>
@@ -492,7 +498,6 @@ export default function Notebook() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {/* Tags & Priority */}
                       <div className="flex flex-wrap gap-2">
                         <span
                           className={`px-3 py-1 text-xs font-medium rounded-full
@@ -509,12 +514,10 @@ export default function Notebook() {
                         </span>
                       </div>
 
-                      {/* Content */}
-                      <div className="min-h-[120px] max-h-[240px] overflow-hidden">
+                      <div className="min-h-[100px] max-h-[240px] overflow-hidden">
                         <MarkdownRenderer text={note.content} />
                       </div>
 
-                      {/* Footer */}
                       <div className="flex justify-between items-center pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
                         <div className="text-xs opacity-60 flex items-center gap-2">
                           <Calendar size={14} />
