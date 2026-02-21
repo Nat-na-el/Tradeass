@@ -15,7 +15,6 @@ import {
   Calendar,
   FileText,
   Edit,
-  Plus,
   Check,
   AlertCircle,
 } from "lucide-react";
@@ -45,6 +44,7 @@ export default function Trades() {
   const selectedDate = searchParams.get("date");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date-desc");
+
   const [selectedTrade, setSelectedTrade] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState(null);
@@ -59,6 +59,7 @@ export default function Trades() {
     pnl: "",
     notes: "",
   });
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tradeToDelete, setTradeToDelete] = useState(null);
   const [message, setMessage] = useState({ text: "", type: "success" });
@@ -108,14 +109,16 @@ export default function Trades() {
     return () => unsubscribe();
   }, []);
 
-  // Filtered & Sorted trades
+  // Filtered & Sorted trades (real-time filtering)
   const filteredTrades = useMemo(() => {
     let result = trades;
 
+    // Date filter
     if (selectedDate) {
       result = result.filter((t) => t.date?.startsWith(selectedDate));
     }
 
+    // Text search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -126,6 +129,7 @@ export default function Trades() {
       );
     }
 
+    // Sorting
     result = [...result].sort((a, b) => {
       if (sortBy === "date-desc") return new Date(b.date) - new Date(a.date);
       if (sortBy === "date-asc") return new Date(a.date) - new Date(b.date);
@@ -171,7 +175,7 @@ export default function Trades() {
     setEditModalOpen(true);
   };
 
-  // Save edited trade to Firestore
+  // Save edited trade
   const saveEdit = async (e) => {
     e.preventDefault();
     if (!editingTrade) return;
@@ -201,7 +205,7 @@ export default function Trades() {
     }
   };
 
-  // Delete trade from Firestore
+  // Delete trade
   const deleteTrade = async (id) => {
     const user = auth.currentUser;
     if (!user) return;
@@ -220,7 +224,7 @@ export default function Trades() {
     setTradeToDelete(null);
   };
 
-  // Export to CSV
+  // Export CSV
   const exportCSV = () => {
     if (!filteredTrades.length) return;
 
@@ -267,7 +271,7 @@ export default function Trades() {
           ? "bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-gray-100"
           : "bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900"}`}
     >
-      {/* Header */}
+      {/* Header – no Add Trade button */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 lg:mb-8 gap-4">
         <div>
           <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
@@ -278,12 +282,6 @@ export default function Trades() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button
-            onClick={() => navigate("/trades/new")}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
-          >
-            <Plus size={18} className="mr-2" /> Add Trade
-          </Button>
           <Button
             onClick={exportCSV}
             disabled={!filteredTrades.length || loading}
@@ -308,12 +306,12 @@ export default function Trades() {
         </div>
       )}
 
-      {/* Filters – fixed icon/text overlap */}
-      <div className="flex flex-col lg:flex-row gap-5 mb-8">
+      {/* Filters – fixed spacing, no overlap */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
         {/* Date Filter */}
-        <div className="flex-1 max-w-xs">
+        <div>
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
-            <Calendar size={16} /> Filter by Date
+            <Calendar size={16} className="shrink-0" /> Filter by Date
           </label>
           <div className="relative">
             <input
@@ -328,14 +326,14 @@ export default function Trades() {
                   : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
               } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
             />
-            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
           </div>
         </div>
 
         {/* Search */}
-        <div className="flex-1">
+        <div>
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
-            <Search size={16} /> Search Pair / Notes
+            <Search size={16} className="shrink-0" /> Search Pair / Notes
           </label>
           <div className="relative">
             <input
@@ -343,13 +341,13 @@ export default function Trades() {
               placeholder="EURUSD, revenge trade, FOMO..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full p-3.5 pl-12 rounded-xl border transition-all ${
+              className={`w-full p-3.5 pl-12 pr-12 rounded-xl border transition-all ${
                 isDark
                   ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
                   : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
               } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
             />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
@@ -362,9 +360,9 @@ export default function Trades() {
         </div>
 
         {/* Sort */}
-        <div className="w-full lg:w-48">
+        <div>
           <label className="block text-sm font-medium mb-2 opacity-80 flex items-center gap-2">
-            <SortAsc size={16} /> Sort By
+            <SortAsc size={16} className="shrink-0" /> Sort By
           </label>
           <select
             value={sortBy}
@@ -429,14 +427,8 @@ export default function Trades() {
           <p className="opacity-60 mb-6">
             {searchQuery || selectedDate
               ? "Try adjusting your filters"
-              : "Add your first trade to get started"}
+              : "You haven't added any trades yet"}
           </p>
-          <Button
-            onClick={() => navigate("/trades/new")}
-            className="bg-indigo-600 hover:bg-indigo-700"
-          >
-            <Plus size={18} className="mr-2" /> Add Trade
-          </Button>
         </Card>
       ) : (
         <div className="space-y-4">
