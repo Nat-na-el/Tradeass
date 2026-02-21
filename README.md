@@ -1,5 +1,5 @@
 
-# Tradeass
+# Forge Journal
 
 Tradeass is a program designed to help users journal while backtesting trading strategies.  
 It provides an organized way to record trades, notes, and observations to improve trading performance over time.
@@ -19,7 +19,7 @@ In the project directory, you can run:
 ### `npm start`
 
 Runs the app in development mode.  
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.  
+Open [Forge Journal](https://forgejournal.netlify.app/journal) to view it in your browser.  
 The page will reload when you make changes.
 
 ### `npm run build`
@@ -47,5 +47,5 @@ For Netlify:
 - [Create React App Documentation](https://facebook.github.io/create-react-app/docs/getting-started)
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
 =======
-# Tradeas
+# Forge Journal
 >>>>>>> 4cd90778e1ec83726c8a8454fb687a7846e25102
