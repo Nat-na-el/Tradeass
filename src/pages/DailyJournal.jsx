@@ -73,10 +73,8 @@ export default function DailyJournal() {
       setError("Please log in to see your trades");
       return;
     }
-
     setLoading(true);
     setError(null);
-
     try {
       const q = query(
         collection(db, "users", user.uid, "trades"),
@@ -108,37 +106,41 @@ export default function DailyJournal() {
     return () => unsubscribe();
   }, []);
 
-  // Auto-calculate PnL and R:R
+  // Auto-calculate PnL and R:R – FIXED & reliable
   useEffect(() => {
-    const entry = parseFloat(form.entry) || 0;
-    const exitPrice = parseFloat(form.exit) || 0;
-    const sl = parseFloat(form.stopLoss) || 0;
-    const tp = parseFloat(form.takeProfit) || 0;
-    const lot = parseFloat(form.lotSize) || 0.1;
-    const lev = parseFloat(form.leverage) || 100;
+    const entry = Number(form.entry) || 0;
+    const exitPrice = Number(form.exit) || 0;
+    const sl = Number(form.stopLoss) || 0;
+    const tp = Number(form.takeProfit) || 0;
+    const lot = Number(form.lotSize) || 0.1;
+    const lev = Number(form.leverage) || 100;
 
-    // PnL (simplified)
+    // PnL
     let calculatedPnL = "";
     if (entry && exitPrice && lot && lev) {
       const priceDiff = form.direction === "Long" ? (exitPrice - entry) : (entry - exitPrice);
-      calculatedPnL = (priceDiff * lot * lev).toFixed(2);
+      calculatedPnL = (priceDiff * lot * lev * 100).toFixed(2); // ×100 → realistic for most brokers
     }
 
-    // Risk:Reward
+    // Risk:Reward – improved & always updates
     let calculatedRR = "";
     if (entry && sl && tp) {
       const risk = form.direction === "Long" ? (entry - sl) : (sl - entry);
       const reward = form.direction === "Long" ? (tp - entry) : (entry - tp);
-      if (risk > 0) {
+      if (risk !== 0) {
         calculatedRR = (reward / risk).toFixed(2);
+      } else if (reward > 0) {
+        calculatedRR = "∞"; // no risk
       }
     }
 
-    setForm((prev) => ({
-      ...prev,
-      pnl: calculatedPnL,
-      rr: calculatedRR,
-    }));
+    // Prevent unnecessary re-renders
+    setForm(prev => {
+      if (prev.pnl !== calculatedPnL || prev.rr !== calculatedRR) {
+        return { ...prev, pnl: calculatedPnL, rr: calculatedRR };
+      }
+      return prev;
+    });
   }, [form.entry, form.exit, form.stopLoss, form.takeProfit, form.lotSize, form.leverage, form.direction]);
 
   // Today's trades & metrics
@@ -177,13 +179,11 @@ export default function DailyJournal() {
     if (e) e.preventDefault();
     setError(null);
     setSuccessMsg(null);
-
     const user = auth.currentUser;
     if (!user) {
       setError("Please log in first");
       return;
     }
-
     const payload = {
       date: form.date || formatDateInput(),
       pair: form.pair?.toUpperCase() || "",
@@ -198,7 +198,6 @@ export default function DailyJournal() {
       lotSize: Number(form.lotSize) || 0.1,
       notes: form.notes || "",
     };
-
     try {
       if (editingTrade) {
         const tradeRef = doc(db, "users", user.uid, "trades", editingTrade.id);
@@ -211,7 +210,6 @@ export default function DailyJournal() {
         });
         setSuccessMsg("Trade added successfully!");
       }
-
       setModalOpen(false);
       setEditingTrade(null);
       setForm({
@@ -228,7 +226,6 @@ export default function DailyJournal() {
         leverage: "100",
         lotSize: "0.1",
       });
-
       await refreshTrades();
     } catch (err) {
       console.error("Save error:", err);
@@ -240,7 +237,6 @@ export default function DailyJournal() {
   const deleteTrade = async (id) => {
     const user = auth.currentUser;
     if (!user) return;
-
     try {
       await deleteDoc(doc(db, "users", user.uid, "trades", id));
       setSuccessMsg("Trade deleted successfully");
@@ -257,7 +253,6 @@ export default function DailyJournal() {
   const clearTodayTrades = async () => {
     const user = auth.currentUser;
     if (!user) return;
-
     try {
       const batch = todayTrades.map((t) =>
         deleteDoc(doc(db, "users", user.uid, "trades", t.id))
@@ -274,14 +269,14 @@ export default function DailyJournal() {
 
   return (
     <div
-      className={`min-h-screen w-full p-4 sm:p-6 lg:p-8 transition-colors duration-300
+      className={`min-h-screen w-full p-4 sm:p-6 transition-colors duration-300
         ${isDark
           ? "bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-gray-100"
           : "bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900"}`}
     >
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 lg:mb-8 gap-4">
+        {/* Header – optimized for mobile */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
               Daily Journal
@@ -309,40 +304,40 @@ export default function DailyJournal() {
                 lotSize: "0.1",
               });
             }}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
+            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white shadow-md py-6 sm:py-4"
           >
             <Plus size={18} className="mr-2" /> Add Trade
           </Button>
         </div>
 
-        {/* Today's Metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6 mb-8">
-          <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+        {/* Today's Metrics – responsive */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <Card className="p-4 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
             <div className="text-xs font-medium opacity-70 mb-1">Net P&L Today</div>
             <div
-              className={`text-2xl lg:text-3xl font-bold ${
+              className={`text-xl sm:text-2xl font-bold ${
                 metrics.net >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
               }`}
             >
               {metrics.net >= 0 ? "+" : "-"}${Math.abs(metrics.net).toFixed(2)}
             </div>
           </Card>
-          <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+          <Card className="p-4 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
             <div className="text-xs font-medium opacity-70 mb-1">Win Rate</div>
-            <div className="text-2xl lg:text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+            <div className="text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400">
               {metrics.winRate}%
             </div>
           </Card>
-          <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+          <Card className="p-4 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
             <div className="text-xs font-medium opacity-70 mb-1">Wins / Losses</div>
-            <div className="text-2xl lg:text-3xl font-bold text-violet-600 dark:text-violet-400">
+            <div className="text-xl sm:text-2xl font-bold text-violet-600 dark:text-violet-400">
               {metrics.wins} / {metrics.losses}
             </div>
           </Card>
-          <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+          <Card className="p-4 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
             <div className="text-xs font-medium opacity-70 mb-1">Avg P&L</div>
             <div
-              className={`text-2xl lg:text-3xl font-bold ${
+              className={`text-xl sm:text-2xl font-bold ${
                 metrics.avgPnL >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
               }`}
             >
@@ -359,15 +354,15 @@ export default function DailyJournal() {
         ) : error ? (
           <div className="text-center py-16 text-rose-400">{error}</div>
         ) : todayTrades.length === 0 ? (
-          <Card className="p-10 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
-            <p className="text-xl font-medium opacity-70 mb-2">No trades logged today</p>
-            <p className="opacity-60 mb-6">Add your first trade to start tracking performance</p>
+          <Card className="p-8 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
+            <p className="text-lg font-medium opacity-70 mb-2">No trades logged today</p>
+            <p className="text-sm opacity-60 mb-6">Add your first trade to start tracking performance</p>
             <Button
               onClick={() => {
                 setModalOpen(true);
                 setEditingTrade(null);
               }}
-              className="bg-indigo-600 hover:bg-indigo-700"
+              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 mt-4"
             >
               <Plus size={18} className="mr-2" /> Log First Trade
             </Button>
@@ -377,13 +372,13 @@ export default function DailyJournal() {
             {todayTrades.map((trade) => (
               <Card
                 key={trade.id}
-                className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md hover:shadow-xl transition-all duration-200 group"
+                className="p-4 sm:p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md hover:shadow-xl transition-all duration-200 group"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <div
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold shadow-sm ${
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold shadow-sm flex-shrink-0 ${
                           Number(trade.pnl || 0) >= 0
                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                             : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
@@ -391,11 +386,11 @@ export default function DailyJournal() {
                       >
                         {trade.pair?.slice(0, 2) || "?"}
                       </div>
-                      <div>
-                        <div className="font-semibold text-lg">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-base sm:text-lg truncate">
                           {trade.pair || "—"} • {trade.direction || "—"}
                         </div>
-                        <div className="text-sm opacity-70 flex items-center gap-3 flex-wrap">
+                        <div className="text-xs sm:text-sm opacity-70 flex flex-wrap gap-2 mt-1">
                           <span>Lot: {trade.lotSize || "—"}</span>
                           <span>Leverage: {trade.leverage || "—"}:1</span>
                           {trade.rr && <span>R:R {trade.rr}</span>}
@@ -403,16 +398,16 @@ export default function DailyJournal() {
                       </div>
                     </div>
                     {trade.notes && (
-                      <div className="text-sm opacity-80 line-clamp-2 mt-1">
+                      <div className="text-xs sm:text-sm opacity-80 line-clamp-2 mt-1">
                         <FileText size={14} className="inline mr-1" />
                         {trade.notes}
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-6 sm:gap-10">
+                  <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-6">
                     <div className="text-right min-w-[100px]">
                       <div
-                        className={`text-xl font-bold ${
+                        className={`text-xl sm:text-2xl font-bold ${
                           Number(trade.pnl || 0) >= 0
                             ? "text-emerald-700 dark:text-emerald-500"
                             : "text-rose-700 dark:text-rose-500"
@@ -475,9 +470,9 @@ export default function DailyJournal() {
               className={`w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border backdrop-blur-md
                 ${isDark ? "bg-gray-900/95 border-gray-700/60" : "bg-white/95 border-gray-200/60"}`}
             >
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+              <div className="p-5 sm:p-6">
+                <div className="flex justify-between items-center mb-5">
+                  <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
                     {editingTrade ? "Edit Trade" : "Add New Trade"}
                   </h2>
                   <Button variant="ghost" size="icon" onClick={() => setModalOpen(false)}>
@@ -485,9 +480,9 @@ export default function DailyJournal() {
                   </Button>
                 </div>
 
-                <form onSubmit={saveTrade} className="space-y-5">
+                <form onSubmit={saveTrade} className="space-y-4 sm:space-y-5">
                   {/* Date & Asset */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label className="block text-sm font-medium mb-1.5">Date</Label>
                       <Input
@@ -513,13 +508,13 @@ export default function DailyJournal() {
                   </div>
 
                   {/* Direction, Leverage, Lot Size */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Label className="block text-sm font-medium mb-1.5">Direction</Label>
                       <select
                         value={form.direction}
                         onChange={(e) => setForm({ ...form, direction: e.target.value })}
-                        className={`w-full p-3 rounded-xl border ${
+                        className={`w-full p-3 rounded-xl border text-sm sm:text-base ${
                           isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
                         } focus:ring-2 focus:ring-indigo-500 outline-none`}
                       >
@@ -536,6 +531,7 @@ export default function DailyJournal() {
                         value={form.leverage}
                         onChange={(e) => setForm({ ...form, leverage: e.target.value })}
                         placeholder="100"
+                        className="text-sm sm:text-base"
                       />
                     </div>
                     <div>
@@ -547,12 +543,13 @@ export default function DailyJournal() {
                         value={form.lotSize}
                         onChange={(e) => setForm({ ...form, lotSize: e.target.value })}
                         placeholder="0.1"
+                        className="text-sm sm:text-base"
                       />
                     </div>
                   </div>
 
-                  {/* Entry, Exit, PnL (auto) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  {/* Entry, Exit, PnL */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Label className="block text-sm font-medium mb-1.5">Entry Price</Label>
                       <Input
@@ -561,6 +558,7 @@ export default function DailyJournal() {
                         value={form.entry}
                         onChange={(e) => setForm({ ...form, entry: e.target.value })}
                         placeholder="1.08500"
+                        className="text-sm sm:text-base"
                       />
                     </div>
                     <div>
@@ -571,6 +569,7 @@ export default function DailyJournal() {
                         value={form.exit}
                         onChange={(e) => setForm({ ...form, exit: e.target.value })}
                         placeholder="1.09000"
+                        className="text-sm sm:text-base"
                       />
                     </div>
                     <div>
@@ -580,7 +579,7 @@ export default function DailyJournal() {
                         value={form.pnl}
                         readOnly
                         placeholder="Auto-calculated"
-                        className={`w-full p-3 rounded-xl border bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed ${
+                        className={`w-full p-3 rounded-xl border bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed font-bold text-sm sm:text-base ${
                           Number(form.pnl) > 0
                             ? "text-emerald-700 dark:text-emerald-500"
                             : Number(form.pnl) < 0
@@ -591,8 +590,8 @@ export default function DailyJournal() {
                     </div>
                   </div>
 
-                  {/* SL, TP, RR (auto) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  {/* SL, TP, RR */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Label className="block text-sm font-medium mb-1.5">Stop Loss</Label>
                       <Input
@@ -601,6 +600,7 @@ export default function DailyJournal() {
                         value={form.stopLoss}
                         onChange={(e) => setForm({ ...form, stopLoss: e.target.value })}
                         placeholder="1.08200"
+                        className="text-sm sm:text-base"
                       />
                     </div>
                     <div>
@@ -611,6 +611,7 @@ export default function DailyJournal() {
                         value={form.takeProfit}
                         onChange={(e) => setForm({ ...form, takeProfit: e.target.value })}
                         placeholder="1.09500"
+                        className="text-sm sm:text-base"
                       />
                     </div>
                     <div>
@@ -620,7 +621,7 @@ export default function DailyJournal() {
                         value={form.rr}
                         readOnly
                         placeholder="Auto-calculated"
-                        className={`w-full p-3 rounded-xl border bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed`}
+                        className={`w-full p-3 rounded-xl border bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed font-bold text-sm sm:text-base`}
                       />
                     </div>
                   </div>
@@ -632,7 +633,7 @@ export default function DailyJournal() {
                       placeholder="What went well? What to improve? Emotional state? Market context?..."
                       value={form.notes}
                       onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                      className={`w-full p-3 rounded-xl border min-h-[120px] ${
+                      className={`w-full p-3 rounded-xl border min-h-[100px] text-sm sm:text-base ${
                         isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
                       } focus:ring-2 focus:ring-indigo-500 outline-none`}
                     />
@@ -652,11 +653,11 @@ export default function DailyJournal() {
                     </div>
                   )}
 
-                  {/* Buttons */}
-                  <div className="flex gap-4 pt-4">
+                  {/* Buttons – mobile friendly */}
+                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
                     <Button
                       type="submit"
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 py-6 sm:py-4 text-base"
                     >
                       {editingTrade ? "Update Trade" : "Save Trade"}
                     </Button>
@@ -664,7 +665,7 @@ export default function DailyJournal() {
                       type="button"
                       variant="outline"
                       onClick={() => setModalOpen(false)}
-                      className="flex-1"
+                      className="flex-1 py-6 sm:py-4 text-base"
                     >
                       Cancel
                     </Button>
