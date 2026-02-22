@@ -1,5 +1,5 @@
-// src/pages/Sidebar.jsx
-import React, { useState, useEffect } from "react";
+
+import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Menu,
@@ -16,9 +16,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { useTheme } from "../Theme-provider";
-import { db, auth } from "../firebase";
-import { collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
+import { useTheme } from "../../Theme-provider";
 
 export default function Sidebar({
   open,
@@ -32,11 +30,6 @@ export default function Sidebar({
   const { theme } = useTheme();
   const navigate = useNavigate();
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
-  const [localAccounts, setLocalAccounts] = useState(accounts);
-
-  useEffect(() => {
-    setLocalAccounts(accounts);
-  }, [accounts]);
 
   const toggleSidebar = () => {
     setOpen((prev) => !prev);
@@ -46,28 +39,6 @@ export default function Sidebar({
   const toggleAccountDropdown = () => {
     if (open) {
       setIsAccountDropdownOpen(!isAccountDropdownOpen);
-    }
-  };
-
-  const createNewAccount = async () => {
-    const name = prompt("Enter account name:");
-    const startingBalance = parseFloat(prompt("Enter starting balance:"));
-    if (name && !isNaN(startingBalance)) {
-      const user = auth.currentUser;
-      if (user) {
-        try {
-          const docRef = await addDoc(collection(db, "users", user.uid, "accounts"), {
-            name,
-            starting_balance: startingBalance,
-            createdAt: serverTimestamp(),
-          });
-          const newAccount = { id: docRef.id, name, starting_balance: startingBalance };
-          setLocalAccounts(prev => [...prev, newAccount]);
-          onSwitchAccount(docRef.id);
-        } catch (err) {
-          alert("Failed to create account: " + err.message);
-        }
-      }
     }
   };
 
@@ -85,9 +56,16 @@ export default function Sidebar({
 
   return (
     <div
-      className={`fixed left-0 top-0 h-full bg-amber-50 dark:bg-gray-900 border-r border-amber-200/80 dark:border-gray-800 shadow-2xl transition-all duration-300 z-[1000] ${
-        open ? "w-48" : "w-16"
-      }`}
+      className={`fixed left-8 top-20 h-[calc(100vh-2.5rem)] 
+        bg-amber-50 dark:bg-gray-900 
+        border-r border-amber-200/80 dark:border-gray-800 
+        shadow-2xl transition-all duration-300 z-[1000] ${
+          open ? "w-48" : "w-16"
+        } ${theme === "dark" ? "dark" : ""}`}
+      style={{
+        minWidth: open ? "12rem" : "4rem",
+        boxShadow: "4px 0 10px rgba(0, 0, 0, 0.3)",
+      }}
     >
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-end p-3 pt-2">
@@ -115,11 +93,8 @@ export default function Sidebar({
             {open && (
               <>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-medium text-gray-200 truncate">
+                  <div className="text-xs font-medium text-gray-200">
                     {currentAccount?.name || "Account"}
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    Balance: ${currentAccount?.starting_balance || 0}
                   </div>
                 </div>
                 <div className="flex items-center">
@@ -133,9 +108,10 @@ export default function Sidebar({
             )}
           </div>
 
+          {/* ACCOUNT DROPDOWN */}
           {open && isAccountDropdownOpen && (
             <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
-              {localAccounts.map((account) => (
+              {accounts.map((account) => (
                 <button
                   key={account.id}
                   onClick={() => {
@@ -148,14 +124,14 @@ export default function Sidebar({
                       : "text-gray-400 hover:bg-gray-700 hover:text-white"
                   }`}
                 >
-                  {account.name} (${account.starting_balance || 0})
+                  {account.name}
                 </button>
               ))}
 
               <div className="pt-2 border-t border-gray-600 space-y-1">
                 <button
                   onClick={() => {
-                    createNewAccount();
+                    onCreateAccount();
                     setIsAccountDropdownOpen(false);
                   }}
                   className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
@@ -178,7 +154,7 @@ export default function Sidebar({
 
         {/* NAVIGATION ITEMS */}
         <nav className="flex-1 flex flex-col gap-1 p-3 overflow-y-auto">
-          {navItems.map((item) => (
+          {navItems.map((item, index) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -187,8 +163,14 @@ export default function Sidebar({
                   isActive
                     ? "bg-gray-700 text-white shadow-inner"
                     : "text-gray-400 hover:bg-gray-700 hover:text-white"
-                } ${open ? "justify-start pl-3" : "justify-center"}`
+                } ${
+                  open ? "justify-start pl-3" : "justify-center items-center"
+                }`.trim()
               }
+              style={{
+                marginBottom: index < navItems.length - 1 ? "2px" : "0",
+                minHeight: "48px",
+              }}
             >
               <item.icon
                 size={open ? 20 : 24}
