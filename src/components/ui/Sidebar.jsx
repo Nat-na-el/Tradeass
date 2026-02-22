@@ -17,8 +17,6 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useTheme } from "../../Theme-provider";
-import { db, auth } from "../firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function Sidebar({
   open,
@@ -41,50 +39,6 @@ export default function Sidebar({
   const toggleAccountDropdown = () => {
     if (open) {
       setIsAccountDropdownOpen(!isAccountDropdownOpen);
-    }
-  };
-
-  const createNewAccount = async () => {
-    const name = prompt("Enter account name (e.g. Live EURUSD, Demo NAS100):");
-    if (!name || !name.trim()) return;
-
-    const balanceStr = prompt("Enter starting balance (USD):");
-    const startingBalance = parseFloat(balanceStr);
-    if (isNaN(startingBalance) || startingBalance < 0) {
-      alert("Please enter a valid positive number for starting balance.");
-      return;
-    }
-
-    const user = auth.currentUser;
-    if (!user) {
-      alert("You must be logged in to create an account.");
-      return;
-    }
-
-    try {
-      const docRef = await addDoc(collection(db, "users", user.uid, "accounts"), {
-        name: name.trim(),
-        starting_balance: startingBalance,
-        current_balance: startingBalance,
-        createdAt: serverTimestamp(),
-        createdBy: user.uid,
-      });
-
-      const newAccount = {
-        id: docRef.id,
-        name: name.trim(),
-        starting_balance: startingBalance,
-        current_balance: startingBalance,
-      };
-
-      // Tell parent component (App or layout) that a new account was created
-      onCreateAccount?.(newAccount);
-      onSwitchAccount(docRef.id);
-
-      alert(`Account "${name}" created successfully!\nStarting balance: $${startingBalance}`);
-    } catch (err) {
-      console.error("Account creation failed:", err);
-      alert("Failed to create account: " + err.message);
     }
   };
 
@@ -142,11 +96,6 @@ export default function Sidebar({
                   <div className="text-xs font-medium text-gray-200">
                     {currentAccount?.name || "Account"}
                   </div>
-                  {currentAccount?.starting_balance !== undefined && (
-                    <div className="text-xs text-gray-400">
-                      ${currentAccount.starting_balance.toLocaleString()}
-                    </div>
-                  )}
                 </div>
                 <div className="flex items-center">
                   {isAccountDropdownOpen ? (
@@ -176,18 +125,12 @@ export default function Sidebar({
                   }`}
                 >
                   {account.name}
-                  {account.starting_balance !== undefined && (
-                    <span className="ml-2 text-gray-500">
-                      (${account.starting_balance.toLocaleString()})
-                    </span>
-                  )}
                 </button>
               ))}
-
               <div className="pt-2 border-t border-gray-600 space-y-1">
                 <button
                   onClick={() => {
-                    createNewAccount();
+                    onCreateAccount();
                     setIsAccountDropdownOpen(false);
                   }}
                   className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
