@@ -9,6 +9,7 @@ import {
   eachDayOfInterval,
   format,
   isSameMonth,
+  parseISO,
 } from "date-fns";
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
@@ -27,16 +28,16 @@ import {
   ChevronRight,
   ArrowUpRight,
   ArrowDownRight,
+  Calendar,
 } from "lucide-react";
 import { db, auth } from "../firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, doc, getDoc } from "firebase/firestore";
 
 // ────────────────────────────────────────────────
 // Animated number component (unchanged)
 // ────────────────────────────────────────────────
 const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
   const [display, setDisplay] = useState(0);
-
   useEffect(() => {
     const start = performance.now();
     const step = (timestamp) => {
@@ -46,7 +47,6 @@ const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
     };
     requestAnimationFrame(step);
   }, [value, duration]);
-
   return <>{Number(display).toFixed(decimals)}</>;
 };
 
@@ -59,18 +59,20 @@ export default function Dashboard({ currentAccount }) {
   const navigate = useNavigate();
 
   const [trades, setTrades] = useState([]);
+  const [accountData, setAccountData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewDate, setViewDate] = useState(new Date());
   const [showQuickAnalysis, setShowQuickAnalysis] = useState(false);
 
-  // Fetch trades from Firestore
-  const refreshTrades = async () => {
+  // Fetch account details + trades from selected sub-account
+  const refreshData = async () => {
     const user = auth.currentUser;
-    if (!user) {
+    if (!user || !currentAccount?.id) {
       setTrades([]);
+      setAccountData(null);
       setLoading(false);
-      setError("Please log in to view dashboard data");
+      setError("Please select an account to view dashboard data");
       return;
     }
 
@@ -78,10 +80,18 @@ export default function Dashboard({ currentAccount }) {
     setError(null);
 
     try {
-      const q = query(
-        collection(db, "users", user.uid, "trades"),
-        orderBy("createdAt", "desc")
-      );
+      // Get account info (starting balance, createdAt)
+      const accountRef = doc(db, "users", user.uid, "accounts", currentAccount.id);
+      const accountSnap = await getDoc(accountRef);
+      if (accountSnap.exists()) {
+        setAccountData(accountSnap.data());
+      } else {
+        setAccountData(null);
+      }
+
+      // Get trades from this account's subcollection
+      const tradesRef = collection(db, "users", user.uid, "accounts", currentAccount.id, "trades");
+      const q = query(tradesRef, orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
       const loadedTrades = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -90,24 +100,17 @@ export default function Dashboard({ currentAccount }) {
       setTrades(loadedTrades);
     } catch (err) {
       console.error("❌ Dashboard fetch error:", err);
-      setError("Failed to load trades. " + (err.message || "Check connection"));
+      setError("Failed to load data. " + (err.message || "Check connection"));
       setTrades([]);
+      setAccountData(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        refreshTrades();
-      } else {
-        setTrades([]);
-        setLoading(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+    refreshData();
+  }, [currentAccount]);
 
   // ─── Calendar month navigation ───────────────────────────────
   const prevMonth = () => setViewDate((d) => subMonths(d, 1));
@@ -179,7 +182,6 @@ export default function Dashboard({ currentAccount }) {
         avgRR: "0.00",
       };
     }
-
     const profits = monthlyTrades
       .filter((t) => Number(t.pnl || 0) > 0)
       .reduce((a, b) => a + Number(b.pnl || 0), 0);
@@ -220,7 +222,6 @@ export default function Dashboard({ currentAccount }) {
       0
     );
     const avgRR = total ? (totalRR / total).toFixed(2) : "0.00";
-
     return {
       totalPnL: (profits - losses).toFixed(2),
       winRate,
@@ -243,25 +244,34 @@ export default function Dashboard({ currentAccount }) {
   // ─── Consistency Score ───────────────────────────────────────
   const consistencyScore = useMemo(() => {
     if (!monthlyTrades.length) return 0;
-    const dailyWinRates = {};
+    const dailyPnL = {};
     monthlyTrades.forEach((t) => {
       const day = format(new Date(t.date), "yyyy-MM-dd");
-      if (!dailyWinRates[day]) {
-        dailyWinRates[day] = { wins: 0, total: 0 };
+      dailyPnL[day] = (dailyPnL[day] || 0) + Number(t.pnl || 0);
+    });
+    const totalProfit = monthlyTrades.reduce((sum, t) => sum + Math.max(0, Number(t.pnl || 0)), 0);
+    const highestWinningDay = Math.max(...Object.values(dailyPnL), 0);
+    return totalProfit > 0 ? ((highestWinningDay / totalProfit) * 100).toFixed(1) : 0;
+  }, [monthlyTrades]);
+
+  // ─── Weekly wins / losses / breakeven ────────────────────────
+  const weeklyStats = useMemo(() => {
+    const weekly = {};
+    trades.forEach((t) => {
+      if (t.date) {
+        const date = new Date(t.date);
+        const weekKey = format(startOfWeek(date, { weekStartsOn: 1 }), "yyyy-'W'ww");
+        if (!weekly[weekKey]) weekly[weekKey] = { wins: 0, losses: 0, breakeven: 0 };
+        const pnl = Number(t.pnl || 0);
+        if (pnl > 0) weekly[weekKey].wins++;
+        else if (pnl < 0) weekly[weekKey].losses++;
+        else weekly[weekKey].breakeven++;
       }
-      dailyWinRates[day].total += 1;
-      if (Number(t.pnl || 0) > 0) dailyWinRates[day].wins += 1;
     });
-    let bestDailyWinRate = 0;
-    Object.values(dailyWinRates).forEach(({ wins, total }) => {
-      const rate = total > 0 ? (wins / total) * 100 : 0;
-      if (rate > bestDailyWinRate) bestDailyWinRate = rate;
-    });
-    const overallWinRate = Number(monthlyStats.winRate);
-    if (overallWinRate === 0) return 0;
-    const score = Math.min(100, Math.round((bestDailyWinRate / overallWinRate) * 100));
-    return score;
-  }, [monthlyTrades, monthlyStats.winRate]);
+    return Object.entries(weekly)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([week, data]) => ({ week, ...data }));
+  }, [trades]);
 
   // ─── Trades grouped by date for calendar ─────────────────────
   const tradesByDate = useMemo(() => {
@@ -334,15 +344,15 @@ export default function Dashboard({ currentAccount }) {
     return trades.reduce((sum, t) => sum + Number(t.pnl || 0), 0).toFixed(2);
   }, [trades]);
 
-  // ─── Placeholder account info ────────────────────────────────
-  const initialBalance = 10000;
-  const accountCreatedAt = currentAccount?.createdAt?.toDate?.() || new Date("2024-01-01");
+  // ─── Account info from Firestore ─────────────────────────────
+  const accountCreatedAt = accountData?.createdAt?.toDate?.() || new Date("2024-01-01");
+  const startingBalance = accountData?.starting_balance || 10000;
 
   // ─── Account growth percentage ───────────────────────────────
   const accountGrowth = useMemo(() => {
-    if (initialBalance <= 0) return 0;
-    return ((allTimePnL / initialBalance) * 100).toFixed(1);
-  }, [allTimePnL]);
+    if (startingBalance <= 0) return 0;
+    return ((allTimePnL / startingBalance) * 100).toFixed(1);
+  }, [allTimePnL, startingBalance]);
 
   // ─── Quick Analysis Modal Content ────────────────────────────
   const quickAnalysisContent = () => {
@@ -369,12 +379,10 @@ export default function Dashboard({ currentAccount }) {
         </div>
       );
     }
-
     const winRate = Number(monthlyStats.winRate);
     const totalPnL = Number(monthlyStats.totalPnL);
     const avgRR = Number(monthlyStats.avgRR);
     const totalTrades = monthlyStats.totalTrades;
-
     return (
       <div className="space-y-8">
         {/* Performance Snapshot */}
@@ -397,7 +405,6 @@ export default function Dashboard({ currentAccount }) {
                 : "Needs attention — focus on high-probability entries"}
             </div>
           </div>
-
           <div className="p-6 bg-gray-900/70 rounded-2xl border border-gray-700 shadow-inner">
             <div className="text-sm text-gray-400 mb-2">Net Result</div>
             <div
@@ -416,7 +423,6 @@ export default function Dashboard({ currentAccount }) {
               {totalPnL >= 0 ? "Positive month — manage greed" : "Drawdown — tighten risk now"}
             </div>
           </div>
-
           <div className="p-6 bg-gray-900/70 rounded-2xl border border-gray-700 shadow-inner">
             <div className="text-sm text-gray-400 mb-2">Average R:R</div>
             <div className="text-4xl font-bold text-purple-300">{avgRR}</div>
@@ -432,7 +438,6 @@ export default function Dashboard({ currentAccount }) {
             </div>
           </div>
         </div>
-
         {/* Personalized Suggestions */}
         <div className="p-6 bg-gradient-to-br from-gray-950 to-gray-900 rounded-2xl border border-gray-700 shadow-inner">
           <h4 className="text-xl font-semibold mb-5 flex items-center gap-3 text-gray-200">
@@ -501,7 +506,6 @@ export default function Dashboard({ currentAccount }) {
               {format(viewDate, "MMMM yyyy")} • {currentAccount?.name || "Account"}
             </p>
           </div>
-
           <button
             onClick={() => setShowQuickAnalysis(true)}
             className="flex items-center gap-2.5 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition-all duration-200"
@@ -517,8 +521,19 @@ export default function Dashboard({ currentAccount }) {
             <DollarSign className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
             Account Overview
           </h3>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Starting Balance</div>
+              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                ${startingBalance.toLocaleString()}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Created On</div>
+              <div className="text-xl font-medium text-gray-700 dark:text-gray-300 mt-1">
+                {format(accountCreatedAt, "dd MMM yyyy")}
+              </div>
+            </div>
             <div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Total PnL (All Time)</div>
               <div
@@ -529,29 +544,10 @@ export default function Dashboard({ currentAccount }) {
                 {allTimePnL >= 0 ? "+" : ""}${Math.abs(allTimePnL)}
               </div>
             </div>
-
             <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Initial Balance</div>
-              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
-                ${initialBalance.toLocaleString()}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Account Growth</div>
-              <div
-                className={`text-2xl font-bold mt-1 ${
-                  accountGrowth >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                }`}
-              >
-                {accountGrowth}%
-              </div>
-            </div>
-
-            <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Created</div>
-              <div className="text-xl font-medium text-gray-700 dark:text-gray-300 mt-1">
-                {format(accountCreatedAt, "dd MMM yyyy")}
+              <div className="text-sm text-gray-600 dark:text-gray-400">Consistency Score</div>
+              <div className="text-2xl font-bold text-violet-600 dark:text-violet-400 mt-1">
+                {consistencyScore}%
               </div>
             </div>
           </div>
@@ -653,6 +649,38 @@ export default function Dashboard({ currentAccount }) {
             ))}
           </div>
 
+          {/* Weekly Stats Card */}
+          <Card className="p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg mb-8">
+            <h3 className="text-lg font-semibold mb-5 flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-indigo-500" />
+              Weekly Wins / Losses / Breakeven
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {weeklyStats.length > 0 ? (
+                weeklyStats.map((week, idx) => (
+                  <div key={idx} className="p-4 rounded-xl bg-gray-100/50 dark:bg-gray-900/40">
+                    <div className="text-sm font-medium mb-2">Week {week.week}</div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div>
+                        Wins: <span className="font-bold text-emerald-600">{week.wins}</span>
+                      </div>
+                      <div>
+                        Losses: <span className="font-bold text-rose-600">{week.losses}</span>
+                      </div>
+                      <div>
+                        Breakeven: <span className="font-bold text-gray-500">{week.breakeven}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center text-gray-500 py-6">
+                  No weekly data available yet
+                </div>
+              )}
+            </div>
+          </Card>
+
           {/* Recent Trades + Highlights */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
             <Card className="lg:col-span-2 p-5 lg:p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg hover:shadow-xl transition-all duration-200">
@@ -668,7 +696,6 @@ export default function Dashboard({ currentAccount }) {
                   View All →
                 </button>
               </div>
-
               {recentTrades.length === 0 ? (
                 <div className="text-center py-12 rounded-xl bg-white/50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400">
                   No recent trades yet
@@ -719,7 +746,6 @@ export default function Dashboard({ currentAccount }) {
                 <BarChart3 className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
                 Monthly Highlights
               </h3>
-
               <div className="space-y-5">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Best Day</span>
@@ -732,7 +758,6 @@ export default function Dashboard({ currentAccount }) {
                     </div>
                   </div>
                 </div>
-
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Worst Day</span>
                   <div className="text-right">
@@ -744,14 +769,12 @@ export default function Dashboard({ currentAccount }) {
                     </div>
                   </div>
                 </div>
-
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Avg R:R</span>
                   <span className="font-bold text-purple-600 dark:text-purple-400">
                     {monthlyStats.avgRR}
                   </span>
                 </div>
-
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Win Rate</span>
@@ -809,7 +832,6 @@ export default function Dashboard({ currentAccount }) {
                 Tap a day to view trades
               </span>
             </div>
-
             <div className="overflow-x-auto">
               <div className="grid grid-cols-8 min-w-[640px] gap-1.5 sm:gap-2">
                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Wk"].map((d) => (
@@ -820,7 +842,6 @@ export default function Dashboard({ currentAccount }) {
                     {d}
                   </div>
                 ))}
-
                 {calendarWeeks.map((week, wi) => {
                   const wSum = weekSummary(week);
                   return (
@@ -830,7 +851,6 @@ export default function Dashboard({ currentAccount }) {
                         const isCur = isSameMonth(dayObj, viewDate);
                         const pnl = ds?.pnl || 0;
                         const intensity = Math.min(Math.abs(pnl) / 1500, 0.6);
-
                         return (
                           <div
                             key={di}
@@ -880,7 +900,6 @@ export default function Dashboard({ currentAccount }) {
                           </div>
                         );
                       })}
-
                       {/* Weekly Summary */}
                       <div
                         className={`aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-center items-center border ${
