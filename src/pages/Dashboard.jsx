@@ -24,7 +24,6 @@ import {
   Lightbulb,
   AlertCircle,
   CheckCircle,
-  ChevronRight,
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
@@ -43,6 +42,7 @@ import {
 // ────────────────────────────────────────────────
 const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
   const [display, setDisplay] = useState(0);
+
   useEffect(() => {
     const start = performance.now();
     const step = (timestamp) => {
@@ -52,6 +52,7 @@ const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
     };
     requestAnimationFrame(step);
   }, [value, duration]);
+
   return <>{Number(display).toFixed(decimals)}</>;
 };
 
@@ -64,13 +65,13 @@ export default function Dashboard({ currentAccount }) {
   const navigate = useNavigate();
 
   const [trades, setTrades] = useState([]);
-  const [accountMeta, setAccountMeta] = useState(null); // { starting_balance, createdAt }
+  const [accountMeta, setAccountMeta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewDate, setViewDate] = useState(new Date());
   const [showQuickAnalysis, setShowQuickAnalysis] = useState(false);
 
-  // ─── Fetch account metadata (starting balance, creation date) ─────
+  // ─── Fetch account metadata ───────────────────────────────────────
   const fetchAccountMeta = async (user, accountId) => {
     if (!user || !accountId) return null;
     try {
@@ -85,7 +86,7 @@ export default function Dashboard({ currentAccount }) {
     return null;
   };
 
-  // ─── Fetch trades from account subcollection ─────────────────────
+  // ─── Fetch trades from the selected account's subcollection ───────
   const refreshTrades = async () => {
     const user = auth.currentUser;
     if (!user) {
@@ -95,11 +96,12 @@ export default function Dashboard({ currentAccount }) {
       setError("Please log in to view dashboard data");
       return;
     }
+
     if (!currentAccount?.id) {
       setTrades([]);
       setAccountMeta(null);
       setLoading(false);
-      setError("No account selected");
+      setError("No account selected. Please create or select an account.");
       return;
     }
 
@@ -111,7 +113,7 @@ export default function Dashboard({ currentAccount }) {
       const meta = await fetchAccountMeta(user, currentAccount.id);
       setAccountMeta(meta);
 
-      // Fetch trades from subcollection
+      // Fetch trades from the account's trades subcollection
       const q = query(
         collection(db, "users", user.uid, "accounts", currentAccount.id, "trades"),
         orderBy("createdAt", "desc")
@@ -142,7 +144,7 @@ export default function Dashboard({ currentAccount }) {
       }
     });
     return () => unsubscribe();
-  }, [currentAccount]); // re-run when currentAccount changes
+  }, [currentAccount]);
 
   // ─── Calendar month navigation ───────────────────────────────
   const prevMonth = () => setViewDate((d) => subMonths(d, 1));
@@ -212,9 +214,10 @@ export default function Dashboard({ currentAccount }) {
         worstDayPnL: 0,
         worstDayDate: "—",
         avgRR: "0.00",
-        consistencyScore: 0, // new field
+        consistencyScore: 0,
       };
     }
+
     const profits = monthlyTrades
       .filter((t) => Number(t.pnl || 0) > 0)
       .reduce((a, b) => a + Number(b.pnl || 0), 0);
@@ -237,7 +240,8 @@ export default function Dashboard({ currentAccount }) {
     let bestDayDate = "—";
     let worstDayPnL = 0;
     let worstDayDate = "—";
-    let bestWinningDayPnl = 0; // for consistency score
+    let bestWinningDayPnl = 0;
+
     if (Object.keys(dailyPnL).length > 0) {
       const entries = Object.entries(dailyPnL);
       const bestEntry = entries.reduce((max, curr) =>
@@ -250,23 +254,25 @@ export default function Dashboard({ currentAccount }) {
       bestDayDate = format(new Date(bestEntry[0]), "dd MMM");
       worstDayPnL = worstEntry[1].toFixed(2);
       worstDayDate = format(new Date(worstEntry[0]), "dd MMM");
-      // Find highest positive daily PnL
+
       const winningDays = entries.filter(([, pnl]) => pnl > 0);
       if (winningDays.length) {
         bestWinningDayPnl = Math.max(...winningDays.map(([, pnl]) => pnl));
       }
     }
+
     const totalRR = monthlyTrades.reduce(
       (sum, t) => sum + (Number(t.rr) || 0),
       0
     );
     const avgRR = total ? (totalRR / total).toFixed(2) : "0.00";
-    // Consistency Score = (bestWinningDayPnl / totalPnL) * 100, if totalPnL > 0
+
     const totalPnLNum = profits - losses;
     let consistencyScore = 0;
     if (totalPnLNum > 0 && bestWinningDayPnl > 0) {
       consistencyScore = Math.min(100, (bestWinningDayPnl / totalPnLNum) * 100);
     }
+
     return {
       totalPnL: totalPnLNum.toFixed(2),
       winRate,
@@ -283,7 +289,7 @@ export default function Dashboard({ currentAccount }) {
       worstDayPnL,
       worstDayDate,
       avgRR,
-      consistencyScore: consistencyScore.toFixed(1), // store as string for display
+      consistencyScore: consistencyScore.toFixed(1),
     };
   }, [monthlyTrades]);
 
@@ -309,7 +315,7 @@ export default function Dashboard({ currentAccount }) {
         total: weekTrades.length,
       });
     }
-    return weeks.reverse(); // oldest first
+    return weeks.reverse();
   }, [trades]);
 
   // ─── Trades grouped by date for calendar ─────────────────────
@@ -331,8 +337,7 @@ export default function Dashboard({ currentAccount }) {
     const count = list.length;
     const wins = list.filter((t) => Number(t.pnl || 0) > 0).length;
     const winRate = Math.round((wins / count) * 100) || 0;
-    const rrAvg = list.reduce((s, t) => s + (Number(t.rr) || 0), 0) / count || 0;
-    return { date: key, pnl, count, winRate, rrAvg };
+    return { date: key, pnl, count, winRate };
   }
 
   // ─── Week summary helper ─────────────────────────────────────
@@ -383,7 +388,7 @@ export default function Dashboard({ currentAccount }) {
     return trades.reduce((sum, t) => sum + Number(t.pnl || 0), 0).toFixed(2);
   }, [trades]);
 
-  // ─── Placeholder account info (now from accountMeta) ─────────
+  // ─── Account data ────────────────────────────────────────────
   const initialBalance = accountMeta?.starting_balance || 10000;
   const accountCreatedAt = accountMeta?.createdAt?.toDate?.() || new Date("2024-01-01");
 
@@ -393,7 +398,7 @@ export default function Dashboard({ currentAccount }) {
     return ((allTimePnL / initialBalance) * 100).toFixed(1);
   }, [allTimePnL, initialBalance]);
 
-  // ─── Quick Analysis Modal Content (unchanged) ────────────────
+  // ─── Quick Analysis Modal Content ────────────────────────────
   const quickAnalysisContent = () => {
     if (!monthlyTrades.length) {
       return (
@@ -418,10 +423,12 @@ export default function Dashboard({ currentAccount }) {
         </div>
       );
     }
+
     const winRate = Number(monthlyStats.winRate);
     const totalPnL = Number(monthlyStats.totalPnL);
     const avgRR = Number(monthlyStats.avgRR);
     const totalTrades = monthlyStats.totalTrades;
+
     return (
       <div className="space-y-8">
         {/* Performance Snapshot */}
@@ -444,6 +451,7 @@ export default function Dashboard({ currentAccount }) {
                 : "Needs attention — focus on high-probability entries"}
             </div>
           </div>
+
           <div className="p-6 bg-gray-900/70 rounded-2xl border border-gray-700 shadow-inner">
             <div className="text-sm text-gray-400 mb-2">Net Result</div>
             <div
@@ -462,6 +470,7 @@ export default function Dashboard({ currentAccount }) {
               {totalPnL >= 0 ? "Positive month — manage greed" : "Drawdown — tighten risk now"}
             </div>
           </div>
+
           <div className="p-6 bg-gray-900/70 rounded-2xl border border-gray-700 shadow-inner">
             <div className="text-sm text-gray-400 mb-2">Average R:R</div>
             <div className="text-4xl font-bold text-purple-300">{avgRR}</div>
@@ -489,7 +498,7 @@ export default function Dashboard({ currentAccount }) {
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-amber-400 mt-1 shrink-0" size={18} />
                 <p>
-                  Sample size still small ({totalTrades} trades). Aim for at least 20–30 trades before drawing strong conclusions about strategy effectiveness.
+                  Sample size still small ({totalTrades} trades). Aim for at least 20–30 trades before drawing strong conclusions.
                 </p>
               </div>
             )}
@@ -497,7 +506,7 @@ export default function Dashboard({ currentAccount }) {
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-rose-400 mt-1 shrink-0" size={18} />
                 <p>
-                  Win rate below 50% — be extra selective this week. Only take A+ setups that match your proven edge. Avoid revenge or FOMO trades.
+                  Win rate below 50% — be extra selective this week. Only take A+ setups.
                 </p>
               </div>
             )}
@@ -505,33 +514,48 @@ export default function Dashboard({ currentAccount }) {
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-amber-400 mt-1 shrink-0" size={18} />
                 <p>
-                  Average reward:risk is low ({avgRR}). Focus on trades with minimum 1:2.5 or better. Avoid break-even or 1:1 targets unless extremely high probability.
+                  Average reward:risk is low ({avgRR}). Focus on trades with minimum 1:2.5.
                 </p>
               </div>
             )}
             <div className="flex items-start gap-3">
               <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
-              <p>
-                Review your last 5 losing trades in detail. Look for one repeating mistake (entry timing, sizing, stop placement, emotion). Fix that pattern first.
-              </p>
+              <p>Review your last 5 losing trades in detail. Fix one repeating mistake.</p>
             </div>
             <div className="flex items-start gap-3">
               <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
-              <p>
-                Maintain risk at ≤1% per trade until win rate consistently exceeds 55%. Protect capital while you refine your edge.
-              </p>
+              <p>Maintain risk at ≤1% per trade until win rate exceeds 55%.</p>
             </div>
             <div className="flex items-start gap-3">
               <CheckCircle className="text-emerald-400 mt-1 shrink-0" size={18} />
-              <p>
-                Journal every trade’s emotion and confidence level (1–10). Patterns in psychology often explain results more than technicals.
-              </p>
+              <p>Journal every trade’s emotion and confidence level (1–10).</p>
             </div>
           </div>
         </div>
       </div>
     );
   };
+
+  // If no account is selected, show a message
+  if (!currentAccount) {
+    return (
+      <div className={`min-h-screen w-full p-8 flex items-center justify-center ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
+        <Card className="p-8 max-w-md text-center bg-white/80 dark:bg-gray-800/60 backdrop-blur-md">
+          <AlertCircle size={48} className="mx-auto text-amber-500 mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">No Account Selected</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Please create or select an account from the sidebar to view your dashboard.
+          </p>
+          <button
+            onClick={() => {/* Could open account creation modal via parent, but sidebar handles it */}}
+            className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+          >
+            Create Account
+          </button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className={`relative min-h-screen w-full p-4 sm:p-6 lg:p-8 text-gray-100 ${isDark ? "bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950" : "bg-gradient-to-br from-gray-50 via-white to-gray-100"}`}>
@@ -546,6 +570,7 @@ export default function Dashboard({ currentAccount }) {
               {format(viewDate, "MMMM yyyy")} • {currentAccount?.name || "Account"}
             </p>
           </div>
+
           <button
             onClick={() => setShowQuickAnalysis(true)}
             className="flex items-center gap-2.5 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition-all duration-200"
@@ -555,12 +580,13 @@ export default function Dashboard({ currentAccount }) {
           </button>
         </div>
 
-        {/* Account Overview Card (updated with real data) */}
+        {/* Account Overview Card */}
         <Card className="p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
           <h3 className="text-lg font-semibold mb-5 flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <DollarSign className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
             Account Overview
           </h3>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Total PnL (All Time)</div>
@@ -572,12 +598,14 @@ export default function Dashboard({ currentAccount }) {
                 {allTimePnL >= 0 ? "+" : ""}${Math.abs(allTimePnL)}
               </div>
             </div>
+
             <div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Starting Balance</div>
               <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
                 ${initialBalance.toLocaleString()}
               </div>
             </div>
+
             <div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Account Growth</div>
               <div
@@ -588,6 +616,7 @@ export default function Dashboard({ currentAccount }) {
                 {accountGrowth}%
               </div>
             </div>
+
             <div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Created</div>
               <div className="text-xl font-medium text-gray-700 dark:text-gray-300 mt-1">
@@ -608,7 +637,7 @@ export default function Dashboard({ currentAccount }) {
         </div>
       ) : (
         <>
-          {/* Stats Cards (including new Consistency Score) */}
+          {/* Stats Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-5 mb-8">
             {[
               {
@@ -694,7 +723,7 @@ export default function Dashboard({ currentAccount }) {
             ))}
           </div>
 
-          {/* Recent Trades + Weekly Breakdown (new card) */}
+          {/* Recent Trades + Weekly Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
             <Card className="lg:col-span-2 p-5 lg:p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg hover:shadow-xl transition-all duration-200">
               <div className="flex items-center justify-between mb-5">
@@ -709,6 +738,7 @@ export default function Dashboard({ currentAccount }) {
                   View All →
                 </button>
               </div>
+
               {recentTrades.length === 0 ? (
                 <div className="text-center py-12 rounded-xl bg-white/50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400">
                   No recent trades yet
@@ -753,12 +783,13 @@ export default function Dashboard({ currentAccount }) {
               )}
             </Card>
 
-            {/* Weekly Breakdown Card (new) */}
+            {/* Weekly Breakdown Card */}
             <Card className="p-5 lg:p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg hover:shadow-xl transition-all duration-200">
               <h3 className="text-lg font-semibold mb-5 flex items-center gap-2 text-gray-900 dark:text-gray-100">
                 <BarChart3 className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
                 Weekly Performance
               </h3>
+
               <div className="space-y-4">
                 {weeklyBreakdown.map((week, idx) => (
                   <div key={idx} className="flex items-center justify-between text-sm">
@@ -777,6 +808,7 @@ export default function Dashboard({ currentAccount }) {
                   <div className="text-center py-6 text-gray-500">No trades in last 4 weeks</div>
                 )}
               </div>
+
               <div className="mt-6 pt-4 border-t border-gray-700">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-400">Current Streak</span>
@@ -796,7 +828,7 @@ export default function Dashboard({ currentAccount }) {
             </Card>
           </div>
 
-          {/* Calendar (unchanged) */}
+          {/* Calendar */}
           <Card className="p-5 lg:p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
               <div className="flex items-center gap-3">
@@ -835,6 +867,7 @@ export default function Dashboard({ currentAccount }) {
                 Tap a day to view trades
               </span>
             </div>
+
             <div className="overflow-x-auto">
               <div className="grid grid-cols-8 min-w-[640px] gap-1.5 sm:gap-2">
                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Wk"].map((d) => (
@@ -845,6 +878,7 @@ export default function Dashboard({ currentAccount }) {
                     {d}
                   </div>
                 ))}
+
                 {calendarWeeks.map((week, wi) => {
                   const wSum = weekSummary(week);
                   return (
@@ -854,6 +888,7 @@ export default function Dashboard({ currentAccount }) {
                         const isCur = isSameMonth(dayObj, viewDate);
                         const pnl = ds?.pnl || 0;
                         const intensity = Math.min(Math.abs(pnl) / 1500, 0.6);
+
                         return (
                           <div
                             key={di}
@@ -903,6 +938,7 @@ export default function Dashboard({ currentAccount }) {
                           </div>
                         );
                       })}
+
                       {/* Weekly Summary */}
                       <div
                         className={`aspect-square rounded-xl p-1.5 sm:p-2 flex flex-col justify-center items-center border ${
