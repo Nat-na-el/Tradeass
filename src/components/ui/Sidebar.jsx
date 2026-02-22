@@ -16,14 +16,14 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useTheme } from "../../Theme-provider";
-// ─── Firebase (added for account creation) ─────────────────────────
+// Firebase imports added for account creation
 import { db, auth } from "../../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function Sidebar({
   open,
   setOpen,
-  accounts,
+  accounts = [],                // default to empty array
   currentAccount,
   onSwitchAccount,
   onCreateAccount,
@@ -164,31 +164,37 @@ export default function Sidebar({
           {/* ACCOUNT DROPDOWN */}
           {open && isAccountDropdownOpen && (
             <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
-              {accounts.map((account) => (
-                <button
-                  key={account.id}
-                  onClick={() => {
-                    onSwitchAccount(account.id);
-                    setIsAccountDropdownOpen(false);
-                  }}
-                  className={`w-full text-left p-2 rounded text-xs font-normal flex justify-between items-center ${
-                    currentAccount?.id === account.id
-                      ? "bg-gray-700 text-white border-l-2 border-gray-300"
-                      : "text-gray-400 hover:bg-gray-700 hover:text-white"
-                  }`}
-                >
-                  <span>{account.name}</span>
-                  {account.starting_balance && (
-                    <span className="text-[10px] text-gray-500">
-                      ${account.starting_balance.toLocaleString()}
-                    </span>
-                  )}
-                </button>
-              ))}
+              {accounts.length === 0 ? (
+                <div className="text-center p-2 text-xs text-gray-500">
+                  No accounts yet
+                </div>
+              ) : (
+                accounts.map((account) => (
+                  <button
+                    key={account.id}
+                    onClick={() => {
+                      onSwitchAccount(account.id);
+                      setIsAccountDropdownOpen(false);
+                    }}
+                    className={`w-full text-left p-2 rounded text-xs font-normal flex justify-between items-center ${
+                      currentAccount?.id === account.id
+                        ? "bg-gray-700 text-white border-l-2 border-gray-300"
+                        : "text-gray-400 hover:bg-gray-700 hover:text-white"
+                    }`}
+                  >
+                    <span>{account.name}</span>
+                    {account.starting_balance && (
+                      <span className="text-[10px] text-gray-500">
+                        ${account.starting_balance.toLocaleString()}
+                      </span>
+                    )}
+                  </button>
+                ))
+              )}
 
               <div className="pt-2 border-t border-gray-600 space-y-1">
                 <button
-                  onClick={createNewAccount} // replaced inline function
+                  onClick={createNewAccount}
                   className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
                 >
                   + New Account
