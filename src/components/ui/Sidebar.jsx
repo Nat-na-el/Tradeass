@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Menu,
@@ -35,6 +35,39 @@ export default function Sidebar({
   const [newAccountName, setNewAccountName] = useState("");
   const [newAccountBalance, setNewAccountBalance] = useState("");
   const [createError, setCreateError] = useState("");
+  const hasAutoCreated = useRef(false); // prevent multiple creations
+
+  // ─── Automatically create a default account if none exist ─────────
+  useEffect(() => {
+    const createDefaultAccount = async () => {
+      const user = auth.currentUser;
+      if (!user || accounts.length > 0 || hasAutoCreated.current) return;
+
+      hasAutoCreated.current = true;
+      try {
+        const defaultAccount = {
+          name: "Main Account",
+          starting_balance: 10000,
+          current_balance: 10000,
+          createdAt: serverTimestamp(),
+          createdBy: user.uid,
+        };
+
+        const docRef = await addDoc(
+          collection(db, "users", user.uid, "accounts"),
+          defaultAccount
+        );
+
+        const newAccount = { id: docRef.id, ...defaultAccount };
+        onCreateAccount(newAccount);
+        onSwitchAccount(docRef.id);
+      } catch (error) {
+        console.error("Error creating default account:", error);
+      }
+    };
+
+    createDefaultAccount();
+  }, [accounts, onCreateAccount, onSwitchAccount]);
 
   const toggleSidebar = () => {
     setOpen((prev) => !prev);
@@ -47,7 +80,7 @@ export default function Sidebar({
     }
   };
 
-  // ─── Create new account (triggered from modal) ─────────────────────
+  // ─── Create new account from modal ────────────────────────────────
   const handleCreateAccount = async () => {
     const user = auth.currentUser;
     if (!user) {
