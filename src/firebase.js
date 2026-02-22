@@ -14,14 +14,14 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Auth exports (you already had these)
+// Auth exports
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Firestore – the database
+// Firestore
 export const db = getFirestore(app);
 
-// Enable offline persistence (saves work even if internet drops, syncs later)
+// Enable offline persistence
 enableIndexedDbPersistence(db)
   .catch((err) => {
     if (err.code === 'failed-precondition') {
