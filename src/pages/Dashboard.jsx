@@ -1,4 +1,3 @@
-// src/pages/Dashboard.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import {
   addMonths,
@@ -10,7 +9,6 @@ import {
   eachDayOfInterval,
   format,
   isSameMonth,
-  parseISO,
 } from "date-fns";
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
@@ -29,7 +27,6 @@ import {
   ChevronRight,
   ArrowUpRight,
   ArrowDownRight,
-  Calendar,
 } from "lucide-react";
 import { db, auth } from "../firebase";
 import { collection, getDocs, query, orderBy, doc, getDoc } from "firebase/firestore";
@@ -66,7 +63,7 @@ export default function Dashboard({ currentAccount }) {
   const [viewDate, setViewDate] = useState(new Date());
   const [showQuickAnalysis, setShowQuickAnalysis] = useState(false);
 
-  // Fetch account info + trades from selected account
+  // Fetch account metadata + trades from selected account subcollection
   const refreshData = async () => {
     const user = auth.currentUser;
     if (!user || !currentAccount?.id) {
@@ -81,16 +78,18 @@ export default function Dashboard({ currentAccount }) {
     setError(null);
 
     try {
-      // Get account metadata (starting balance, createdAt)
+      // Get account document (starting balance, createdAt)
       const accountRef = doc(db, "users", user.uid, "accounts", currentAccount.id);
       const accountSnap = await getDoc(accountRef);
       if (accountSnap.exists()) {
         setAccountData(accountSnap.data());
       }
 
-      // Get trades from this account's subcollection
-      const tradesRef = collection(db, "users", user.uid, "accounts", currentAccount.id, "trades");
-      const q = query(tradesRef, orderBy("createdAt", "desc"));
+      // Get trades from subcollection
+      const q = query(
+        collection(db, "users", user.uid, "accounts", currentAccount.id, "trades"),
+        orderBy("createdAt", "desc")
+      );
       const snapshot = await getDocs(q);
       const loadedTrades = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -101,23 +100,13 @@ export default function Dashboard({ currentAccount }) {
       console.error("❌ Dashboard fetch error:", err);
       setError("Failed to load trades. " + (err.message || "Check connection"));
       setTrades([]);
-      setAccountData(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        refreshData();
-      } else {
-        setTrades([]);
-        setAccountData(null);
-        setLoading(false);
-      }
-    });
-    return () => unsubscribe();
+    refreshData();
   }, [currentAccount]);
 
   // ─── Calendar month navigation ───────────────────────────────
@@ -249,20 +238,24 @@ export default function Dashboard({ currentAccount }) {
     };
   }, [monthlyTrades]);
 
-  // ─── Consistency Score (highest winning day / total profit × 100) ────────
+  // ─── Consistency Score ───────────────────────────────────────
+  // Highest winning day PNL divided by total monthly profit × 100
   const consistencyScore = useMemo(() => {
     if (!monthlyTrades.length) return 0;
+
     const dailyPnL = {};
     monthlyTrades.forEach((t) => {
       const day = format(new Date(t.date), "yyyy-MM-dd");
       dailyPnL[day] = (dailyPnL[day] || 0) + Number(t.pnl || 0);
     });
+
     const totalProfit = monthlyTrades.reduce((sum, t) => sum + Math.max(0, Number(t.pnl || 0)), 0);
     const highestWinningDay = Math.max(...Object.values(dailyPnL), 0);
+
     return totalProfit > 0 ? ((highestWinningDay / totalProfit) * 100).toFixed(1) : 0;
   }, [monthlyTrades]);
 
-  // ─── Weekly wins / losses / breakeven ────────────────────────
+  // ─── Weekly wins / losses / breakeven stats ──────────────────
   const weeklyStats = useMemo(() => {
     const weekly = {};
     trades.forEach((t) => {
@@ -353,7 +346,7 @@ export default function Dashboard({ currentAccount }) {
   }, [trades]);
 
   // ─── Account info from Firestore ─────────────────────────────
-  const accountCreatedAt = accountData?.createdAt?.toDate?.() || new Date("2024-01-01");
+  const accountCreatedAt = accountData?.createdAt?.toDate?.() || new Date();
   const startingBalance = accountData?.starting_balance || 10000;
 
   // ─── Account growth percentage ───────────────────────────────
