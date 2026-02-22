@@ -16,14 +16,14 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useTheme } from "../../Theme-provider";
-// Firebase imports
-import { db, auth } from "../firebase";
+// Firebase imports added for account creation
+import { db, auth } from "../../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function Sidebar({
   open,
   setOpen,
-  accounts = [], // default to empty array
+  accounts = [],                // default to empty array
   currentAccount,
   onSwitchAccount,
   onCreateAccount,
@@ -53,7 +53,7 @@ export default function Sidebar({
     }
 
     const name = prompt("Enter account name (e.g. Live EURUSD, Demo NAS100):");
-    if (!name || !name.trim()) return;
+    if (!name) return;
 
     const balanceStr = prompt("Enter starting balance (USD):");
     if (!balanceStr) return;
@@ -66,9 +66,9 @@ export default function Sidebar({
 
     try {
       const accountData = {
-        name: name.trim(),
+        name,
         starting_balance: startingBalance,
-        current_balance: startingBalance,
+        current_balance: startingBalance, // same as starting
         createdAt: serverTimestamp(),
         createdBy: user.uid,
       };
@@ -78,15 +78,10 @@ export default function Sidebar({
         accountData
       );
 
-      const newAccount = {
-        id: docRef.id,
-        ...accountData,
-      };
-
-      // Notify parent component (updates accounts list and switches)
+      const newAccount = { id: docRef.id, ...accountData };
+      // Call parent handlers to update UI
       onCreateAccount(newAccount);
       onSwitchAccount(docRef.id);
-
       setIsAccountDropdownOpen(false);
     } catch (error) {
       console.error("Error creating account:", error);
@@ -108,9 +103,9 @@ export default function Sidebar({
 
   return (
     <div
-      className={`fixed left-8 top-20 h-[calc(100vh-2.5rem)]
-        bg-amber-50 dark:bg-gray-900
-        border-r border-amber-200/80 dark:border-gray-800
+      className={`fixed left-8 top-20 h-[calc(100vh-2.5rem)] 
+        bg-amber-50 dark:bg-gray-900 
+        border-r border-amber-200/80 dark:border-gray-800 
         shadow-2xl transition-all duration-300 z-[1000] ${
           open ? "w-48" : "w-16"
         } ${theme === "dark" ? "dark" : ""}`}
