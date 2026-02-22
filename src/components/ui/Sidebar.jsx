@@ -1,3 +1,4 @@
+// src/components/ui/Sidebar.jsx
 import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
@@ -16,7 +17,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useTheme } from "../../Theme-provider";
-import { db, auth } from "../firebase";
+import { db, auth } from "../firebase"; // ← correct path: src/components/ui/ → ../firebase.js
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function Sidebar({
@@ -76,10 +77,11 @@ export default function Sidebar({
         current_balance: startingBalance,
       };
 
+      // Let parent component know we created a new one
       onCreateAccount?.(newAccount);
       onSwitchAccount(docRef.id);
 
-      alert(`Account "${name}" created with starting balance $${startingBalance}!`);
+      alert(`Account "${name}" created successfully!\nStarting balance: $${startingBalance}`);
     } catch (err) {
       console.error("Account creation failed:", err);
       alert("Failed to create account: " + err.message);
@@ -142,7 +144,7 @@ export default function Sidebar({
                   </div>
                   {currentAccount?.starting_balance !== undefined && (
                     <div className="text-xs text-gray-400">
-                      Start: ${currentAccount.starting_balance.toLocaleString()}
+                      ${currentAccount.starting_balance.toLocaleString()}
                     </div>
                   )}
                 </div>
@@ -175,7 +177,7 @@ export default function Sidebar({
                 >
                   {account.name}
                   {account.starting_balance !== undefined && (
-                    <span className="text-gray-500 ml-2">
+                    <span className="ml-2 text-gray-500">
                       (${account.starting_balance.toLocaleString()})
                     </span>
                   )}
