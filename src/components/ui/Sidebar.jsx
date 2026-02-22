@@ -1,4 +1,3 @@
-// src/components/ui/Sidebar.jsx
 import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
@@ -17,6 +16,9 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useTheme } from "../../Theme-provider";
+// ─── Firebase (added for account creation) ─────────────────────────
+import { db, auth } from "../../firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function Sidebar({
   open,
@@ -42,6 +44,51 @@ export default function Sidebar({
     }
   };
 
+  // ─── New Account Creation ─────────────────────────────────────────
+  const createNewAccount = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      alert("You must be logged in to create an account.");
+      return;
+    }
+
+    const name = prompt("Enter account name (e.g. Live EURUSD, Demo NAS100):");
+    if (!name) return;
+
+    const balanceStr = prompt("Enter starting balance (USD):");
+    if (!balanceStr) return;
+
+    const startingBalance = parseFloat(balanceStr);
+    if (isNaN(startingBalance) || startingBalance <= 0) {
+      alert("Starting balance must be a positive number.");
+      return;
+    }
+
+    try {
+      const accountData = {
+        name,
+        starting_balance: startingBalance,
+        current_balance: startingBalance, // same as starting
+        createdAt: serverTimestamp(),
+        createdBy: user.uid,
+      };
+
+      const docRef = await addDoc(
+        collection(db, "users", user.uid, "accounts"),
+        accountData
+      );
+
+      const newAccount = { id: docRef.id, ...accountData };
+      // Call parent handlers to update UI
+      onCreateAccount(newAccount);
+      onSwitchAccount(docRef.id);
+      setIsAccountDropdownOpen(false);
+    } catch (error) {
+      console.error("Error creating account:", error);
+      alert("Failed to create account. Please try again.");
+    }
+  };
+
   const navItems = [
     { to: "/", icon: Home, label: "Dashboard" },
     { to: "/journal", icon: BookOpen, label: "Daily Journal" },
@@ -56,9 +103,9 @@ export default function Sidebar({
 
   return (
     <div
-      className={`fixed left-8 top-20 h-[calc(100vh-2.5rem)]
-        bg-amber-50 dark:bg-gray-900
-        border-r border-amber-200/80 dark:border-gray-800
+      className={`fixed left-8 top-20 h-[calc(100vh-2.5rem)] 
+        bg-amber-50 dark:bg-gray-900 
+        border-r border-amber-200/80 dark:border-gray-800 
         shadow-2xl transition-all duration-300 z-[1000] ${
           open ? "w-48" : "w-16"
         } ${theme === "dark" ? "dark" : ""}`}
@@ -96,6 +143,12 @@ export default function Sidebar({
                   <div className="text-xs font-medium text-gray-200">
                     {currentAccount?.name || "Account"}
                   </div>
+                  {/* Show starting balance when sidebar is open */}
+                  {currentAccount?.starting_balance && (
+                    <div className="text-[10px] text-gray-400">
+                      ${currentAccount.starting_balance.toLocaleString()}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center">
                   {isAccountDropdownOpen ? (
@@ -118,21 +171,24 @@ export default function Sidebar({
                     onSwitchAccount(account.id);
                     setIsAccountDropdownOpen(false);
                   }}
-                  className={`w-full text-left p-2 rounded text-xs font-normal ${
+                  className={`w-full text-left p-2 rounded text-xs font-normal flex justify-between items-center ${
                     currentAccount?.id === account.id
                       ? "bg-gray-700 text-white border-l-2 border-gray-300"
                       : "text-gray-400 hover:bg-gray-700 hover:text-white"
                   }`}
                 >
-                  {account.name}
+                  <span>{account.name}</span>
+                  {account.starting_balance && (
+                    <span className="text-[10px] text-gray-500">
+                      ${account.starting_balance.toLocaleString()}
+                    </span>
+                  )}
                 </button>
               ))}
+
               <div className="pt-2 border-t border-gray-600 space-y-1">
                 <button
-                  onClick={() => {
-                    onCreateAccount();
-                    setIsAccountDropdownOpen(false);
-                  }}
+                  onClick={createNewAccount} // replaced inline function
                   className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
                 >
                   + New Account
