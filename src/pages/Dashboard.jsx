@@ -1,3 +1,4 @@
+// src/pages/Dashboard.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import {
   addMonths,
@@ -9,6 +10,7 @@ import {
   eachDayOfInterval,
   format,
   isSameMonth,
+  parseISO,
 } from "date-fns";
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
@@ -63,7 +65,7 @@ export default function Dashboard({ currentAccount }) {
   const [viewDate, setViewDate] = useState(new Date());
   const [showQuickAnalysis, setShowQuickAnalysis] = useState(false);
 
-  // Fetch account metadata + trades from selected account subcollection
+  // Fetch trades from Firestore for selected account
   const refreshData = async () => {
     const user = auth.currentUser;
     if (!user || !currentAccount?.id) {
@@ -78,18 +80,18 @@ export default function Dashboard({ currentAccount }) {
     setError(null);
 
     try {
-      // Get account document (starting balance, createdAt)
+      // Get account metadata (starting balance, createdAt)
       const accountRef = doc(db, "users", user.uid, "accounts", currentAccount.id);
       const accountSnap = await getDoc(accountRef);
       if (accountSnap.exists()) {
         setAccountData(accountSnap.data());
+      } else {
+        setAccountData(null);
       }
 
-      // Get trades from subcollection
-      const q = query(
-        collection(db, "users", user.uid, "accounts", currentAccount.id, "trades"),
-        orderBy("createdAt", "desc")
-      );
+      // Get trades from account subcollection
+      const tradesRef = collection(accountRef, "trades");
+      const q = query(tradesRef, orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
       const loadedTrades = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -100,13 +102,23 @@ export default function Dashboard({ currentAccount }) {
       console.error("❌ Dashboard fetch error:", err);
       setError("Failed to load trades. " + (err.message || "Check connection"));
       setTrades([]);
+      setAccountData(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    refreshData();
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        refreshData();
+      } else {
+        setTrades([]);
+        setAccountData(null);
+        setLoading(false);
+      }
+    });
+    return () => unsubscribe();
   }, [currentAccount]);
 
   // ─── Calendar month navigation ───────────────────────────────
@@ -238,8 +250,7 @@ export default function Dashboard({ currentAccount }) {
     };
   }, [monthlyTrades]);
 
-  // ─── Consistency Score ───────────────────────────────────────
-  // Highest winning day PNL divided by total monthly profit × 100
+  // ─── Consistency Score (highest winning day PNL / total profit × 100%) ────────
   const consistencyScore = useMemo(() => {
     if (!monthlyTrades.length) return 0;
 
@@ -255,7 +266,7 @@ export default function Dashboard({ currentAccount }) {
     return totalProfit > 0 ? ((highestWinningDay / totalProfit) * 100).toFixed(1) : 0;
   }, [monthlyTrades]);
 
-  // ─── Weekly wins / losses / breakeven stats ──────────────────
+  // ─── Weekly wins / losses / breakeven ────────────────────────
   const weeklyStats = useMemo(() => {
     const weekly = {};
     trades.forEach((t) => {
@@ -346,7 +357,7 @@ export default function Dashboard({ currentAccount }) {
   }, [trades]);
 
   // ─── Account info from Firestore ─────────────────────────────
-  const accountCreatedAt = accountData?.createdAt?.toDate?.() || new Date();
+  const accountCreatedAt = accountData?.createdAt?.toDate?.() || new Date("2024-01-01");
   const startingBalance = accountData?.starting_balance || 10000;
 
   // ─── Account growth percentage ───────────────────────────────
@@ -651,7 +662,7 @@ export default function Dashboard({ currentAccount }) {
             ))}
           </div>
 
-          {/* Weekly Performance Breakdown */}
+          {/* Weekly Stats Card */}
           <Card className="p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg mb-8">
             <h3 className="text-lg font-semibold mb-5 flex items-center gap-2">
               <Calendar className="h-5 w-5 text-indigo-500" />
