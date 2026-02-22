@@ -1,5 +1,4 @@
-// src/components/Sidebar.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Menu,
@@ -16,9 +15,9 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { useTheme } from "../Theme-provider";
+import { useTheme } from "../../Theme-provider";
 import { db, auth } from "../firebase";
-import { collection, addDoc, getDocs, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function Sidebar({
   open,
@@ -32,11 +31,6 @@ export default function Sidebar({
   const { theme } = useTheme();
   const navigate = useNavigate();
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
-  const [localAccounts, setLocalAccounts] = useState(accounts || []);
-
-  useEffect(() => {
-    setLocalAccounts(accounts || []);
-  }, [accounts]);
 
   const toggleSidebar = () => {
     setOpen((prev) => !prev);
@@ -50,13 +44,13 @@ export default function Sidebar({
   };
 
   const createNewAccount = async () => {
-    const name = prompt("Enter account name (e.g., Live EURUSD, Demo NAS100):");
-    if (!name) return;
+    const name = prompt("Enter account name (e.g. Live EURUSD, Demo NAS100):");
+    if (!name || !name.trim()) return;
 
     const balanceStr = prompt("Enter starting balance (USD):");
     const startingBalance = parseFloat(balanceStr);
     if (isNaN(startingBalance) || startingBalance < 0) {
-      alert("Please enter a valid starting balance.");
+      alert("Please enter a valid positive number for starting balance.");
       return;
     }
 
@@ -82,9 +76,11 @@ export default function Sidebar({
         current_balance: startingBalance,
       };
 
-      setLocalAccounts((prev) => [...prev, newAccount]);
+      // Call parent callback to refresh accounts list
+      onCreateAccount?.(newAccount);
       onSwitchAccount(docRef.id);
-      alert(`Account "${name}" created successfully with $${startingBalance} starting balance!`);
+
+      alert(`Account "${name}" created with starting balance $${startingBalance}!`);
     } catch (err) {
       console.error("Account creation failed:", err);
       alert("Failed to create account: " + err.message);
@@ -105,55 +101,57 @@ export default function Sidebar({
 
   return (
     <div
-      className={`fixed left-0 top-0 h-full 
+      className={`fixed left-8 top-20 h-[calc(100vh-2.5rem)] 
         bg-amber-50 dark:bg-gray-900 
         border-r border-amber-200/80 dark:border-gray-800 
         shadow-2xl transition-all duration-300 z-[1000] ${
-          open ? "w-64" : "w-16"
+          open ? "w-48" : "w-16"
         } ${theme === "dark" ? "dark" : ""}`}
       style={{
-        minWidth: open ? "16rem" : "4rem",
+        minWidth: open ? "12rem" : "4rem",
         boxShadow: "4px 0 10px rgba(0, 0, 0, 0.3)",
       }}
     >
       <div className="flex flex-col h-full">
-        <div className="flex items-center justify-end p-4">
+        <div className="flex items-center justify-end p-3 pt-2">
           <button
             onClick={toggleSidebar}
             className="p-2 rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 transition-all duration-300 flex items-center justify-center"
           >
-            {open ? <X size={20} /> : <Menu size={20} />}
+            {open ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
 
         {/* ACCOUNT SECTION */}
-        <div className="p-4 border-b border-amber-200/80 dark:border-gray-700">
+        <div className="p-3 border-b border-amber-200/80 dark:border-gray-700">
           <div
-            className={`flex items-center gap-3 p-3 rounded cursor-pointer hover:bg-gray-800/50 transition-colors ${
+            className={`flex items-center gap-2 p-2 rounded cursor-pointer ${
               open ? "justify-between" : "justify-center"
             }`}
             onClick={toggleAccountDropdown}
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
-              <span className="text-white text-sm font-bold">
+            <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-bold">
                 {currentAccount?.name?.charAt(0) || "A"}
               </span>
             </div>
             {open && (
               <>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-200 truncate">
-                    {currentAccount?.name || "Select Account"}
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium text-gray-200">
+                    {currentAccount?.name || "Account"}
                   </div>
-                  <div className="text-xs text-gray-400">
-                    ${currentAccount?.current_balance?.toLocaleString() || "0.00"}
-                  </div>
+                  {currentAccount?.starting_balance !== undefined && (
+                    <div className="text-xs text-gray-400">
+                      Start: ${currentAccount.starting_balance.toLocaleString()}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center">
                   {isAccountDropdownOpen ? (
-                    <ChevronUp size={16} className="text-gray-400" />
+                    <ChevronUp size={14} className="text-gray-400" />
                   ) : (
-                    <ChevronDown size={16} className="text-gray-400" />
+                    <ChevronDown size={14} className="text-gray-400" />
                   )}
                 </div>
               </>
@@ -162,43 +160,45 @@ export default function Sidebar({
 
           {/* ACCOUNT DROPDOWN */}
           {open && isAccountDropdownOpen && (
-            <div className="mt-3 space-y-2 max-h-64 overflow-y-auto">
-              {localAccounts.map((account) => (
+            <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+              {accounts.map((account) => (
                 <button
                   key={account.id}
                   onClick={() => {
                     onSwitchAccount(account.id);
                     setIsAccountDropdownOpen(false);
                   }}
-                  className={`w-full text-left p-3 rounded-lg text-sm transition-all ${
+                  className={`w-full text-left p-2 rounded text-xs font-normal ${
                     currentAccount?.id === account.id
-                      ? "bg-indigo-600/20 border-l-4 border-indigo-500 text-white"
-                      : "text-gray-300 hover:bg-gray-800/50 hover:text-white"
+                      ? "bg-gray-700 text-white border-l-2 border-gray-300"
+                      : "text-gray-400 hover:bg-gray-700 hover:text-white"
                   }`}
                 >
-                  <div className="font-medium truncate">{account.name}</div>
-                  <div className="text-xs opacity-70">
-                    ${account.current_balance?.toLocaleString() || "0.00"}
-                  </div>
+                  {account.name}
+                  {account.starting_balance !== undefined && (
+                    <span className="text-gray-500 ml-2">
+                      (${account.starting_balance.toLocaleString()})
+                    </span>
+                  )}
                 </button>
               ))}
 
-              <div className="pt-4 border-t border-gray-700 space-y-2">
+              <div className="pt-2 border-t border-gray-600 space-y-1">
                 <button
                   onClick={() => {
                     createNewAccount();
                     setIsAccountDropdownOpen(false);
                   }}
-                  className="w-full p-3 text-sm bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg shadow-md transition-all"
+                  className="w-full p-2 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-colors"
                 >
-                  + Create New Account
+                  + New Account
                 </button>
                 <button
                   onClick={() => {
                     onShowManage();
                     setIsAccountDropdownOpen(false);
                   }}
-                  className="w-full p-3 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all"
+                  className="w-full p-2 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
                 >
                   Manage Accounts
                 </button>
@@ -208,21 +208,27 @@ export default function Sidebar({
         </div>
 
         {/* NAVIGATION ITEMS */}
-        <nav className="flex-1 flex flex-col gap-1 p-4 overflow-y-auto">
-          {navItems.map((item) => (
+        <nav className="flex-1 flex flex-col gap-1 p-3 overflow-y-auto">
+          {navItems.map((item, index) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 p-3 rounded-lg text-sm transition-all duration-300 ${
+                `flex items-center gap-3 p-2 rounded-lg text-sm transition-all duration-300 ${
                   isActive
-                    ? "bg-indigo-600/20 text-white border-l-4 border-indigo-500 shadow-inner"
-                    : "text-gray-300 hover:bg-gray-800/50 hover:text-white"
-                } ${open ? "justify-start pl-4" : "justify-center"}`
+                    ? "bg-gray-700 text-white shadow-inner"
+                    : "text-gray-400 hover:bg-gray-700 hover:text-white"
+                } ${
+                  open ? "justify-start pl-3" : "justify-center items-center"
+                }`.trim()
               }
+              style={{
+                marginBottom: index < navItems.length - 1 ? "2px" : "0",
+                minHeight: "48px",
+              }}
             >
               <item.icon
-                size={open ? 22 : 26}
+                size={open ? 20 : 24}
                 className={`flex-shrink-0 ${open ? "mr-3" : "mx-auto"}`}
               />
               {open && (
