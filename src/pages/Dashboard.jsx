@@ -29,6 +29,7 @@ import {
   ChevronRight,
   ArrowUpRight,
   ArrowDownRight,
+  Calendar,
 } from "lucide-react";
 import { db, auth } from "../firebase";
 import { collection, getDocs, query, orderBy, doc, getDoc } from "firebase/firestore";
@@ -65,7 +66,7 @@ export default function Dashboard({ currentAccount }) {
   const [viewDate, setViewDate] = useState(new Date());
   const [showQuickAnalysis, setShowQuickAnalysis] = useState(false);
 
-  // Fetch trades from Firestore for selected account
+  // Fetch account info + trades from selected account
   const refreshData = async () => {
     const user = auth.currentUser;
     if (!user || !currentAccount?.id) {
@@ -85,12 +86,10 @@ export default function Dashboard({ currentAccount }) {
       const accountSnap = await getDoc(accountRef);
       if (accountSnap.exists()) {
         setAccountData(accountSnap.data());
-      } else {
-        setAccountData(null);
       }
 
-      // Get trades from account subcollection
-      const tradesRef = collection(accountRef, "trades");
+      // Get trades from this account's subcollection
+      const tradesRef = collection(db, "users", user.uid, "accounts", currentAccount.id, "trades");
       const q = query(tradesRef, orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
       const loadedTrades = snapshot.docs.map((doc) => ({
@@ -250,19 +249,16 @@ export default function Dashboard({ currentAccount }) {
     };
   }, [monthlyTrades]);
 
-  // ─── Consistency Score (highest winning day PNL / total profit × 100%) ────────
+  // ─── Consistency Score (highest winning day / total profit × 100) ────────
   const consistencyScore = useMemo(() => {
     if (!monthlyTrades.length) return 0;
-
     const dailyPnL = {};
     monthlyTrades.forEach((t) => {
       const day = format(new Date(t.date), "yyyy-MM-dd");
       dailyPnL[day] = (dailyPnL[day] || 0) + Number(t.pnl || 0);
     });
-
     const totalProfit = monthlyTrades.reduce((sum, t) => sum + Math.max(0, Number(t.pnl || 0)), 0);
     const highestWinningDay = Math.max(...Object.values(dailyPnL), 0);
-
     return totalProfit > 0 ? ((highestWinningDay / totalProfit) * 100).toFixed(1) : 0;
   }, [monthlyTrades]);
 
@@ -662,7 +658,7 @@ export default function Dashboard({ currentAccount }) {
             ))}
           </div>
 
-          {/* Weekly Stats Card */}
+          {/* Weekly Performance Breakdown */}
           <Card className="p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg mb-8">
             <h3 className="text-lg font-semibold mb-5 flex items-center gap-2">
               <Calendar className="h-5 w-5 text-indigo-500" />
