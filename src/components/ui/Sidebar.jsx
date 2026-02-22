@@ -16,7 +16,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useTheme } from "../../Theme-provider";
-import { db, auth } from "../firebase";
+import { db, auth } from "../firebase";  // ← FIXED: correct relative import
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function Sidebar({
@@ -76,7 +76,7 @@ export default function Sidebar({
         current_balance: startingBalance,
       };
 
-      // Call parent callback to refresh accounts list
+      // Notify parent to refresh accounts list
       onCreateAccount?.(newAccount);
       onSwitchAccount(docRef.id);
 
