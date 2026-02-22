@@ -1,4 +1,4 @@
-
+// src/components/ui/Sidebar.jsx
 import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
@@ -56,9 +56,9 @@ export default function Sidebar({
 
   return (
     <div
-      className={`fixed left-8 top-20 h-[calc(100vh-2.5rem)] 
-        bg-amber-50 dark:bg-gray-900 
-        border-r border-amber-200/80 dark:border-gray-800 
+      className={`fixed left-8 top-20 h-[calc(100vh-2.5rem)]
+        bg-amber-50 dark:bg-gray-900
+        border-r border-amber-200/80 dark:border-gray-800
         shadow-2xl transition-all duration-300 z-[1000] ${
           open ? "w-48" : "w-16"
         } ${theme === "dark" ? "dark" : ""}`}
@@ -127,7 +127,6 @@ export default function Sidebar({
                   {account.name}
                 </button>
               ))}
-
               <div className="pt-2 border-t border-gray-600 space-y-1">
                 <button
                   onClick={() => {
