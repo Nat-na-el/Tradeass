@@ -17,7 +17,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
-import { db, auth, writeBatch } from "../firebase"; // ← writeBatch added here
+import { db, auth, writeBatch } from "../firebase";
 import {
   collection,
   getDocs,
@@ -62,7 +62,7 @@ export default function Trades({ currentAccount }) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tradeToDelete, setTradeToDelete] = useState(null);
 
-  // Fetch trades from the current account's subcollection
+  // Fetch trades from current account's subcollection
   const refreshTrades = async () => {
     const user = auth.currentUser;
     if (!user) {
@@ -104,12 +104,10 @@ export default function Trades({ currentAccount }) {
     }
   };
 
-  // Re-fetch on auth change or account switch
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((u) => {
-      if (u) {
-        refreshTrades();
-      } else {
+      if (u) refreshTrades();
+      else {
         setTrades([]);
         setLoading(false);
       }
@@ -164,7 +162,7 @@ export default function Trades({ currentAccount }) {
     };
   }, [filteredTrades]);
 
-  // Open edit modal
+  // Edit modal handlers
   const openEdit = (trade) => {
     setEditingTrade(trade);
     setEditForm({
@@ -181,7 +179,6 @@ export default function Trades({ currentAccount }) {
     setEditModalOpen(true);
   };
 
-  // Save edited trade
   const saveEdit = async (e) => {
     e.preventDefault();
     if (!editingTrade) return;
@@ -278,7 +275,7 @@ export default function Trades({ currentAccount }) {
     link.click();
   };
 
-  // One-time migration of old flat trades to current account
+  // One-time migration button handler
   const migrateOldTrades = async () => {
     const user = auth.currentUser;
     if (!user || !currentAccount?.id) {
@@ -299,7 +296,7 @@ export default function Trades({ currentAccount }) {
           collection(db, "users", user.uid, "accounts", currentAccount.id, "trades")
         );
         batch.set(newRef, oldDoc.data());
-        batch.delete(oldDoc.ref); // clean up old location
+        batch.delete(oldDoc.ref);
       });
 
       await batch.commit();
@@ -349,7 +346,7 @@ export default function Trades({ currentAccount }) {
         </div>
       </div>
 
-      {/* Feedback message */}
+      {/* Feedback */}
       {message.text && (
         <div
           className={`mb-6 p-4 rounded-xl flex items-center gap-3 shadow-sm ${
@@ -396,7 +393,7 @@ export default function Trades({ currentAccount }) {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
               >
                 <X size={18} />
               </button>
@@ -456,7 +453,7 @@ export default function Trades({ currentAccount }) {
         </Card>
       </div>
 
-      {/* No trades – prominent call-to-action */}
+      {/* No trades state – prominent call-to-action */}
       {loading ? (
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
@@ -475,7 +472,7 @@ export default function Trades({ currentAccount }) {
           <div className="flex flex-col sm:flex-row justify-center gap-6">
             <Button
               size="lg"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg px-10 py-7 text-xl font-medium"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg px-10 py-7 text-xl"
               onClick={() => navigate("/trades/new")}
             >
               <PlusCircle size={24} className="mr-3" />
@@ -484,7 +481,7 @@ export default function Trades({ currentAccount }) {
             <Button
               size="lg"
               variant="outline"
-              className="border-2 border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10 px-10 py-7 text-xl font-medium"
+              className="border-2 border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10 px-10 py-7 text-xl"
               onClick={() => navigate("/journal")}
             >
               <BookOpen size={24} className="mr-3" />
@@ -601,6 +598,7 @@ export default function Trades({ currentAccount }) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left column */}
                 <div className="space-y-4">
                   <div>
                     <div className="text-sm opacity-70 mb-1">Pair & Direction</div>
@@ -644,6 +642,7 @@ export default function Trades({ currentAccount }) {
                   </div>
                 </div>
 
+                {/* Right column */}
                 <div className="space-y-4">
                   <div>
                     <div className="text-sm opacity-70 mb-1">Profit & Loss</div>
@@ -842,7 +841,7 @@ export default function Trades({ currentAccount }) {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation */}
       {deleteModalOpen && (
         <DeleteConfirmModal
           isOpen={deleteModalOpen}
