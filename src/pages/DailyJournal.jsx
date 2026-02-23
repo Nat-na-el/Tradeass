@@ -1,4 +1,3 @@
-// src/pages/DailyJournal.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import { Trash2, Plus, Loader2, Check, AlertCircle, FileText, X, Edit } from "lucide-react";
 import { useTheme } from "../Theme-provider";
@@ -22,7 +21,6 @@ import {
 
 const formatDateInput = (d = new Date()) => new Date(d).toISOString().slice(0, 10);
 
-// Format number with commas (1,234.56)
 const formatNumber = (num) => {
   if (!num && num !== 0) return "";
   return Number(num).toLocaleString("en-US", {
@@ -40,19 +38,19 @@ const COMMON_ASSETS = [
   "BABA", "PDD", "JD", "SHOP", "SQ", "PYPL", "DIS", "BA", "GE", "F"
 ];
 
-export default function DailyJournal() {
+export default function DailyJournal({ currentAccount }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
-  const [trades, setTrades] = useState([]);
+  const [entries, setEntries] = useState([]); // renamed from trades to entries for clarity
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [tradeToDelete, setTradeToDelete] = useState(null);
-  const [editingTrade, setEditingTrade] = useState(null);
+  const [entryToDelete, setEntryToDelete] = useState(null);
+  const [editingEntry, setEditingEntry] = useState(null);
 
   const [form, setForm] = useState({
     date: formatDateInput(),
@@ -69,46 +67,63 @@ export default function DailyJournal() {
     lotSize: "0.1",
   });
 
-  const refreshTrades = async () => {
+  // Fetch journal entries from current account subcollection
+  const refreshEntries = async () => {
     const user = auth.currentUser;
     if (!user) {
-      setTrades([]);
+      setEntries([]);
       setLoading(false);
-      setError("Please log in to see your trades");
+      setError("Please log in to see your journal entries");
       return;
     }
+
+    if (!currentAccount?.id) {
+      setEntries([]);
+      setLoading(false);
+      setError("No account selected. Please choose one from the sidebar.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
     try {
-      const q = query(
-        collection(db, "users", user.uid, "trades"),
-        orderBy("createdAt", "desc")
+      const entriesRef = collection(
+        db,
+        "users",
+        user.uid,
+        "accounts",
+        currentAccount.id,
+        "journals"  // ← changed to "journals" subcollection
       );
+      const q = query(entriesRef, orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
-      const loadedTrades = snapshot.docs.map((doc) => ({
+      const loaded = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-      setTrades(loadedTrades);
+      setEntries(loaded);
     } catch (err) {
-      console.error("❌ Firestore fetch error:", err);
-      setError("Could not load trades. " + (err.message || ""));
+      console.error("❌ Journal fetch error:", err);
+      setError("Could not load journal entries. " + (err.message || ""));
+      setEntries([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Re-fetch when auth state or currentAccount changes
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        refreshTrades();
+        refreshEntries();
       } else {
-        setTrades([]);
+        setEntries([]);
         setLoading(false);
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [currentAccount]);
 
   // Auto-calculate PnL and R:R
   useEffect(() => {
@@ -143,20 +158,22 @@ export default function DailyJournal() {
     }));
   }, [form.entry, form.exit, form.stopLoss, form.takeProfit, form.lotSize, form.leverage, form.direction]);
 
-  const todayTrades = useMemo(() => {
+  // Today's entries
+  const todayEntries = useMemo(() => {
     const today = formatDateInput();
-    return trades.filter((t) => t.date === today);
-  }, [trades]);
+    return entries.filter((e) => e.date === today);
+  }, [entries]);
 
+  // Metrics for today
   const metrics = useMemo(() => {
-    if (!todayTrades.length) {
+    if (!todayEntries.length) {
       return { net: 0, wins: 0, losses: 0, winRate: 0, avgPnL: 0 };
     }
-    const total = todayTrades.length;
+    const total = todayEntries.length;
     let net = 0;
     let wins = 0;
-    todayTrades.forEach((t) => {
-      const pnl = Number(t.pnl || 0);
+    todayEntries.forEach((e) => {
+      const pnl = Number(e.pnl || 0);
       net += pnl;
       if (pnl > 0) wins++;
     });
@@ -169,17 +186,20 @@ export default function DailyJournal() {
       winRate,
       avgPnL: avgPnL.toFixed(2),
     };
-  }, [todayTrades]);
+  }, [todayEntries]);
 
-  const saveTrade = async (e) => {
+  // Save entry (add or update)
+  const saveEntry = async (e) => {
     if (e) e.preventDefault();
     setError(null);
     setSuccessMsg(null);
+
     const user = auth.currentUser;
-    if (!user) {
-      setError("Please log in first");
+    if (!user || !currentAccount?.id) {
+      setError("Please log in and select an account");
       return;
     }
+
     const payload = {
       date: form.date || formatDateInput(),
       pair: form.pair?.toUpperCase() || "",
@@ -194,20 +214,33 @@ export default function DailyJournal() {
       lotSize: Number(form.lotSize) || 0.1,
       notes: form.notes || "",
     };
+
     try {
-      if (editingTrade) {
-        const tradeRef = doc(db, "users", user.uid, "trades", editingTrade.id);
-        await updateDoc(tradeRef, payload);
-        setSuccessMsg("Trade updated successfully!");
+      if (editingEntry) {
+        const entryRef = doc(
+          db,
+          "users",
+          user.uid,
+          "accounts",
+          currentAccount.id,
+          "journals",
+          editingEntry.id
+        );
+        await updateDoc(entryRef, payload);
+        setSuccessMsg("Entry updated successfully!");
       } else {
-        await addDoc(collection(db, "users", user.uid, "trades"), {
-          ...payload,
-          createdAt: serverTimestamp(),
-        });
-        setSuccessMsg("Trade added successfully!");
+        await addDoc(
+          collection(db, "users", user.uid, "accounts", currentAccount.id, "journals"),
+          {
+            ...payload,
+            createdAt: serverTimestamp(),
+          }
+        );
+        setSuccessMsg("Entry added successfully!");
       }
+
       setModalOpen(false);
-      setEditingTrade(null);
+      setEditingEntry(null);
       setForm({
         date: formatDateInput(),
         pair: "",
@@ -222,41 +255,51 @@ export default function DailyJournal() {
         leverage: "100",
         lotSize: "0.1",
       });
-      await refreshTrades();
+
+      await refreshEntries();
     } catch (err) {
       console.error("Save error:", err);
-      setError("Failed to save trade: " + err.message);
+      setError("Failed to save entry: " + err.message);
     }
   };
 
-  const deleteTrade = async (id) => {
+  // Delete single entry
+  const deleteEntry = async (id) => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user || !currentAccount?.id) return;
+
     try {
-      await deleteDoc(doc(db, "users", user.uid, "trades", id));
-      setSuccessMsg("Trade deleted successfully");
-      await refreshTrades();
+      await deleteDoc(
+        doc(db, "users", user.uid, "accounts", currentAccount.id, "journals", id)
+      );
+      setSuccessMsg("Entry deleted successfully");
+      await refreshEntries();
     } catch (err) {
       console.error("Delete failed:", err);
-      setError("Failed to delete trade");
+      setError("Failed to delete entry");
     }
+
     setDeleteModalOpen(false);
-    setTradeToDelete(null);
+    setEntryToDelete(null);
   };
 
-  const clearTodayTrades = async () => {
+  // Optional: clear all today's entries
+  const clearTodayEntries = async () => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user || !currentAccount?.id) return;
+
     try {
-      const batch = todayTrades.map((t) =>
-        deleteDoc(doc(db, "users", user.uid, "trades", t.id))
+      const batchPromises = todayEntries.map((e) =>
+        deleteDoc(
+          doc(db, "users", user.uid, "accounts", currentAccount.id, "journals", e.id)
+        )
       );
-      await Promise.all(batch);
-      setSuccessMsg("Today's trades cleared successfully");
-      await refreshTrades();
+      await Promise.all(batchPromises);
+      setSuccessMsg("Today's entries cleared successfully");
+      await refreshEntries();
     } catch (err) {
       console.error("Batch delete failed:", err);
-      setError("Failed to clear trades");
+      setError("Failed to clear entries");
     }
     setDeleteModalOpen(false);
   };
@@ -273,7 +316,7 @@ export default function DailyJournal() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-              Daily Journal
+              Daily Journal {currentAccount ? `– ${currentAccount.name}` : ""}
             </h1>
             <p className="text-sm sm:text-base mt-1 opacity-80">
               Log trades with automatic PnL & R:R calculation
@@ -282,7 +325,7 @@ export default function DailyJournal() {
           <Button
             onClick={() => {
               setModalOpen(true);
-              setEditingTrade(null);
+              setEditingEntry(null);
               setForm({
                 date: formatDateInput(),
                 pair: "",
@@ -300,7 +343,7 @@ export default function DailyJournal() {
             }}
             className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white shadow-md py-5 sm:py-4 text-base"
           >
-            <Plus size={18} className="mr-2" /> Add Trade
+            <Plus size={18} className="mr-2" /> Add Entry
           </Button>
         </div>
 
@@ -340,32 +383,36 @@ export default function DailyJournal() {
           </Card>
         </div>
 
-        {/* Trades List */}
+        {/* Entries List */}
         {loading ? (
           <div className="flex justify-center items-center py-20">
             <Loader2 className="animate-spin h-12 w-12 text-indigo-500" />
           </div>
         ) : error ? (
           <div className="text-center py-16 text-rose-400">{error}</div>
-        ) : todayTrades.length === 0 ? (
+        ) : todayEntries.length === 0 ? (
           <Card className="p-6 sm:p-8 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
-            <p className="text-lg sm:text-xl font-medium opacity-70 mb-3">No trades logged today</p>
-            <p className="text-sm opacity-60 mb-5">Add your first trade to start tracking performance</p>
+            <p className="text-lg sm:text-xl font-medium opacity-70 mb-3">
+              No entries logged today in {currentAccount?.name || "this account"}
+            </p>
+            <p className="text-sm opacity-60 mb-5">
+              Add your first journal entry to start tracking
+            </p>
             <Button
               onClick={() => {
                 setModalOpen(true);
-                setEditingTrade(null);
+                setEditingEntry(null);
               }}
               className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700"
             >
-              <Plus size={18} className="mr-2" /> Log First Trade
+              <Plus size={18} className="mr-2" /> Log First Entry
             </Button>
           </Card>
         ) : (
           <div className="space-y-4">
-            {todayTrades.map((trade) => (
+            {todayEntries.map((entry) => (
               <Card
-                key={trade.id}
+                key={entry.id}
                 className="p-4 sm:p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md hover:shadow-xl transition-all duration-200 group"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -373,63 +420,65 @@ export default function DailyJournal() {
                     <div className="flex items-center gap-3 mb-2">
                       <div
                         className={`w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold shadow-sm flex-shrink-0 ${
-                          Number(trade.pnl || 0) >= 0
+                          Number(entry.pnl || 0) >= 0
                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                             : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
                         }`}
                       >
-                        {trade.pair?.slice(0, 2) || "?"}
+                        {entry.pair?.slice(0, 2) || "?"}
                       </div>
                       <div className="min-w-0">
                         <div className="font-semibold text-base sm:text-lg truncate">
-                          {trade.pair || "—"} • {trade.direction || "—"}
+                          {entry.pair || "—"} • {entry.direction || "—"}
                         </div>
                         <div className="text-xs sm:text-sm opacity-70 flex flex-wrap gap-2 mt-1">
-                          <span>Lot: {trade.lotSize || "—"}</span>
-                          <span>Leverage: {trade.leverage || "—"}:1</span>
-                          {trade.rr && <span>R:R {trade.rr}</span>}
+                          <span>Lot: {entry.lotSize || "—"}</span>
+                          <span>Leverage: {entry.leverage || "—"}:1</span>
+                          {entry.rr && <span>R:R {entry.rr}</span>}
                         </div>
                       </div>
                     </div>
-                    {trade.notes && (
+                    {entry.notes && (
                       <div className="text-xs sm:text-sm opacity-80 line-clamp-2 mt-1">
                         <FileText size={14} className="inline mr-1" />
-                        {trade.notes}
+                        {entry.notes}
                       </div>
                     )}
                   </div>
+
                   <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-6">
                     <div className="text-right min-w-[100px]">
                       <div
                         className={`text-xl sm:text-2xl font-bold ${
-                          Number(trade.pnl || 0) >= 0
+                          Number(entry.pnl || 0) >= 0
                             ? "text-emerald-700 dark:text-emerald-500"
                             : "text-rose-700 dark:text-rose-500"
                         }`}
                       >
-                        {Number(trade.pnl || 0) >= 0 ? "+" : "-"}${formatNumber(Math.abs(Number(trade.pnl || 0)))}
+                        {Number(entry.pnl || 0) >= 0 ? "+" : "-"}${formatNumber(Math.abs(Number(entry.pnl || 0)))}
                       </div>
-                      {trade.rr && <div className="text-xs opacity-70">R:R {trade.rr}</div>}
+                      {entry.rr && <div className="text-xs opacity-70">R:R {entry.rr}</div>}
                     </div>
+
                     <div className="flex gap-2">
                       <Button
                         size="icon"
                         variant="outline"
                         onClick={() => {
-                          setEditingTrade(trade);
+                          setEditingEntry(entry);
                           setForm({
-                            date: trade.date || formatDateInput(),
-                            pair: trade.pair || "",
-                            direction: trade.direction || "Long",
-                            entry: trade.entry?.toString() || "",
-                            exit: trade.exit?.toString() || "",
-                            stopLoss: trade.stopLoss?.toString() || "",
-                            takeProfit: trade.takeProfit?.toString() || "",
-                            notes: trade.notes || "",
-                            pnl: trade.pnl?.toString() || "",
-                            rr: trade.rr || "",
-                            leverage: trade.leverage?.toString() || "100",
-                            lotSize: trade.lotSize?.toString() || "0.1",
+                            date: entry.date || formatDateInput(),
+                            pair: entry.pair || "",
+                            direction: entry.direction || "Long",
+                            entry: entry.entry?.toString() || "",
+                            exit: entry.exit?.toString() || "",
+                            stopLoss: entry.stopLoss?.toString() || "",
+                            takeProfit: entry.takeProfit?.toString() || "",
+                            notes: entry.notes || "",
+                            pnl: entry.pnl?.toString() || "",
+                            rr: entry.rr || "",
+                            leverage: entry.leverage?.toString() || "100",
+                            lotSize: entry.lotSize?.toString() || "0.1",
                           });
                           setModalOpen(true);
                         }}
@@ -441,7 +490,7 @@ export default function DailyJournal() {
                         size="icon"
                         variant="destructive"
                         onClick={() => {
-                          setTradeToDelete(trade.id);
+                          setEntryToDelete(entry.id);
                           setDeleteModalOpen(true);
                         }}
                         className="h-10 w-10 rounded-lg"
@@ -456,7 +505,7 @@ export default function DailyJournal() {
           </div>
         )}
 
-        {/* Add / Edit Trade Modal */}
+        {/* Add / Edit Entry Modal */}
         {modalOpen && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4 overflow-y-auto">
             <div
@@ -466,14 +515,14 @@ export default function DailyJournal() {
               <div className="p-5 sm:p-6">
                 <div className="flex justify-between items-center mb-5">
                   <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-                    {editingTrade ? "Edit Trade" : "Add New Trade"}
+                    {editingEntry ? "Edit Entry" : "Add New Entry"}
                   </h2>
                   <Button variant="ghost" size="icon" onClick={() => setModalOpen(false)}>
                     <X size={24} />
                   </Button>
                 </div>
 
-                <form onSubmit={saveTrade} className="space-y-4 sm:space-y-5">
+                <form onSubmit={saveEntry} className="space-y-4 sm:space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label className="block text-sm font-medium mb-1.5">Date</Label>
@@ -639,7 +688,7 @@ export default function DailyJournal() {
                       type="submit"
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 py-6 sm:py-4 text-base"
                     >
-                      {editingTrade ? "Update Trade" : "Save Trade"}
+                      {editingEntry ? "Update Entry" : "Save Entry"}
                     </Button>
                     <Button
                       type="button"
@@ -662,14 +711,14 @@ export default function DailyJournal() {
             isOpen={deleteModalOpen}
             onClose={() => {
               setDeleteModalOpen(false);
-              setTradeToDelete(null);
+              setEntryToDelete(null);
             }}
-            onConfirm={tradeToDelete ? () => deleteTrade(tradeToDelete) : clearTodayTrades}
-            title={tradeToDelete ? "Delete Trade" : "Clear Today's Trades"}
+            onConfirm={entryToDelete ? () => deleteEntry(entryToDelete) : clearTodayEntries}
+            title={entryToDelete ? "Delete Entry" : "Clear Today's Entries"}
             message={
-              tradeToDelete
-                ? "Are you sure you want to delete this trade? This action cannot be undone."
-                : `Are you sure you want to delete all ${todayTrades.length} trades from today?`
+              entryToDelete
+                ? "Are you sure you want to delete this journal entry? This action cannot be undone."
+                : `Are you sure you want to delete all ${todayEntries.length} entries from today?`
             }
           />
         )}
