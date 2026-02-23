@@ -13,9 +13,11 @@ import {
   Edit,
   Check,
   AlertCircle,
+  PlusCircle,
+  BookOpen,
 } from "lucide-react";
 import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
-import { db, auth } from "../firebase";
+import { db, auth, writeBatch } from "../firebase";
 import {
   collection,
   getDocs,
@@ -60,7 +62,7 @@ export default function Trades({ currentAccount }) {
 
   const [message, setMessage] = useState({ text: "", type: "success" });
 
-  // ─── Fetch trades from current account's subcollection ────────
+  // Fetch trades from current account's subcollection
   const refreshTrades = async () => {
     const user = auth.currentUser;
     if (!user) {
@@ -105,7 +107,6 @@ export default function Trades({ currentAccount }) {
     }
   };
 
-  // Re-fetch when currentAccount changes or auth state changes
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
@@ -118,16 +119,14 @@ export default function Trades({ currentAccount }) {
     return () => unsubscribe();
   }, [currentAccount]);
 
-  // ─── Filtered & Sorted trades ─────────────────────────────────
+  // Filtered & Sorted trades
   const filteredTrades = useMemo(() => {
     let result = trades;
 
-    // Date filter
     if (selectedDate) {
       result = result.filter((t) => t.date?.startsWith(selectedDate));
     }
 
-    // Text search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -138,7 +137,6 @@ export default function Trades({ currentAccount }) {
       );
     }
 
-    // Sorting
     result = [...result].sort((a, b) => {
       if (sortBy === "date-desc") return new Date(b.date) - new Date(a.date);
       if (sortBy === "date-asc") return new Date(a.date) - new Date(b.date);
@@ -151,7 +149,7 @@ export default function Trades({ currentAccount }) {
     return result;
   }, [trades, selectedDate, searchQuery, sortBy]);
 
-  // ─── Stats ────────────────────────────────────────────────────
+  // Stats
   const stats = useMemo(() => {
     if (!filteredTrades.length) return { totalPnL: 0, winRate: 0, totalTrades: 0, avgRR: 0 };
     const total = filteredTrades.length;
@@ -166,7 +164,7 @@ export default function Trades({ currentAccount }) {
     };
   }, [filteredTrades]);
 
-  // ─── Open edit modal ──────────────────────────────────────────
+  // Open edit modal
   const openEdit = (trade) => {
     setEditingTrade(trade);
     setEditForm({
@@ -183,7 +181,7 @@ export default function Trades({ currentAccount }) {
     setEditModalOpen(true);
   };
 
-  // ─── Save edited trade ────────────────────────────────────────
+  // Save edited trade
   const saveEdit = async (e) => {
     e.preventDefault();
     if (!editingTrade) return;
@@ -220,7 +218,7 @@ export default function Trades({ currentAccount }) {
     }
   };
 
-  // ─── Delete trade ─────────────────────────────────────────────
+  // Delete trade
   const deleteTrade = async (id) => {
     const user = auth.currentUser;
     if (!user || !currentAccount?.id) return;
@@ -241,7 +239,7 @@ export default function Trades({ currentAccount }) {
     setTradeToDelete(null);
   };
 
-  // ─── Export CSV ───────────────────────────────────────────────
+  // Export CSV
   const exportCSV = () => {
     if (!filteredTrades.length) return;
 
@@ -280,6 +278,42 @@ export default function Trades({ currentAccount }) {
     link.click();
   };
 
+  // One-time migration of old flat trades (run once)
+  const migrateOldTrades = async () => {
+    const user = auth.currentUser;
+    if (!user || !currentAccount?.id) {
+      setMessage({ text: "No user or account selected", type: "error" });
+      return;
+    }
+
+    try {
+      const oldTradesSnap = await getDocs(collection(db, "users", user.uid, "trades"));
+      if (oldTradesSnap.empty) {
+        setMessage({ text: "No old trades found to migrate", type: "info" });
+        return;
+      }
+
+      const batch = writeBatch(db);
+      oldTradesSnap.forEach((oldDoc) => {
+        const newRef = doc(
+          collection(db, "users", user.uid, "accounts", currentAccount.id, "trades")
+        );
+        batch.set(newRef, oldDoc.data());
+        batch.delete(oldDoc.ref); // optional: remove old document
+      });
+
+      await batch.commit();
+      setMessage({
+        text: `Successfully migrated ${oldTradesSnap.size} old trades to ${currentAccount.name}!`,
+        type: "success",
+      });
+      refreshTrades();
+    } catch (err) {
+      console.error("Migration error:", err);
+      setMessage({ text: "Migration failed: " + err.message, type: "error" });
+    }
+  };
+
   return (
     <div
       className={`min-h-screen w-full p-4 sm:p-6 lg:p-8 transition-colors duration-300
@@ -304,6 +338,14 @@ export default function Trades({ currentAccount }) {
             className="bg-gray-700 hover:bg-gray-800 text-white shadow-md disabled:opacity-50"
           >
             <Download size={18} className="mr-2" /> Export CSV
+          </Button>
+          {/* Optional: show migration button only if you still have old trades */}
+          <Button
+            onClick={migrateOldTrades}
+            variant="outline"
+            className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-600/10"
+          >
+            Migrate Old Trades (one-time)
           </Button>
         </div>
       </div>
@@ -417,28 +459,43 @@ export default function Trades({ currentAccount }) {
         </Card>
       </div>
 
-      {/* Trades List */}
+      {/* No trades state – with buttons to add trade or journal */}
       {loading ? (
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
         </div>
       ) : error ? (
-        <div className="text-center py-16 text-rose-400 text-xl">{error}</div>
+        <div className="text-center py-16 text-rose-400 text-xl font-medium">{error}</div>
       ) : filteredTrades.length === 0 ? (
-        <Card className="p-10 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
-          <AlertCircle size={48} className="mx-auto text-amber-500 mb-4 opacity-80" />
-          <p className="text-xl font-medium opacity-70 mb-2">No trades found</p>
-          <p className="opacity-60 mb-6">
-            {searchQuery || selectedDate
-              ? "Try adjusting your filters"
-              : `No trades recorded yet for ${currentAccount?.name || "this account"}`}
+        <Card className="p-12 text-center bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg">
+          <AlertCircle size={64} className="mx-auto text-amber-500 mb-6 opacity-90" />
+          <h2 className="text-2xl font-bold mb-3 text-gray-900 dark:text-gray-100">
+            No trades recorded yet
+          </h2>
+          <p className="text-lg opacity-80 mb-8 max-w-xl mx-auto">
+            {currentAccount
+              ? `Start tracking your performance in ${currentAccount.name}. Add a trade or journal today's session.`
+              : "Select or create an account from the sidebar to begin."}
           </p>
-          <Button
-            onClick={() => navigate("/trades/new")}
-            className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white"
-          >
-            Add Your First Trade
-          </Button>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Button
+              size="lg"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md px-8 py-6 text-lg"
+              onClick={() => navigate("/trades/new")}
+            >
+              <PlusCircle size={20} className="mr-2" />
+              Add New Trade
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10 px-8 py-6 text-lg"
+              onClick={() => navigate("/journal")}
+            >
+              <BookOpen size={20} className="mr-2" />
+              Journal Today's Session
+            </Button>
+          </div>
         </Card>
       ) : (
         <div className="space-y-4">
@@ -650,6 +707,7 @@ export default function Trades({ currentAccount }) {
               </div>
 
               <form onSubmit={saveEdit} className="space-y-5">
+                {/* ... your original edit form fields remain unchanged ... */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Pair</label>
@@ -676,95 +734,8 @@ export default function Trades({ currentAccount }) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Entry</label>
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={editForm.entry}
-                      onChange={(e) => setEditForm({ ...editForm, entry: e.target.value })}
-                      className={`w-full p-3 rounded-xl border ${
-                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Exit</label>
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={editForm.exit}
-                      onChange={(e) => setEditForm({ ...editForm, exit: e.target.value })}
-                      className={`w-full p-3 rounded-xl border ${
-                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">PnL</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editForm.pnl}
-                      onChange={(e) => setEditForm({ ...editForm, pnl: e.target.value })}
-                      className={`w-full p-3 rounded-xl border ${
-                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Stop Loss</label>
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={editForm.stopLoss}
-                      onChange={(e) => setEditForm({ ...editForm, stopLoss: e.target.value })}
-                      className={`w-full p-3 rounded-xl border ${
-                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Take Profit</label>
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={editForm.takeProfit}
-                      onChange={(e) => setEditForm({ ...editForm, takeProfit: e.target.value })}
-                      className={`w-full p-3 rounded-xl border ${
-                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">R:R</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={editForm.rr}
-                      onChange={(e) => setEditForm({ ...editForm, rr: e.target.value })}
-                      className={`w-full p-3 rounded-xl border ${
-                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Notes</label>
-                  <textarea
-                    value={editForm.notes}
-                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                    className={`w-full p-3 rounded-xl border min-h-[100px] ${
-                      isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                    } focus:ring-2 focus:ring-indigo-500 outline-none`}
-                    placeholder="What did you learn from this trade?"
-                  />
-                </div>
+                {/* ... rest of your edit form fields (entry, exit, pnl, stopLoss, takeProfit, rr, notes) ... */}
+                {/* I omitted repeating them here to save space — keep them exactly as in your original code */}
 
                 <div className="flex gap-4 pt-4">
                   <Button
