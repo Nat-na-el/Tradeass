@@ -32,11 +32,13 @@ import {
 export default function Trades({ currentAccount }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const [message, setMessage] = useState({ text: "", type: "success" });
 
   const selectedDate = searchParams.get("date");
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,8 +61,6 @@ export default function Trades({ currentAccount }) {
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tradeToDelete, setTradeToDelete] = useState(null);
-
-  const [message, setMessage] = useState({ text: "", type: "success" });
 
   // Fetch trades from current account's subcollection
   const refreshTrades = async () => {
@@ -93,14 +93,11 @@ export default function Trades({ currentAccount }) {
       );
       const q = query(tradesRef, orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
-      const loadedTrades = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setTrades(loadedTrades);
+      const loaded = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setTrades(loaded);
     } catch (err) {
-      console.error("❌ Trades fetch error:", err);
-      setError("Failed to load trades: " + (err.message || "Check connection"));
+      console.error("Trades fetch failed:", err);
+      setError("Could not load trades. Please check your connection.");
       setTrades([]);
     } finally {
       setLoading(false);
@@ -108,20 +105,19 @@ export default function Trades({ currentAccount }) {
   };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        refreshTrades();
-      } else {
+    const unsubscribe = auth.onAuthStateChanged((u) => {
+      if (u) refreshTrades();
+      else {
         setTrades([]);
         setLoading(false);
       }
     });
-    return () => unsubscribe();
+    return unsubscribe;
   }, [currentAccount]);
 
-  // Filtered & Sorted trades
+  // Filtered + Sorted trades
   const filteredTrades = useMemo(() => {
-    let result = trades;
+    let result = [...trades];
 
     if (selectedDate) {
       result = result.filter((t) => t.date?.startsWith(selectedDate));
@@ -131,15 +127,15 @@ export default function Trades({ currentAccount }) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (t) =>
-          t.pair?.toLowerCase().includes(q) ||
-          t.notes?.toLowerCase().includes(q) ||
-          t.strategy?.toLowerCase().includes(q)
+          (t.pair || "").toLowerCase().includes(q) ||
+          (t.notes || "").toLowerCase().includes(q) ||
+          (t.strategy || "").toLowerCase().includes(q)
       );
     }
 
-    result = [...result].sort((a, b) => {
-      if (sortBy === "date-desc") return new Date(b.date) - new Date(a.date);
-      if (sortBy === "date-asc") return new Date(a.date) - new Date(b.date);
+    result.sort((a, b) => {
+      if (sortBy === "date-desc") return new Date(b.date || 0) - new Date(a.date || 0);
+      if (sortBy === "date-asc") return new Date(a.date || 0) - new Date(b.date || 0);
       if (sortBy === "pnl-desc") return Number(b.pnl || 0) - Number(a.pnl || 0);
       if (sortBy === "pnl-asc") return Number(a.pnl || 0) - Number(b.pnl || 0);
       if (sortBy === "pair") return (a.pair || "").localeCompare(b.pair || "");
@@ -149,9 +145,11 @@ export default function Trades({ currentAccount }) {
     return result;
   }, [trades, selectedDate, searchQuery, sortBy]);
 
-  // Stats
+  // Stats calculation
   const stats = useMemo(() => {
-    if (!filteredTrades.length) return { totalPnL: 0, winRate: 0, totalTrades: 0, avgRR: 0 };
+    if (!filteredTrades.length) {
+      return { totalPnL: 0, winRate: 0, totalTrades: 0, avgRR: 0 };
+    }
     const total = filteredTrades.length;
     const wins = filteredTrades.filter((t) => Number(t.pnl || 0) > 0).length;
     const totalPnL = filteredTrades.reduce((sum, t) => sum + Number(t.pnl || 0), 0);
@@ -164,7 +162,7 @@ export default function Trades({ currentAccount }) {
     };
   }, [filteredTrades]);
 
-  // Open edit modal
+  // Edit modal handlers
   const openEdit = (trade) => {
     setEditingTrade(trade);
     setEditForm({
@@ -181,7 +179,6 @@ export default function Trades({ currentAccount }) {
     setEditModalOpen(true);
   };
 
-  // Save edited trade
   const saveEdit = async (e) => {
     e.preventDefault();
     if (!editingTrade) return;
@@ -239,7 +236,7 @@ export default function Trades({ currentAccount }) {
     setTradeToDelete(null);
   };
 
-  // Export CSV
+  // Export to CSV
   const exportCSV = () => {
     if (!filteredTrades.length) return;
 
@@ -278,7 +275,7 @@ export default function Trades({ currentAccount }) {
     link.click();
   };
 
-  // One-time migration of old flat trades (run once)
+  // One-time migration button handler
   const migrateOldTrades = async () => {
     const user = auth.currentUser;
     if (!user || !currentAccount?.id) {
@@ -299,17 +296,17 @@ export default function Trades({ currentAccount }) {
           collection(db, "users", user.uid, "accounts", currentAccount.id, "trades")
         );
         batch.set(newRef, oldDoc.data());
-        batch.delete(oldDoc.ref); // optional: remove old document
+        batch.delete(oldDoc.ref);
       });
 
       await batch.commit();
       setMessage({
-        text: `Successfully migrated ${oldTradesSnap.size} old trades to ${currentAccount.name}!`,
+        text: `Migrated ${oldTradesSnap.size} old trades to ${currentAccount.name}!`,
         type: "success",
       });
-      refreshTrades();
+      await refreshTrades();
     } catch (err) {
-      console.error("Migration error:", err);
+      console.error("Migration failed:", err);
       setMessage({ text: "Migration failed: " + err.message, type: "error" });
     }
   };
@@ -328,7 +325,7 @@ export default function Trades({ currentAccount }) {
             {currentAccount ? `${currentAccount.name} – Trade History` : "Trade History"}
           </h1>
           <p className="text-sm sm:text-base mt-1 opacity-80">
-            View, analyze, and edit your executed trades {currentAccount ? `for ${currentAccount.name}` : ""}
+            Track and review your executed trades {currentAccount ? `for ${currentAccount.name}` : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -339,18 +336,17 @@ export default function Trades({ currentAccount }) {
           >
             <Download size={18} className="mr-2" /> Export CSV
           </Button>
-          {/* Optional: show migration button only if you still have old trades */}
           <Button
             onClick={migrateOldTrades}
             variant="outline"
-            className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-600/10"
+            className="border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10"
           >
             Migrate Old Trades (one-time)
           </Button>
         </div>
       </div>
 
-      {/* Feedback message */}
+      {/* Feedback */}
       {message.text && (
         <div
           className={`mb-6 p-4 rounded-xl flex items-center gap-3 shadow-sm ${
@@ -371,9 +367,7 @@ export default function Trades({ currentAccount }) {
           <input
             type="date"
             value={selectedDate || ""}
-            onChange={(e) =>
-              setSearchParams(e.target.value ? { date: e.target.value } : {})
-            }
+            onChange={(e) => setSearchParams(e.target.value ? { date: e.target.value } : {})}
             className={`w-full p-3.5 rounded-xl border transition-all ${
               isDark
                 ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
@@ -399,7 +393,7 @@ export default function Trades({ currentAccount }) {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
               >
                 <X size={18} />
               </button>
@@ -459,7 +453,7 @@ export default function Trades({ currentAccount }) {
         </Card>
       </div>
 
-      {/* No trades state – with buttons to add trade or journal */}
+      {/* No trades state – prominent call-to-action */}
       {loading ? (
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
@@ -467,32 +461,30 @@ export default function Trades({ currentAccount }) {
       ) : error ? (
         <div className="text-center py-16 text-rose-400 text-xl font-medium">{error}</div>
       ) : filteredTrades.length === 0 ? (
-        <Card className="p-12 text-center bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg">
-          <AlertCircle size={64} className="mx-auto text-amber-500 mb-6 opacity-90" />
-          <h2 className="text-2xl font-bold mb-3 text-gray-900 dark:text-gray-100">
-            No trades recorded yet
+        <Card className="p-12 text-center bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-w-2xl mx-auto">
+          <AlertCircle size={72} className="mx-auto text-amber-500 mb-6 opacity-90" />
+          <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+            No trades yet in {currentAccount?.name || "this account"}
           </h2>
-          <p className="text-lg opacity-80 mb-8 max-w-xl mx-auto">
-            {currentAccount
-              ? `Start tracking your performance in ${currentAccount.name}. Add a trade or journal today's session.`
-              : "Select or create an account from the sidebar to begin."}
+          <p className="text-lg opacity-80 mb-10 leading-relaxed">
+            Start building your performance history. Add a new trade or journal today's session to begin tracking.
           </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-center gap-6">
             <Button
               size="lg"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md px-8 py-6 text-lg"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg px-10 py-7 text-xl"
               onClick={() => navigate("/trades/new")}
             >
-              <PlusCircle size={20} className="mr-2" />
+              <PlusCircle size={24} className="mr-3" />
               Add New Trade
             </Button>
             <Button
               size="lg"
               variant="outline"
-              className="border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10 px-8 py-6 text-lg"
+              className="border-2 border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10 px-10 py-7 text-xl"
               onClick={() => navigate("/journal")}
             >
-              <BookOpen size={20} className="mr-2" />
+              <BookOpen size={24} className="mr-3" />
               Journal Today's Session
             </Button>
           </div>
@@ -606,6 +598,7 @@ export default function Trades({ currentAccount }) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left column */}
                 <div className="space-y-4">
                   <div>
                     <div className="text-sm opacity-70 mb-1">Pair & Direction</div>
@@ -649,6 +642,7 @@ export default function Trades({ currentAccount }) {
                   </div>
                 </div>
 
+                {/* Right column */}
                 <div className="space-y-4">
                   <div>
                     <div className="text-sm opacity-70 mb-1">Profit & Loss</div>
@@ -707,7 +701,6 @@ export default function Trades({ currentAccount }) {
               </div>
 
               <form onSubmit={saveEdit} className="space-y-5">
-                {/* ... your original edit form fields remain unchanged ... */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Pair</label>
@@ -734,8 +727,95 @@ export default function Trades({ currentAccount }) {
                   </div>
                 </div>
 
-                {/* ... rest of your edit form fields (entry, exit, pnl, stopLoss, takeProfit, rr, notes) ... */}
-                {/* I omitted repeating them here to save space — keep them exactly as in your original code */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Entry</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={editForm.entry}
+                      onChange={(e) => setEditForm({ ...editForm, entry: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Exit</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={editForm.exit}
+                      onChange={(e) => setEditForm({ ...editForm, exit: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">PnL</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editForm.pnl}
+                      onChange={(e) => setEditForm({ ...editForm, pnl: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Stop Loss</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={editForm.stopLoss}
+                      onChange={(e) => setEditForm({ ...editForm, stopLoss: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Take Profit</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={editForm.takeProfit}
+                      onChange={(e) => setEditForm({ ...editForm, takeProfit: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">R:R</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={editForm.rr}
+                      onChange={(e) => setEditForm({ ...editForm, rr: e.target.value })}
+                      className={`w-full p-3 rounded-xl border ${
+                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Notes</label>
+                  <textarea
+                    value={editForm.notes}
+                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                    className={`w-full p-3 rounded-xl border min-h-[100px] ${
+                      isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                    } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                    placeholder="What did you learn from this trade?"
+                  />
+                </div>
 
                 <div className="flex gap-4 pt-4">
                   <Button
