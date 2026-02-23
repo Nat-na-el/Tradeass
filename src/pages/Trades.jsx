@@ -8,8 +8,6 @@ import {
   Trash2,
   Eye,
   Download,
-  SortAsc,
-  SortDesc,
   X,
   FileText,
   Edit,
@@ -29,10 +27,9 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
-export default function Trades() {
+export default function Trades({ currentAccount }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -60,9 +57,10 @@ export default function Trades() {
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tradeToDelete, setTradeToDelete] = useState(null);
+
   const [message, setMessage] = useState({ text: "", type: "success" });
 
-  // Fetch trades from Firestore
+  // ─── Fetch trades from current account's subcollection ────────
   const refreshTrades = async () => {
     const user = auth.currentUser;
     if (!user) {
@@ -72,14 +70,26 @@ export default function Trades() {
       return;
     }
 
+    if (!currentAccount?.id) {
+      setTrades([]);
+      setLoading(false);
+      setError("No account selected. Please choose one from the sidebar.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const q = query(
-        collection(db, "users", user.uid, "trades"),
-        orderBy("createdAt", "desc")
+      const tradesRef = collection(
+        db,
+        "users",
+        user.uid,
+        "accounts",
+        currentAccount.id,
+        "trades"
       );
+      const q = query(tradesRef, orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
       const loadedTrades = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -95,6 +105,7 @@ export default function Trades() {
     }
   };
 
+  // Re-fetch when currentAccount changes or auth state changes
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
@@ -105,9 +116,9 @@ export default function Trades() {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [currentAccount]);
 
-  // Filtered & Sorted trades – now fully working
+  // ─── Filtered & Sorted trades ─────────────────────────────────
   const filteredTrades = useMemo(() => {
     let result = trades;
 
@@ -116,7 +127,7 @@ export default function Trades() {
       result = result.filter((t) => t.date?.startsWith(selectedDate));
     }
 
-    // Text search – works in real time
+    // Text search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -140,14 +151,13 @@ export default function Trades() {
     return result;
   }, [trades, selectedDate, searchQuery, sortBy]);
 
-  // Stats
+  // ─── Stats ────────────────────────────────────────────────────
   const stats = useMemo(() => {
     if (!filteredTrades.length) return { totalPnL: 0, winRate: 0, totalTrades: 0, avgRR: 0 };
     const total = filteredTrades.length;
     const wins = filteredTrades.filter((t) => Number(t.pnl || 0) > 0).length;
     const totalPnL = filteredTrades.reduce((sum, t) => sum + Number(t.pnl || 0), 0);
     const totalRR = filteredTrades.reduce((sum, t) => sum + Number(t.rr || 0), 0);
-
     return {
       totalPnL: totalPnL.toFixed(2),
       winRate: total ? Math.round((wins / total) * 100) : 0,
@@ -156,7 +166,7 @@ export default function Trades() {
     };
   }, [filteredTrades]);
 
-  // Open edit modal
+  // ─── Open edit modal ──────────────────────────────────────────
   const openEdit = (trade) => {
     setEditingTrade(trade);
     setEditForm({
@@ -173,19 +183,27 @@ export default function Trades() {
     setEditModalOpen(true);
   };
 
-  // Save edited trade
+  // ─── Save edited trade ────────────────────────────────────────
   const saveEdit = async (e) => {
     e.preventDefault();
     if (!editingTrade) return;
 
     const user = auth.currentUser;
-    if (!user) {
-      setMessage({ text: "You must be logged in", type: "error" });
+    if (!user || !currentAccount?.id) {
+      setMessage({ text: "No account or user logged in", type: "error" });
       return;
     }
 
     try {
-      const tradeRef = doc(db, "users", user.uid, "trades", editingTrade.id);
+      const tradeRef = doc(
+        db,
+        "users",
+        user.uid,
+        "accounts",
+        currentAccount.id,
+        "trades",
+        editingTrade.id
+      );
       await updateDoc(tradeRef, {
         ...editForm,
         updatedAt: serverTimestamp(),
@@ -193,7 +211,6 @@ export default function Trades() {
 
       setMessage({ text: "Trade updated successfully!", type: "success" });
       setTimeout(() => setMessage({ text: "", type: "success" }), 4000);
-
       setEditModalOpen(false);
       setEditingTrade(null);
       await refreshTrades();
@@ -203,13 +220,15 @@ export default function Trades() {
     }
   };
 
-  // Delete trade
+  // ─── Delete trade ─────────────────────────────────────────────
   const deleteTrade = async (id) => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user || !currentAccount?.id) return;
 
     try {
-      await deleteDoc(doc(db, "users", user.uid, "trades", id));
+      await deleteDoc(
+        doc(db, "users", user.uid, "accounts", currentAccount.id, "trades", id)
+      );
       setMessage({ text: "Trade deleted successfully", type: "success" });
       setTimeout(() => setMessage({ text: "", type: "success" }), 4000);
       await refreshTrades();
@@ -222,7 +241,7 @@ export default function Trades() {
     setTradeToDelete(null);
   };
 
-  // Export CSV
+  // ─── Export CSV ───────────────────────────────────────────────
   const exportCSV = () => {
     if (!filteredTrades.length) return;
 
@@ -253,12 +272,11 @@ export default function Trades() {
     ]);
 
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `forgex-trades-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `forgex-trades-${currentAccount?.name || "account"}-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
   };
 
@@ -273,10 +291,10 @@ export default function Trades() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 lg:mb-8 gap-4">
         <div>
           <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-            Forgex Trade History
+            {currentAccount ? `${currentAccount.name} – Trade History` : "Trade History"}
           </h1>
           <p className="text-sm sm:text-base mt-1 opacity-80">
-            View, analyze, and edit your executed trades
+            View, analyze, and edit your executed trades {currentAccount ? `for ${currentAccount.name}` : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -304,13 +322,10 @@ export default function Trades() {
         </div>
       )}
 
-      {/* Filters – icons removed, spacing improved, functionality fixed */}
+      {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {/* Date Filter */}
         <div>
-          <label className="block text-sm font-medium mb-2 opacity-80">
-            Filter by Date
-          </label>
+          <label className="block text-sm font-medium mb-2 opacity-80">Filter by Date</label>
           <input
             type="date"
             value={selectedDate || ""}
@@ -325,11 +340,8 @@ export default function Trades() {
           />
         </div>
 
-        {/* Search */}
         <div>
-          <label className="block text-sm font-medium mb-2 opacity-80">
-            Search Pair / Notes
-          </label>
+          <label className="block text-sm font-medium mb-2 opacity-80">Search Pair / Notes</label>
           <div className="relative">
             <input
               type="text"
@@ -353,11 +365,8 @@ export default function Trades() {
           </div>
         </div>
 
-        {/* Sort */}
         <div>
-          <label className="block text-sm font-medium mb-2 opacity-80">
-            Sort By
-          </label>
+          <label className="block text-sm font-medium mb-2 opacity-80">Sort By</label>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
@@ -414,15 +423,22 @@ export default function Trades() {
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
         </div>
       ) : error ? (
-        <div className="text-center py-16 text-rose-400">{error}</div>
+        <div className="text-center py-16 text-rose-400 text-xl">{error}</div>
       ) : filteredTrades.length === 0 ? (
         <Card className="p-10 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
+          <AlertCircle size={48} className="mx-auto text-amber-500 mb-4 opacity-80" />
           <p className="text-xl font-medium opacity-70 mb-2">No trades found</p>
           <p className="opacity-60 mb-6">
             {searchQuery || selectedDate
               ? "Try adjusting your filters"
-              : "You haven't added any trades yet"}
+              : `No trades recorded yet for ${currentAccount?.name || "this account"}`}
           </p>
+          <Button
+            onClick={() => navigate("/trades/new")}
+            className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            Add Your First Trade
+          </Button>
         </Card>
       ) : (
         <div className="space-y-4">
@@ -462,6 +478,7 @@ export default function Trades() {
                     </div>
                   )}
                 </div>
+
                 <div className="flex items-center gap-6 sm:gap-10">
                   <div className="text-right min-w-[100px]">
                     <div
@@ -474,6 +491,7 @@ export default function Trades() {
                     </div>
                     {trade.rr && <div className="text-xs opacity-70">R:R {trade.rr}</div>}
                   </div>
+
                   <div className="flex gap-2">
                     <Button
                       size="icon"
@@ -529,6 +547,7 @@ export default function Trades() {
                   <X size={24} />
                 </Button>
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
@@ -572,6 +591,7 @@ export default function Trades() {
                     </div>
                   </div>
                 </div>
+
                 <div className="space-y-4">
                   <div>
                     <div className="text-sm opacity-70 mb-1">Profit & Loss</div>
@@ -599,6 +619,7 @@ export default function Trades() {
                 </div>
               </div>
             </div>
+
             <div className="p-5 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-4">
               <Button variant="outline" onClick={() => openEdit(selectedTrade)}>
                 <Edit size={16} className="mr-2" /> Edit Trade
@@ -627,6 +648,7 @@ export default function Trades() {
                   <X size={24} />
                 </Button>
               </div>
+
               <form onSubmit={saveEdit} className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
