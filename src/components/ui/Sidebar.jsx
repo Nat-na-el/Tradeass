@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   Menu,
   X,
@@ -16,9 +16,8 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useTheme } from "../../Theme-provider";
-import { db, auth } from "../firebase";
-import { collection, addDoc, serverTimestamp, getDocs } from "firebase/firestore";
-
+import { db, auth } from "../../firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 export default function Sidebar({
   open,
   setOpen,
@@ -29,103 +28,92 @@ export default function Sidebar({
   onShowManage,
 }) {
   const { theme } = useTheme();
-  const isDark = theme === "dark";
-
+  const navigate = useNavigate();
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newBalance, setNewBalance] = useState("");
+  const [newAccountName, setNewAccountName] = useState("");
+  const [newAccountBalance, setNewAccountBalance] = useState("");
   const [createError, setCreateError] = useState("");
-  const [creating, setCreating] = useState(false);
-
-  const hasCheckedDefault = useRef(false);
-
-  // Auto-create default account on first login if none exist
+  const hasAutoCreated = useRef(false); // prevent multiple creations
+  // ─── Automatically create a default account if none exist ─────────
   useEffect(() => {
-    const checkAndCreateDefault = async () => {
+    const createDefaultAccount = async () => {
       const user = auth.currentUser;
-      if (!user || hasCheckedDefault.current || accounts.length > 0) return;
-
-      hasCheckedDefault.current = true;
-
+      if (!user || accounts.length > 0 || hasAutoCreated.current) return;
+      hasAutoCreated.current = true;
       try {
-        // Double-check in Firestore (in case state not yet updated)
-        const accsRef = collection(db, "users", user.uid, "accounts");
-        const snapshot = await getDocs(accsRef);
-        if (snapshot.empty) {
-          const defaultData = {
-            name: "Main Account",
-            starting_balance: 10000,
-            current_balance: 10000,
-            createdAt: serverTimestamp(),
-            createdBy: user.uid,
-          };
-
-          const docRef = await addDoc(accsRef, defaultData);
-          const newAcc = { id: docRef.id, ...defaultData };
-          onCreateAccount(newAcc);
-          onSwitchAccount(docRef.id);
-        }
-      } catch (err) {
-        console.error("Auto-create default failed:", err);
+        const defaultAccount = {
+          name: "Main Account",
+          starting_balance: 10000,
+          current_balance: 10000,
+          createdAt: serverTimestamp(),
+          createdBy: user.uid,
+        };
+        const docRef = await addDoc(
+          collection(db, "users", user.uid, "accounts"),
+          defaultAccount
+        );
+        const newAccount = { id: docRef.id, ...defaultAccount };
+        onCreateAccount(newAccount);
+        onSwitchAccount(docRef.id);
+      } catch (error) {
+        console.error("Error creating default account:", error);
       }
     };
-
-    checkAndCreateDefault();
+    createDefaultAccount();
   }, [accounts, onCreateAccount, onSwitchAccount]);
-
   const toggleSidebar = () => {
-    setOpen(!open);
+    setOpen((prev) => !prev);
     setIsAccountDropdownOpen(false);
   };
-
   const toggleAccountDropdown = () => {
-    if (open) setIsAccountDropdownOpen(!isAccountDropdownOpen);
+    if (open) {
+      setIsAccountDropdownOpen(!isAccountDropdownOpen);
+    }
   };
-
-  const handleCreate = async () => {
-    setCreateError("");
-    const name = newName.trim();
-    const balance = Number(newBalance);
-
-    if (!name) return setCreateError("Account name is required");
-    if (isNaN(balance) || balance <= 0) return setCreateError("Enter valid positive balance");
-
-    setCreating(true);
-
+  // ─── Create new account from modal ────────────────────────────────
+  const handleCreateAccount = async () => {
     const user = auth.currentUser;
     if (!user) {
-      setCreateError("You must be logged in");
-      setCreating(false);
+      alert("You must be logged in to create an account.");
       return;
     }
-
+    const name = newAccountName.trim();
+    if (!name) {
+      setCreateError("Account name is required.");
+      return;
+    }
+    const balance = parseFloat(newAccountBalance);
+    if (isNaN(balance) || balance <= 0) {
+      setCreateError("Starting balance must be a positive number.");
+      return;
+    }
     try {
-      const data = {
+      const accountData = {
         name,
         starting_balance: balance,
         current_balance: balance,
         createdAt: serverTimestamp(),
         createdBy: user.uid,
       };
-
-      const docRef = await addDoc(collection(db, "users", user.uid, "accounts"), data);
-      const newAcc = { id: docRef.id, ...data };
-
-      onCreateAccount(newAcc);
+      const docRef = await addDoc(
+        collection(db, "users", user.uid, "accounts"),
+        accountData
+      );
+      const newAccount = { id: docRef.id, ...accountData };
+      onCreateAccount(newAccount);
       onSwitchAccount(docRef.id);
-
-      setNewName("");
-      setNewBalance("");
+      // Reset and close modal
+      setNewAccountName("");
+      setNewAccountBalance("");
+      setCreateError("");
       setShowCreateModal(false);
-    } catch (err) {
-      console.error(err);
-      setCreateError("Failed to create account");
-    } finally {
-      setCreating(false);
+      setIsAccountDropdownOpen(false);
+    } catch (error) {
+      console.error("Error creating account:", error);
+      setCreateError("Failed to create account. Please try again.");
     }
   };
-
   const navItems = [
     { to: "/", icon: Home, label: "Dashboard" },
     { to: "/journal", icon: BookOpen, label: "Daily Journal" },
@@ -137,180 +125,201 @@ export default function Sidebar({
     { to: "/settings", icon: Settings, label: "Settings" },
     { to: "/backtest", icon: Calculator, label: "Backtest" },
   ];
-
   return (
     <>
       <div
-        className={`fixed left-8 top-20 h-[calc(100vh-5rem)] 
-          bg-amber-50 dark:bg-gray-900 
-          border-r border-amber-200/80 dark:border-gray-800 
-          shadow-2xl transition-all duration-300 z-40
-          ${open ? "w-64" : "w-20"}`}
-        style={{ minWidth: open ? "16rem" : "5rem" }}
+        className={`fixed left-8 top-20 h-[calc(100vh-2.5rem)]
+          bg-amber-50 dark:bg-gray-900
+          border-r border-amber-200/80 dark:border-gray-800
+          shadow-2xl transition-all duration-300 z-[1000] ${
+            open ? "w-48" : "w-16"
+          } ${theme === "dark" ? "dark" : ""}`}
+        style={{
+          minWidth: open ? "12rem" : "4rem",
+          boxShadow: "4px 0 10px rgba(0, 0, 0, 0.3)",
+        }}
       >
         <div className="flex flex-col h-full">
-          {/* Toggle */}
-          <div className="flex justify-end p-4">
+          <div className="flex items-center justify-end p-3 pt-2">
             <button
               onClick={toggleSidebar}
-              className="p-2 rounded-full bg-gray-800/80 hover:bg-gray-700 text-white"
+              className="p-2 rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 transition-all duration-300 flex items-center justify-center"
             >
-              {open ? <X size={20} /> : <Menu size={20} />}
+              {open ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
-
-          {/* Account Header */}
-          <div className="px-4 pb-4 border-b border-amber-200/60 dark:border-gray-700">
+          {/* ACCOUNT SECTION */}
+          <div className="p-3 border-b border-amber-200/80 dark:border-gray-700">
             <div
-              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-800/50 ${
+              className={`flex items-center gap-2 p-2 rounded cursor-pointer ${
                 open ? "justify-between" : "justify-center"
               }`}
               onClick={toggleAccountDropdown}
             >
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
-                <span className="text-white font-bold text-lg">
-                  {currentAccount?.name?.[0]?.toUpperCase() || "?"}
+              <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xs font-bold">
+                  {currentAccount?.name?.charAt(0) || "A"}
                 </span>
               </div>
-
               {open && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-200 truncate">
-                    {currentAccount?.name || "No Account"}
-                  </p>
-                  {currentAccount?.starting_balance !== undefined && (
-                    <p className="text-xs text-gray-400">
-                      ${Number(currentAccount.starting_balance).toLocaleString()}
-                    </p>
-                  )}
-                </div>
+                <>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-medium text-gray-200">
+                      {currentAccount?.name || "Account"}
+                    </div>
+                    {currentAccount?.starting_balance && (
+                      <div className="text-[10px] text-gray-400">
+                        ${currentAccount.starting_balance.toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center">
+                    {isAccountDropdownOpen ? (
+                      <ChevronUp size={14} className="text-gray-400" />
+                    ) : (
+                      <ChevronDown size={14} className="text-gray-400" />
+                    )}
+                  </div>
+                </>
               )}
-
-              {open && (isAccountDropdownOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />)}
             </div>
-
-            {/* Dropdown */}
+            {/* ACCOUNT DROPDOWN */}
             {open && isAccountDropdownOpen && (
-              <div className="mt-3 bg-gray-800/95 border border-gray-700 rounded-lg shadow-2xl max-h-64 overflow-y-auto">
+              <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
                 {accounts.length === 0 ? (
-                  <p className="p-4 text-center text-sm text-gray-400">No accounts yet</p>
+                  <div className="text-center p-2 text-xs text-gray-500">
+                    No accounts yet
+                  </div>
                 ) : (
-                  accounts.map((acc) => (
+                  accounts.map((account) => (
                     <button
-                      key={acc.id}
+                      key={account.id}
                       onClick={() => {
-                        onSwitchAccount(acc.id);
+                        onSwitchAccount(account.id);
                         setIsAccountDropdownOpen(false);
                       }}
-                      className={`w-full px-4 py-3 text-left text-sm flex justify-between items-center transition-colors ${
-                        currentAccount?.id === acc.id
-                          ? "bg-indigo-600/40 text-white"
-                          : "hover:bg-gray-700/80 text-gray-300"
+                      className={`w-full text-left p-2 rounded text-xs font-normal flex justify-between items-center ${
+                        currentAccount?.id === account.id
+                          ? "bg-gray-700 text-white border-l-2 border-gray-300"
+                          : "text-gray-400 hover:bg-gray-700 hover:text-white"
                       }`}
                     >
-                      <span className="font-medium">{acc.name}</span>
-                      {acc.starting_balance !== undefined && (
-                        <span className="text-xs text-gray-400">
-                          ${Number(acc.starting_balance).toLocaleString()}
+                      <span>{account.name}</span>
+                      {account.starting_balance && (
+                        <span className="text-[10px] text-gray-500">
+                          ${account.starting_balance.toLocaleString()}
                         </span>
                       )}
                     </button>
                   ))
                 )}
-
-                <div className="p-3 border-t border-gray-700">
+                <div className="pt-2 border-t border-gray-600 space-y-1">
                   <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors"
+                    onClick={() => {
+                      setShowCreateModal(true);
+                      setIsAccountDropdownOpen(false);
+                    }}
+                    className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
                   >
-                    <span>+</span> New Account
+                    + New Account
+                  </button>
+                  <button
+                    onClick={() => {
+                      onShowManage();
+                      setIsAccountDropdownOpen(false);
+                    }}
+                    className="w-full p-2 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
+                  >
+                    Manage Accounts
                   </button>
                 </div>
               </div>
             )}
           </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 px-3 py-4 overflow-y-auto">
-            {navItems.map((item) => (
+          {/* NAVIGATION ITEMS */}
+          <nav className="flex-1 flex flex-col gap-1 p-3 overflow-y-auto">
+            {navItems.map((item, index) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-lg text-sm mb-1 transition-all ${
+                  `flex items-center gap-3 p-2 rounded-lg text-sm transition-all duration-300 ${
                     isActive
-                      ? "bg-indigo-600/20 text-indigo-400 font-medium"
-                      : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-200"
-                  } ${open ? "" : "justify-center"}`
+                      ? "bg-gray-700 text-white shadow-inner"
+                      : "text-gray-400 hover:bg-gray-700 hover:text-white"
+                  } ${
+                    open ? "justify-start pl-3" : "justify-center items-center"
+                  }`.trim()
                 }
+                style={{
+                  marginBottom: index < navItems.length - 1 ? "2px" : "0",
+                  minHeight: "48px",
+                }}
               >
-                <item.icon size={open ? 20 : 24} />
-                {open && <span>{item.label}</span>}
+                <item.icon
+                  size={open ? 20 : 24}
+                  className={`flex-shrink-0 ${open ? "mr-3" : "mx-auto"}`}
+                />
+                {open && (
+                  <span className="whitespace-nowrap overflow-hidden text-ellipsis font-medium">
+                    {item.label}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>
         </div>
       </div>
-
-      {/* Create Modal */}
+      {/* CREATE ACCOUNT MODAL (dark themed) */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className={`w-full max-w-md rounded-xl p-6 shadow-2xl border ${
-            isDark ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
-          }`}>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Create New Account</h2>
-              <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-200">
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Account Name</label>
-                <input
-                  type="text"
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  placeholder="e.g. Live EURUSD"
-                  className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    isDark ? "bg-gray-800 border-gray-700 text-white" : "bg-gray-50 border-gray-300 text-gray-900"
-                  }`}
-                />
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[2000] p-4">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-md border border-gray-700 shadow-2xl">
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-100 mb-4">Create New Account</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Account Name</label>
+                  <input
+                    type="text"
+                    value={newAccountName}
+                    onChange={(e) => setNewAccountName(e.target.value)}
+                    placeholder="e.g. Live EURUSD, Demo NAS100"
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Starting Balance (USD)</label>
+                  <input
+                    type="number"
+                    value={newAccountBalance}
+                    onChange={(e) => setNewAccountBalance(e.target.value)}
+                    placeholder="10000"
+                    min="0.01"
+                    step="0.01"
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                {createError && (
+                  <div className="text-sm text-rose-400">{createError}</div>
+                )}
               </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Starting Balance (USD)</label>
-                <input
-                  type="number"
-                  value={newBalance}
-                  onChange={e => setNewBalance(e.target.value)}
-                  placeholder="10000"
-                  min="1"
-                  step="0.01"
-                  className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    isDark ? "bg-gray-800 border-gray-700 text-white" : "bg-gray-50 border-gray-300 text-gray-900"
-                  }`}
-                />
-              </div>
-
-              {createError && <p className="text-red-400 text-sm">{createError}</p>}
-
-              <div className="flex gap-4 pt-2">
+              <div className="flex justify-end gap-3 mt-6">
                 <button
-                  onClick={handleCreate}
-                  disabled={creating}
-                  className={`flex-1 py-3 rounded-lg font-medium transition-all ${
-                    creating ? "bg-indigo-700/50 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700 text-white"
-                  }`}
-                >
-                  {creating ? "Creating..." : "Create"}
-                </button>
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition-all"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setNewAccountName("");
+                    setNewAccountBalance("");
+                    setCreateError("");
+                  }}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors"
                 >
                   Cancel
+                </button>
+                <button
+                  onClick={handleCreateAccount}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+                >
+                  Create
                 </button>
               </div>
             </div>
