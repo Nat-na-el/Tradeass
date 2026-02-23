@@ -13,6 +13,8 @@ import {
   Edit,
   Check,
   AlertCircle,
+  PlusCircle,
+  BookOpen,
 } from "lucide-react";
 import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
 import { db, auth } from "../firebase";
@@ -25,16 +27,19 @@ import {
   doc,
   deleteDoc,
   serverTimestamp,
+  writeBatch,           // ← Imported directly from firestore (fixes the error)
 } from "firebase/firestore";
 
 export default function Trades({ currentAccount }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const [message, setMessage] = useState({ text: "", type: "success" });
 
   const selectedDate = searchParams.get("date");
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,9 +63,7 @@ export default function Trades({ currentAccount }) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tradeToDelete, setTradeToDelete] = useState(null);
 
-  const [message, setMessage] = useState({ text: "", type: "success" });
-
-  // ─── Fetch trades from current account's subcollection ────────
+  // Fetch trades from current account's subcollection
   const refreshTrades = async () => {
     const user = auth.currentUser;
     if (!user) {
@@ -91,57 +94,49 @@ export default function Trades({ currentAccount }) {
       );
       const q = query(tradesRef, orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
-      const loadedTrades = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setTrades(loadedTrades);
+      const loaded = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setTrades(loaded);
     } catch (err) {
-      console.error("❌ Trades fetch error:", err);
-      setError("Failed to load trades: " + (err.message || "Check connection"));
+      console.error("Trades fetch failed:", err);
+      setError("Could not load trades. Please check your connection.");
       setTrades([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Re-fetch when currentAccount changes or auth state changes
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        refreshTrades();
-      } else {
+    const unsubscribe = auth.onAuthStateChanged((u) => {
+      if (u) refreshTrades();
+      else {
         setTrades([]);
         setLoading(false);
       }
     });
-    return () => unsubscribe();
+    return unsubscribe;
   }, [currentAccount]);
 
-  // ─── Filtered & Sorted trades ─────────────────────────────────
+  // Filtered + Sorted trades
   const filteredTrades = useMemo(() => {
-    let result = trades;
+    let result = [...trades];
 
-    // Date filter
     if (selectedDate) {
       result = result.filter((t) => t.date?.startsWith(selectedDate));
     }
 
-    // Text search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (t) =>
-          t.pair?.toLowerCase().includes(q) ||
-          t.notes?.toLowerCase().includes(q) ||
-          t.strategy?.toLowerCase().includes(q)
+          (t.pair || "").toLowerCase().includes(q) ||
+          (t.notes || "").toLowerCase().includes(q) ||
+          (t.strategy || "").toLowerCase().includes(q)
       );
     }
 
-    // Sorting
-    result = [...result].sort((a, b) => {
-      if (sortBy === "date-desc") return new Date(b.date) - new Date(a.date);
-      if (sortBy === "date-asc") return new Date(a.date) - new Date(b.date);
+    result.sort((a, b) => {
+      if (sortBy === "date-desc") return new Date(b.date || 0) - new Date(a.date || 0);
+      if (sortBy === "date-asc") return new Date(a.date || 0) - new Date(b.date || 0);
       if (sortBy === "pnl-desc") return Number(b.pnl || 0) - Number(a.pnl || 0);
       if (sortBy === "pnl-asc") return Number(a.pnl || 0) - Number(b.pnl || 0);
       if (sortBy === "pair") return (a.pair || "").localeCompare(b.pair || "");
@@ -151,9 +146,11 @@ export default function Trades({ currentAccount }) {
     return result;
   }, [trades, selectedDate, searchQuery, sortBy]);
 
-  // ─── Stats ────────────────────────────────────────────────────
+  // Stats
   const stats = useMemo(() => {
-    if (!filteredTrades.length) return { totalPnL: 0, winRate: 0, totalTrades: 0, avgRR: 0 };
+    if (!filteredTrades.length) {
+      return { totalPnL: 0, winRate: 0, totalTrades: 0, avgRR: 0 };
+    }
     const total = filteredTrades.length;
     const wins = filteredTrades.filter((t) => Number(t.pnl || 0) > 0).length;
     const totalPnL = filteredTrades.reduce((sum, t) => sum + Number(t.pnl || 0), 0);
@@ -166,7 +163,7 @@ export default function Trades({ currentAccount }) {
     };
   }, [filteredTrades]);
 
-  // ─── Open edit modal ──────────────────────────────────────────
+  // Edit handlers
   const openEdit = (trade) => {
     setEditingTrade(trade);
     setEditForm({
@@ -183,7 +180,6 @@ export default function Trades({ currentAccount }) {
     setEditModalOpen(true);
   };
 
-  // ─── Save edited trade ────────────────────────────────────────
   const saveEdit = async (e) => {
     e.preventDefault();
     if (!editingTrade) return;
@@ -220,7 +216,7 @@ export default function Trades({ currentAccount }) {
     }
   };
 
-  // ─── Delete trade ─────────────────────────────────────────────
+  // Delete trade
   const deleteTrade = async (id) => {
     const user = auth.currentUser;
     if (!user || !currentAccount?.id) return;
@@ -241,7 +237,7 @@ export default function Trades({ currentAccount }) {
     setTradeToDelete(null);
   };
 
-  // ─── Export CSV ───────────────────────────────────────────────
+  // Export CSV
   const exportCSV = () => {
     if (!filteredTrades.length) return;
 
@@ -280,6 +276,42 @@ export default function Trades({ currentAccount }) {
     link.click();
   };
 
+  // One-time migration of old trades (flat collection → subcollection)
+  const migrateOldTrades = async () => {
+    const user = auth.currentUser;
+    if (!user || !currentAccount?.id) {
+      setMessage({ text: "No user or account selected", type: "error" });
+      return;
+    }
+
+    try {
+      const oldTradesSnap = await getDocs(collection(db, "users", user.uid, "trades"));
+      if (oldTradesSnap.empty) {
+        setMessage({ text: "No old trades found to migrate", type: "info" });
+        return;
+      }
+
+      const batch = writeBatch(db);
+      oldTradesSnap.forEach((oldDoc) => {
+        const newRef = doc(
+          collection(db, "users", user.uid, "accounts", currentAccount.id, "trades")
+        );
+        batch.set(newRef, oldDoc.data());
+        batch.delete(oldDoc.ref); // optional: clean up old flat collection
+      });
+
+      await batch.commit();
+      setMessage({
+        text: `Migrated ${oldTradesSnap.size} old trades to ${currentAccount.name}!`,
+        type: "success",
+      });
+      await refreshTrades();
+    } catch (err) {
+      console.error("Migration failed:", err);
+      setMessage({ text: "Migration failed: " + err.message, type: "error" });
+    }
+  };
+
   return (
     <div
       className={`min-h-screen w-full p-4 sm:p-6 lg:p-8 transition-colors duration-300
@@ -294,7 +326,7 @@ export default function Trades({ currentAccount }) {
             {currentAccount ? `${currentAccount.name} – Trade History` : "Trade History"}
           </h1>
           <p className="text-sm sm:text-base mt-1 opacity-80">
-            View, analyze, and edit your executed trades {currentAccount ? `for ${currentAccount.name}` : ""}
+            Track and review your executed trades {currentAccount ? `for ${currentAccount.name}` : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -304,6 +336,13 @@ export default function Trades({ currentAccount }) {
             className="bg-gray-700 hover:bg-gray-800 text-white shadow-md disabled:opacity-50"
           >
             <Download size={18} className="mr-2" /> Export CSV
+          </Button>
+          <Button
+            onClick={migrateOldTrades}
+            variant="outline"
+            className="border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10"
+          >
+            Migrate Old Trades (one-time)
           </Button>
         </div>
       </div>
@@ -329,9 +368,7 @@ export default function Trades({ currentAccount }) {
           <input
             type="date"
             value={selectedDate || ""}
-            onChange={(e) =>
-              setSearchParams(e.target.value ? { date: e.target.value } : {})
-            }
+            onChange={(e) => setSearchParams(e.target.value ? { date: e.target.value } : {})}
             className={`w-full p-3.5 rounded-xl border transition-all ${
               isDark
                 ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
@@ -417,28 +454,41 @@ export default function Trades({ currentAccount }) {
         </Card>
       </div>
 
-      {/* Trades List */}
+      {/* No trades – with buttons */}
       {loading ? (
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
         </div>
       ) : error ? (
-        <div className="text-center py-16 text-rose-400 text-xl">{error}</div>
+        <div className="text-center py-16 text-rose-400 text-xl font-medium">{error}</div>
       ) : filteredTrades.length === 0 ? (
-        <Card className="p-10 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
-          <AlertCircle size={48} className="mx-auto text-amber-500 mb-4 opacity-80" />
-          <p className="text-xl font-medium opacity-70 mb-2">No trades found</p>
-          <p className="opacity-60 mb-6">
-            {searchQuery || selectedDate
-              ? "Try adjusting your filters"
-              : `No trades recorded yet for ${currentAccount?.name || "this account"}`}
+        <Card className="p-12 text-center bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-w-2xl mx-auto">
+          <AlertCircle size={72} className="mx-auto text-amber-500 mb-6 opacity-90" />
+          <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+            No trades yet in {currentAccount?.name || "this account"}
+          </h2>
+          <p className="text-lg opacity-80 mb-10 leading-relaxed">
+            Start building your performance history. Add a new trade or journal today's session to begin tracking.
           </p>
-          <Button
-            onClick={() => navigate("/trades/new")}
-            className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white"
-          >
-            Add Your First Trade
-          </Button>
+          <div className="flex flex-col sm:flex-row justify-center gap-6">
+            <Button
+              size="lg"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg px-10 py-7 text-xl font-medium"
+              onClick={() => navigate("/trades/new")}
+            >
+              <PlusCircle size={24} className="mr-3" />
+              Add New Trade
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-2 border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10 px-10 py-7 text-xl font-medium"
+              onClick={() => navigate("/journal")}
+            >
+              <BookOpen size={24} className="mr-3" />
+              Journal Today's Session
+            </Button>
+          </div>
         </Card>
       ) : (
         <div className="space-y-4">
