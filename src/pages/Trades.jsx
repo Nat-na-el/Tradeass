@@ -27,7 +27,7 @@ import {
   doc,
   deleteDoc,
   serverTimestamp,
-  writeBatch,           // ← Imported directly from firestore (fixes the error)
+  writeBatch,
 } from "firebase/firestore";
 
 export default function Trades({ currentAccount }) {
@@ -63,7 +63,7 @@ export default function Trades({ currentAccount }) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tradeToDelete, setTradeToDelete] = useState(null);
 
-  // Fetch trades from current account's subcollection
+  // Fetch trades from current account subcollection
   const refreshTrades = async () => {
     const user = auth.currentUser;
     if (!user) {
@@ -105,10 +105,12 @@ export default function Trades({ currentAccount }) {
     }
   };
 
+  // Refresh when auth or currentAccount changes
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((u) => {
-      if (u) refreshTrades();
-      else {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        refreshTrades();
+      } else {
         setTrades([]);
         setLoading(false);
       }
@@ -276,7 +278,7 @@ export default function Trades({ currentAccount }) {
     link.click();
   };
 
-  // One-time migration of old trades (flat collection → subcollection)
+  // Migrate old flat trades to current sub-account
   const migrateOldTrades = async () => {
     const user = auth.currentUser;
     if (!user || !currentAccount?.id) {
@@ -297,7 +299,7 @@ export default function Trades({ currentAccount }) {
           collection(db, "users", user.uid, "accounts", currentAccount.id, "trades")
         );
         batch.set(newRef, oldDoc.data());
-        batch.delete(oldDoc.ref); // optional: clean up old flat collection
+        batch.delete(oldDoc.ref);
       });
 
       await batch.commit();
@@ -347,7 +349,7 @@ export default function Trades({ currentAccount }) {
         </div>
       </div>
 
-      {/* Feedback message */}
+      {/* Feedback */}
       {message.text && (
         <div
           className={`mb-6 p-4 rounded-xl flex items-center gap-3 shadow-sm ${
@@ -454,7 +456,7 @@ export default function Trades({ currentAccount }) {
         </Card>
       </div>
 
-      {/* No trades – with buttons */}
+      {/* No trades state with buttons */}
       {loading ? (
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
