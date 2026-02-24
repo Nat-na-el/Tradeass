@@ -29,18 +29,22 @@ import {
   serverTimestamp,
   writeBatch,
 } from "firebase/firestore";
+
 export default function Trades({ currentAccount }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState({ text: "", type: "success" });
+
   const selectedDate = searchParams.get("date");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date-desc");
+
   const [selectedTrade, setSelectedTrade] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState(null);
@@ -57,21 +61,31 @@ export default function Trades({ currentAccount }) {
   });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tradeToDelete, setTradeToDelete] = useState(null);
-  // Fetch trades from current account subcollection
+  const [user, setUser] = useState(null);
+
+  // ─── Determine if account is ready ─────────────────────────────────
+  const isAccountReady = user && currentAccount;
+
+  // ─── Auth listener ─────────────────────────────────────────────────
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((authUser) => {
+      setUser(authUser);
+      if (!authUser) {
+        setTrades([]);
+        setLoading(false);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // ─── Fetch trades when account is ready ────────────────────────────
   const refreshTrades = async () => {
-    const user = auth.currentUser;
-    if (!user) {
+    if (!user || !currentAccount?.id) {
       setTrades([]);
       setLoading(false);
-      setError("Please log in to view your trades");
       return;
     }
-    if (!currentAccount?.id) {
-      setTrades([]);
-      setLoading(false);
-      setError("No account selected. Please choose one from the sidebar.");
-      return;
-    }
+
     setLoading(true);
     setError(null);
     try {
@@ -95,19 +109,17 @@ export default function Trades({ currentAccount }) {
       setLoading(false);
     }
   };
-  // Refresh when auth or currentAccount changes
+
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        refreshTrades();
-      } else {
-        setTrades([]);
-        setLoading(false);
-      }
-    });
-    return unsubscribe;
-  }, [currentAccount]);
-  // Filtered + Sorted trades
+    if (user && currentAccount) {
+      refreshTrades();
+    } else {
+      setTrades([]);
+      setLoading(false);
+    }
+  }, [currentAccount, user]);
+
+  // ─── Filtered + Sorted trades ──────────────────────────────────────
   const filteredTrades = useMemo(() => {
     let result = [...trades];
     if (selectedDate) {
@@ -132,7 +144,8 @@ export default function Trades({ currentAccount }) {
     });
     return result;
   }, [trades, selectedDate, searchQuery, sortBy]);
-  // Stats
+
+  // ─── Stats ─────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     if (!filteredTrades.length) {
       return { totalPnL: 0, winRate: 0, totalTrades: 0, avgRR: 0 };
@@ -148,7 +161,8 @@ export default function Trades({ currentAccount }) {
       avgRR: total ? (totalRR / total).toFixed(2) : 0,
     };
   }, [filteredTrades]);
-  // Edit handlers
+
+  // ─── Edit handlers ─────────────────────────────────────────────────
   const openEdit = (trade) => {
     setEditingTrade(trade);
     setEditForm({
@@ -164,10 +178,10 @@ export default function Trades({ currentAccount }) {
     });
     setEditModalOpen(true);
   };
+
   const saveEdit = async (e) => {
     e.preventDefault();
     if (!editingTrade) return;
-    const user = auth.currentUser;
     if (!user || !currentAccount?.id) {
       setMessage({ text: "No account or user logged in", type: "error" });
       return;
@@ -196,9 +210,9 @@ export default function Trades({ currentAccount }) {
       setMessage({ text: "Error updating trade: " + err.message, type: "error" });
     }
   };
-  // Delete trade
+
+  // ─── Delete trade ──────────────────────────────────────────────────
   const deleteTrade = async (id) => {
-    const user = auth.currentUser;
     if (!user || !currentAccount?.id) return;
     try {
       await deleteDoc(
@@ -214,7 +228,8 @@ export default function Trades({ currentAccount }) {
     setDeleteModalOpen(false);
     setTradeToDelete(null);
   };
-  // Export CSV
+
+  // ─── Export CSV ────────────────────────────────────────────────────
   const exportCSV = () => {
     if (!filteredTrades.length) return;
     const headers = [
@@ -249,9 +264,9 @@ export default function Trades({ currentAccount }) {
     link.download = `forgex-trades-${currentAccount?.name || "account"}-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
   };
-  // Migrate old flat trades to current sub-account
+
+  // ─── Migrate old flat trades (optional) ────────────────────────────
   const migrateOldTrades = async () => {
-    const user = auth.currentUser;
     if (!user || !currentAccount?.id) {
       setMessage({ text: "No user or account selected", type: "error" });
       return;
@@ -281,6 +296,22 @@ export default function Trades({ currentAccount }) {
       setMessage({ text: "Migration failed: " + err.message, type: "error" });
     }
   };
+
+  // ─── Render waiting state if account not ready ─────────────────────
+  if (!user || !currentAccount) {
+    return (
+      <div className={`min-h-screen w-full p-8 flex items-center justify-center ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
+        <Card className="p-8 max-w-md text-center bg-white/80 dark:bg-gray-800/60 backdrop-blur-md">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Preparing your account</h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Please wait while we load your trade history...
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`min-h-screen w-full p-4 sm:p-6 lg:p-8 transition-colors duration-300
@@ -315,6 +346,7 @@ export default function Trades({ currentAccount }) {
           </Button>
         </div>
       </div>
+
       {/* Feedback */}
       {message.text && (
         <div
@@ -328,6 +360,7 @@ export default function Trades({ currentAccount }) {
           {message.text}
         </div>
       )}
+
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div>
@@ -386,6 +419,7 @@ export default function Trades({ currentAccount }) {
           </select>
         </div>
       </div>
+
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6 mb-8">
         <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
@@ -417,7 +451,8 @@ export default function Trades({ currentAccount }) {
           </div>
         </Card>
       </div>
-      {/* No trades state with buttons */}
+
+      {/* Trades List / Empty State */}
       {loading ? (
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
@@ -541,6 +576,7 @@ export default function Trades({ currentAccount }) {
           ))}
         </div>
       )}
+
       {/* View Details Modal */}
       {selectedTrade && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4">
@@ -638,6 +674,7 @@ export default function Trades({ currentAccount }) {
           </div>
         </div>
       )}
+
       {/* Edit Modal */}
       {editModalOpen && editingTrade && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4">
@@ -790,6 +827,7 @@ export default function Trades({ currentAccount }) {
           </div>
         </div>
       )}
+
       {/* Delete Confirmation */}
       {deleteModalOpen && (
         <DeleteConfirmModal
