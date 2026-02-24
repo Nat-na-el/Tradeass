@@ -66,18 +66,12 @@ export default function DailyJournal({ currentAccount }) {
   });
 
   // ─── Determine if we are waiting for an account to be selected ──────
-  const isAccountLoading = user && !currentAccount;
+  const isAccountReady = user && currentAccount;
 
   // ─── Fetch journal entries from current account subcollection ───────
   const refreshEntries = async () => {
     const currentUser = auth.currentUser;
-    if (!currentUser) {
-      setEntries([]);
-      setLoading(false);
-      return;
-    }
-    if (!currentAccount?.id) {
-      // No account selected yet – not an error, just empty state
+    if (!currentUser || !currentAccount?.id) {
       setEntries([]);
       setLoading(false);
       return;
@@ -303,21 +297,7 @@ export default function DailyJournal({ currentAccount }) {
     setDeleteModalOpen(false);
   };
 
-  // ─── Render loading state while waiting for account ─────────────────
-  if (isAccountLoading) {
-    return (
-      <div className={`min-h-screen w-full p-4 sm:p-6 flex items-center justify-center ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
-        <Card className="p-8 max-w-md text-center bg-white/80 dark:bg-gray-800/60 backdrop-blur-md">
-          <Loader2 className="animate-spin h-12 w-12 text-indigo-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Setting up your account</h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Please wait while we prepare your journal...
-          </p>
-        </Card>
-      </div>
-    );
-  }
-
+  // ─── Main render (no full‑page loader) ─────────────────────────────
   return (
     <div
       className={`min-h-screen w-full p-4 sm:p-6 transition-colors duration-300
@@ -338,6 +318,7 @@ export default function DailyJournal({ currentAccount }) {
           </div>
           <Button
             onClick={() => {
+              if (!isAccountReady) return;
               setModalOpen(true);
               setEditingEntry(null);
               setForm({
@@ -355,13 +336,18 @@ export default function DailyJournal({ currentAccount }) {
                 lotSize: "0.1",
               });
             }}
-            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white shadow-md py-5 sm:py-4 text-base"
+            disabled={!isAccountReady}
+            className={`w-full sm:w-auto shadow-md py-5 sm:py-4 text-base ${
+              isAccountReady
+                ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                : "bg-gray-400 cursor-not-allowed text-gray-200"
+            }`}
           >
             <Plus size={18} className="mr-2" /> Add Entry
           </Button>
         </div>
 
-        {/* Metrics */}
+        {/* Metrics (show zero placeholders if account not ready) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card className="p-4 rounded-xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md">
             <div className="text-xs font-medium opacity-70 mb-1">Net P&L Today</div>
@@ -404,6 +390,18 @@ export default function DailyJournal({ currentAccount }) {
           </div>
         ) : error ? (
           <div className="text-center py-16 text-rose-400">{error}</div>
+        ) : !isAccountReady ? (
+          <Card className="p-6 sm:p-8 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
+            <p className="text-lg sm:text-xl font-medium opacity-70 mb-3">
+              Preparing your account...
+            </p>
+            <p className="text-sm opacity-60 mb-5">
+              Please wait while we set up your journal. This should only take a moment.
+            </p>
+            <Button disabled className="w-full sm:w-auto bg-gray-400 cursor-not-allowed text-gray-200">
+              <Plus size={18} className="mr-2" /> Add Entry
+            </Button>
+          </Card>
         ) : todayEntries.length === 0 ? (
           <Card className="p-6 sm:p-8 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
             <p className="text-lg sm:text-xl font-medium opacity-70 mb-3">
