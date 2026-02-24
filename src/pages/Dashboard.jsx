@@ -38,7 +38,7 @@ import {
 } from "firebase/firestore";
 
 // ────────────────────────────────────────────────
-// Animated number component (unchanged)
+// Animated number component
 // ────────────────────────────────────────────────
 const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
   const [display, setDisplay] = useState(0);
@@ -54,6 +54,15 @@ const AnimatedNumber = ({ value, duration = 1500, decimals = 2 }) => {
   }, [value, duration]);
 
   return <>{Number(display).toFixed(decimals)}</>;
+};
+
+// Helper to format numbers with commas and 2 decimals
+const formatNumber = (num) => {
+  if (num === undefined || num === null) return "0.00";
+  return Number(num).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 };
 
 // ────────────────────────────────────────────────
@@ -293,6 +302,51 @@ export default function Dashboard({ currentAccount }) {
     };
   }, [monthlyTrades]);
 
+  // ─── New: Monthly asset‑specific stats ─────────────────────────────
+  const monthlyAssetStats = useMemo(() => {
+    if (!monthlyTrades.length) {
+      return {
+        topPair: "—",
+        totalLots: 0,
+        assetPnL: [],
+      };
+    }
+
+    const pairCount = {};
+    const pairPnL = {};
+    let totalLots = 0;
+
+    monthlyTrades.forEach((t) => {
+      const pair = t.pair || "Unknown";
+      pairCount[pair] = (pairCount[pair] || 0) + 1;
+      pairPnL[pair] = (pairPnL[pair] || 0) + Number(t.pnl || 0);
+      totalLots += Number(t.lotSize) || 0;
+    });
+
+    // Most traded pair
+    let topPair = "—";
+    let maxCount = 0;
+    Object.entries(pairCount).forEach(([p, c]) => {
+      if (c > maxCount) {
+        maxCount = c;
+        topPair = p;
+      }
+    });
+
+    // Top 5 assets by absolute PnL
+    const assetPnL = Object.entries(pairPnL)
+      .map(([pair, pnl]) => ({ pair, pnl }))
+      .sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl))
+      .slice(0, 5);
+
+    return {
+      topPair,
+      topPairCount: maxCount,
+      totalLots: totalLots.toFixed(2),
+      assetPnL,
+    };
+  }, [monthlyTrades]);
+
   // ─── Weekly Wins/Losses/Breakeven (last 4 weeks) ───────────────
   const weeklyBreakdown = useMemo(() => {
     const weeks = [];
@@ -398,7 +452,7 @@ export default function Dashboard({ currentAccount }) {
     return ((allTimePnL / initialBalance) * 100).toFixed(1);
   }, [allTimePnL, initialBalance]);
 
-  // ─── Quick Analysis Modal Content ────────────────────────────
+  // ─── Quick Analysis Modal Content (unchanged) ────────────────
   const quickAnalysisContent = () => {
     if (!monthlyTrades.length) {
       return (
@@ -547,7 +601,7 @@ export default function Dashboard({ currentAccount }) {
             Please create or select an account from the sidebar to view your dashboard.
           </p>
           <button
-            onClick={() => {/* Could open account creation modal via parent, but sidebar handles it */}}
+            onClick={() => {}}
             className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
           >
             Create Account
@@ -637,7 +691,7 @@ export default function Dashboard({ currentAccount }) {
         </div>
       ) : (
         <>
-          {/* Stats Cards */}
+          {/* Stats Cards (core metrics) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-5 mb-8">
             {[
               {
@@ -721,6 +775,58 @@ export default function Dashboard({ currentAccount }) {
                 </div>
               </Card>
             ))}
+          </div>
+
+          {/* New Row: Asset‑specific stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 mb-8">
+            {/* Most Traded Pair */}
+            <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg hover:shadow-xl transition-all duration-200">
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Most Traded Pair</h3>
+              <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                {monthlyAssetStats.topPair}
+              </div>
+              {monthlyAssetStats.topPairCount > 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {monthlyAssetStats.topPairCount} trades this month
+                </p>
+              )}
+            </Card>
+
+            {/* Total Lot Size */}
+            <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg hover:shadow-xl transition-all duration-200">
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Total Lot Size (Monthly)</h3>
+              <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                {monthlyAssetStats.totalLots}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {monthlyTrades.length} trades
+              </p>
+            </Card>
+
+            {/* Top Performing Assets */}
+            <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg hover:shadow-xl transition-all duration-200">
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Top Assets by PnL</h3>
+              <div className="space-y-2">
+                {monthlyAssetStats.assetPnL.length > 0 ? (
+                  monthlyAssetStats.assetPnL.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-sm">
+                      <span className="font-medium truncate max-w-[100px]">{item.pair}</span>
+                      <span
+                        className={`font-bold ${
+                          item.pnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                        }`}
+                      >
+                        {item.pnl >= 0 ? "+" : ""}${formatNumber(Math.abs(item.pnl))}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                    No asset data
+                  </div>
+                )}
+              </div>
+            </Card>
           </div>
 
           {/* Recent Trades + Weekly Breakdown */}
@@ -828,7 +934,7 @@ export default function Dashboard({ currentAccount }) {
             </Card>
           </div>
 
-          {/* Calendar */}
+          {/* Calendar (unchanged) */}
           <Card className="p-5 lg:p-6 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
               <div className="flex items-center gap-3">
