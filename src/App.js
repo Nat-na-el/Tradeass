@@ -505,7 +505,8 @@ function AppContent() {
                 >
                   <Routes>
                     <Route path="/dashboard" element={<Dashboard currentAccount={currentAccount} />} />
-                    <Route path="/journal" element={<DailyJournal />} />
+                    {/* Fixed: pass currentAccount to DailyJournal */}
+                    <Route path="/journal" element={<DailyJournal currentAccount={currentAccount} />} />
                     <Route path="/trades" element={<Trades />} />
                     <Route path="/notebook" element={<Notebook />} />
                     <Route path="/reports" element={<Reports />} />
