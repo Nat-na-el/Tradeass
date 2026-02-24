@@ -68,7 +68,7 @@ export default function DailyJournal({ currentAccount }) {
   // ─── Determine if we are waiting for an account to be selected ──────
   const isAccountReady = user && currentAccount;
 
-  // ─── Fetch journal entries from current account subcollection ───────
+  // ─── Fetch journal entries from current account's trades subcollection ───────
   const refreshEntries = async () => {
     const currentUser = auth.currentUser;
     if (!currentUser || !currentAccount?.id) {
@@ -86,7 +86,7 @@ export default function DailyJournal({ currentAccount }) {
         currentUser.uid,
         "accounts",
         currentAccount.id,
-        "journals"
+        "trades" // ← changed from "journals" to "trades"
       );
       const q = query(entriesRef, orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
@@ -221,14 +221,14 @@ export default function DailyJournal({ currentAccount }) {
           currentUser.uid,
           "accounts",
           currentAccount.id,
-          "journals",
+          "trades", // ← changed
           editingEntry.id
         );
         await updateDoc(entryRef, payload);
         setSuccessMsg("Entry updated successfully!");
       } else {
         await addDoc(
-          collection(db, "users", currentUser.uid, "accounts", currentAccount.id, "journals"),
+          collection(db, "users", currentUser.uid, "accounts", currentAccount.id, "trades"), // ← changed
           {
             ...payload,
             createdAt: serverTimestamp(),
@@ -265,7 +265,7 @@ export default function DailyJournal({ currentAccount }) {
     if (!currentUser || !currentAccount?.id) return;
     try {
       await deleteDoc(
-        doc(db, "users", currentUser.uid, "accounts", currentAccount.id, "journals", id)
+        doc(db, "users", currentUser.uid, "accounts", currentAccount.id, "trades", id) // ← changed
       );
       setSuccessMsg("Entry deleted successfully");
       await refreshEntries();
@@ -284,7 +284,7 @@ export default function DailyJournal({ currentAccount }) {
     try {
       const batchPromises = todayEntries.map((e) =>
         deleteDoc(
-          doc(db, "users", currentUser.uid, "accounts", currentAccount.id, "journals", e.id)
+          doc(db, "users", currentUser.uid, "accounts", currentAccount.id, "trades", e.id) // ← changed
         )
       );
       await Promise.all(batchPromises);
@@ -297,7 +297,7 @@ export default function DailyJournal({ currentAccount }) {
     setDeleteModalOpen(false);
   };
 
-  // ─── Main render (no full‑page loader) ─────────────────────────────
+  // ─── Main render ───────────────────────────────────────────────────
   return (
     <div
       className={`min-h-screen w-full p-4 sm:p-6 transition-colors duration-300
@@ -347,7 +347,7 @@ export default function DailyJournal({ currentAccount }) {
           </Button>
         </div>
 
-        {/* Metrics (show zero placeholders if account not ready) */}
+        {/* Metrics */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card className="p-4 rounded-xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md">
             <div className="text-xs font-medium opacity-70 mb-1">Net P&L Today</div>
@@ -515,7 +515,7 @@ export default function DailyJournal({ currentAccount }) {
           </div>
         )}
 
-        {/* Add / Edit Entry Modal */}
+        {/* Add / Edit Entry Modal (unchanged) */}
         {modalOpen && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4 overflow-y-auto">
             <div
