@@ -18,6 +18,7 @@ import {
   orderBy,
   serverTimestamp,
 } from "firebase/firestore";
+
 const formatDateInput = (d = new Date()) => new Date(d).toISOString().slice(0, 10);
 const formatNumber = (num) => {
   if (!num && num !== 0) return "";
@@ -26,6 +27,7 @@ const formatNumber = (num) => {
     maximumFractionDigits: 2,
   });
 };
+
 const COMMON_ASSETS = [
   "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "NZDUSD", "USDCHF",
   "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "CADJPY", "CHFJPY",
@@ -34,10 +36,12 @@ const COMMON_ASSETS = [
   "AAPL", "TSLA", "AMZN", "GOOGL", "MSFT", "NVDA", "META", "NFLX", "AMD", "INTC",
   "BABA", "PDD", "JD", "SHOP", "SQ", "PYPL", "DIS", "BA", "GE", "F"
 ];
+
 export default function DailyJournal({ currentAccount }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  const [entries, setEntries] = useState([]); // renamed from trades to entries for clarity
+
+  const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
@@ -45,6 +49,7 @@ export default function DailyJournal({ currentAccount }) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState(null);
   const [editingEntry, setEditingEntry] = useState(null);
+  const [user, setUser] = useState(null);
   const [form, setForm] = useState({
     date: formatDateInput(),
     pair: "",
@@ -59,31 +64,35 @@ export default function DailyJournal({ currentAccount }) {
     leverage: "100",
     lotSize: "0.1",
   });
-  // Fetch journal entries from current account subcollection
+
+  // ─── Determine if we are waiting for an account to be selected ──────
+  const isAccountLoading = user && !currentAccount;
+
+  // ─── Fetch journal entries from current account subcollection ───────
   const refreshEntries = async () => {
-    const user = auth.currentUser;
-    if (!user) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
       setEntries([]);
       setLoading(false);
-      setError("Please log in to see your journal entries");
       return;
     }
     if (!currentAccount?.id) {
+      // No account selected yet – not an error, just empty state
       setEntries([]);
       setLoading(false);
-      setError("No account selected. Please choose one from the sidebar.");
       return;
     }
+
     setLoading(true);
     setError(null);
     try {
       const entriesRef = collection(
         db,
         "users",
-        user.uid,
+        currentUser.uid,
         "accounts",
         currentAccount.id,
-        "journals" // ← changed to "journals" subcollection
+        "journals"
       );
       const q = query(entriesRef, orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
@@ -100,19 +109,27 @@ export default function DailyJournal({ currentAccount }) {
       setLoading(false);
     }
   };
-  // Re-fetch when auth state or currentAccount changes
+
+  // ─── Auth listener and account watcher ─────────────────────────────
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        refreshEntries();
-      } else {
+    const unsubscribe = auth.onAuthStateChanged((authUser) => {
+      setUser(authUser);
+      if (!authUser) {
         setEntries([]);
         setLoading(false);
       }
     });
     return () => unsubscribe();
-  }, [currentAccount]);
-  // Auto-calculate PnL and R:R
+  }, []);
+
+  // When currentAccount becomes available, refresh entries
+  useEffect(() => {
+    if (user && currentAccount) {
+      refreshEntries();
+    }
+  }, [currentAccount, user]);
+
+  // ─── Auto‑calculate PnL and R:R ────────────────────────────────────
   useEffect(() => {
     const entry = Number(form.entry) || 0;
     const exitPrice = Number(form.exit) || 0;
@@ -120,11 +137,13 @@ export default function DailyJournal({ currentAccount }) {
     const tp = Number(form.takeProfit) || 0;
     const lot = Number(form.lotSize) || 0.1;
     const lev = Number(form.leverage) || 100;
+
     let calculatedPnL = "";
     if (entry && exitPrice && lot && lev) {
       const priceDiff = form.direction === "Long" ? (exitPrice - entry) : (entry - exitPrice);
       calculatedPnL = (priceDiff * lot * lev * 100).toFixed(2);
     }
+
     let calculatedRR = "";
     if (entry && sl && tp) {
       const risk = form.direction === "Long" ? (entry - sl) : (sl - entry);
@@ -135,18 +154,21 @@ export default function DailyJournal({ currentAccount }) {
         calculatedRR = "∞";
       }
     }
+
     setForm((prev) => ({
       ...prev,
       pnl: calculatedPnL,
       rr: calculatedRR,
     }));
   }, [form.entry, form.exit, form.stopLoss, form.takeProfit, form.lotSize, form.leverage, form.direction]);
-  // Today's entries
+
+  // ─── Today's entries ────────────────────────────────────────────────
   const todayEntries = useMemo(() => {
     const today = formatDateInput();
     return entries.filter((e) => e.date === today);
   }, [entries]);
-  // Metrics for today
+
+  // ─── Metrics for today ─────────────────────────────────────────────
   const metrics = useMemo(() => {
     if (!todayEntries.length) {
       return { net: 0, wins: 0, losses: 0, winRate: 0, avgPnL: 0 };
@@ -169,16 +191,19 @@ export default function DailyJournal({ currentAccount }) {
       avgPnL: avgPnL.toFixed(2),
     };
   }, [todayEntries]);
-  // Save entry (add or update)
+
+  // ─── Save entry (add or update) ────────────────────────────────────
   const saveEntry = async (e) => {
     if (e) e.preventDefault();
     setError(null);
     setSuccessMsg(null);
-    const user = auth.currentUser;
-    if (!user || !currentAccount?.id) {
+
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentAccount?.id) {
       setError("Please log in and select an account");
       return;
     }
+
     const payload = {
       date: form.date || formatDateInput(),
       pair: form.pair?.toUpperCase() || "",
@@ -193,12 +218,13 @@ export default function DailyJournal({ currentAccount }) {
       lotSize: Number(form.lotSize) || 0.1,
       notes: form.notes || "",
     };
+
     try {
       if (editingEntry) {
         const entryRef = doc(
           db,
           "users",
-          user.uid,
+          currentUser.uid,
           "accounts",
           currentAccount.id,
           "journals",
@@ -208,7 +234,7 @@ export default function DailyJournal({ currentAccount }) {
         setSuccessMsg("Entry updated successfully!");
       } else {
         await addDoc(
-          collection(db, "users", user.uid, "accounts", currentAccount.id, "journals"),
+          collection(db, "users", currentUser.uid, "accounts", currentAccount.id, "journals"),
           {
             ...payload,
             createdAt: serverTimestamp(),
@@ -238,13 +264,14 @@ export default function DailyJournal({ currentAccount }) {
       setError("Failed to save entry: " + err.message);
     }
   };
-  // Delete single entry
+
+  // ─── Delete single entry ───────────────────────────────────────────
   const deleteEntry = async (id) => {
-    const user = auth.currentUser;
-    if (!user || !currentAccount?.id) return;
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentAccount?.id) return;
     try {
       await deleteDoc(
-        doc(db, "users", user.uid, "accounts", currentAccount.id, "journals", id)
+        doc(db, "users", currentUser.uid, "accounts", currentAccount.id, "journals", id)
       );
       setSuccessMsg("Entry deleted successfully");
       await refreshEntries();
@@ -255,14 +282,15 @@ export default function DailyJournal({ currentAccount }) {
     setDeleteModalOpen(false);
     setEntryToDelete(null);
   };
-  // Optional: clear all today's entries
+
+  // ─── Clear all today's entries ─────────────────────────────────────
   const clearTodayEntries = async () => {
-    const user = auth.currentUser;
-    if (!user || !currentAccount?.id) return;
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentAccount?.id) return;
     try {
       const batchPromises = todayEntries.map((e) =>
         deleteDoc(
-          doc(db, "users", user.uid, "accounts", currentAccount.id, "journals", e.id)
+          doc(db, "users", currentUser.uid, "accounts", currentAccount.id, "journals", e.id)
         )
       );
       await Promise.all(batchPromises);
@@ -274,6 +302,22 @@ export default function DailyJournal({ currentAccount }) {
     }
     setDeleteModalOpen(false);
   };
+
+  // ─── Render loading state while waiting for account ─────────────────
+  if (isAccountLoading) {
+    return (
+      <div className={`min-h-screen w-full p-4 sm:p-6 flex items-center justify-center ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
+        <Card className="p-8 max-w-md text-center bg-white/80 dark:bg-gray-800/60 backdrop-blur-md">
+          <Loader2 className="animate-spin h-12 w-12 text-indigo-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Setting up your account</h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Please wait while we prepare your journal...
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`min-h-screen w-full p-4 sm:p-6 transition-colors duration-300
@@ -316,6 +360,7 @@ export default function DailyJournal({ currentAccount }) {
             <Plus size={18} className="mr-2" /> Add Entry
           </Button>
         </div>
+
         {/* Metrics */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card className="p-4 rounded-xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md">
@@ -351,6 +396,7 @@ export default function DailyJournal({ currentAccount }) {
             </div>
           </Card>
         </div>
+
         {/* Entries List */}
         {loading ? (
           <div className="flex justify-center items-center py-20">
@@ -470,6 +516,7 @@ export default function DailyJournal({ currentAccount }) {
             ))}
           </div>
         )}
+
         {/* Add / Edit Entry Modal */}
         {modalOpen && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4 overflow-y-auto">
@@ -662,6 +709,7 @@ export default function DailyJournal({ currentAccount }) {
             </div>
           </div>
         )}
+
         {/* Delete Confirmation */}
         {deleteModalOpen && (
           <DeleteConfirmModal
