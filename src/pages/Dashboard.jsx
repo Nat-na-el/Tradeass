@@ -302,7 +302,7 @@ export default function Dashboard({ currentAccount }) {
     };
   }, [monthlyTrades]);
 
-  // ─── New: Monthly asset‑specific stats ─────────────────────────────
+  // ─── Monthly asset‑specific stats ─────────────────────────────
   const monthlyAssetStats = useMemo(() => {
     if (!monthlyTrades.length) {
       return {
