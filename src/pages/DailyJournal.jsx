@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Trash2, Plus, Loader2, Check, AlertCircle, FileText, X, Edit, Image, Tag, Upload } from "lucide-react";
+import { Trash2, Plus, Loader2, Check, AlertCircle, FileText, X, Edit, Image, Tag, Upload, Link } from "lucide-react";
 import { useTheme } from "../Theme-provider";
 import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,37 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+// Helper: compress image before upload
+const compressImage = (file, maxWidth = 1200, quality = 0.8) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (!blob) return reject(new Error('Canvas to blob failed'));
+          resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = reject;
+    };
+    reader.onerror = reject;
+  });
+};
 
 const formatDateInput = (d = new Date()) => new Date(d).toISOString().slice(0, 10);
 const formatNumber = (num) => {
@@ -123,28 +154,32 @@ export default function DailyJournal({ currentAccount }) {
     screenshotUrl: "",
   });
 
-  const modalContentRef = useRef(null); // to attach paste listener
+  const modalContentRef = useRef(null);
   const accountLeverage = currentAccount?.leverage || 100;
   const isAccountReady = user && currentAccount;
 
-  // ─── Image upload handler ──────────────────────────────────────────
+  // ─── Image upload handler with compression ─────────────────────────
   const handleImageUpload = async (file) => {
     if (!file || !user || !currentAccount?.id) return;
     setUploadingImage(true);
     try {
+      // Compress image
+      const compressedFile = await compressImage(file);
       const storageRef = ref(storage, `users/${user.uid}/accounts/${currentAccount.id}/trades/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
+      await uploadBytes(storageRef, compressedFile);
       const url = await getDownloadURL(storageRef);
       setForm(prev => ({ ...prev, screenshotUrl: url }));
+      setSuccessMsg("Image uploaded successfully!");
+      setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err) {
       console.error("Upload failed:", err);
-      setError("Failed to upload image");
+      setError("Failed to upload image. Try a smaller file or use URL.");
     } finally {
       setUploadingImage(false);
     }
   };
 
-  // ─── Handle paste (for images) on the modal ────────────────────────
+  // ─── Handle paste (images only) on the modal ───────────────────────
   useEffect(() => {
     if (!modalOpen) return;
     const handlePaste = (e) => {
@@ -154,7 +189,9 @@ export default function DailyJournal({ currentAccount }) {
         if (item.type.indexOf("image") !== -1) {
           e.preventDefault();
           const file = item.getAsFile();
-          handleImageUpload(file);
+          if (file) {
+            handleImageUpload(file);
+          }
           break;
         }
       }
@@ -427,7 +464,7 @@ export default function DailyJournal({ currentAccount }) {
           : "bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900"}`}
     >
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
-        {/* Header with fixed Add Entry button */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sticky top-0 z-10 bg-inherit py-2">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
@@ -864,37 +901,53 @@ export default function DailyJournal({ currentAccount }) {
                     />
                   </div>
 
-                  {/* Screenshot upload */}
+                  {/* Screenshot upload – both file and URL */}
                   <div>
                     <Label className="block text-sm font-medium mb-1.5">Chart Screenshot</Label>
-                    <div className="flex items-center gap-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => document.getElementById("image-upload").click()}
-                        disabled={uploadingImage}
-                        className="relative border-2"
-                      >
-                        {uploadingImage ? (
-                          <Loader2 className="animate-spin h-5 w-5" />
-                        ) : (
-                          <>
-                            <Upload size={18} className="mr-2" />
-                            Upload Image
-                          </>
-                        )}
-                      </Button>
-                      <input
-                        id="image-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleImageUpload(file);
-                        }}
-                      />
-                      <span className="text-xs opacity-60">or paste an image</span>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => document.getElementById("image-upload").click()}
+                            disabled={uploadingImage}
+                            className="relative border-2 flex-1"
+                          >
+                            {uploadingImage ? (
+                              <Loader2 className="animate-spin h-5 w-5" />
+                            ) : (
+                              <>
+                                <Upload size={18} className="mr-2" />
+                                Upload Image
+                              </>
+                            )}
+                          </Button>
+                          <span className="text-xs opacity-60">or paste</span>
+                        </div>
+                        <input
+                          id="image-upload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImageUpload(file);
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Link size={18} className="text-gray-400" />
+                          <Input
+                            type="url"
+                            value={form.screenshotUrl}
+                            onChange={(e) => setForm({ ...form, screenshotUrl: e.target.value })}
+                            placeholder="https://i.imgur.com/your-image.png"
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
                     </div>
                     {form.screenshotUrl && (
                       <div className="mt-2 relative inline-block">
@@ -902,6 +955,7 @@ export default function DailyJournal({ currentAccount }) {
                           src={form.screenshotUrl}
                           alt="Preview"
                           className="h-20 w-20 object-cover rounded-lg border"
+                          onError={(e) => e.target.style.display = 'none'} // Hide if broken link
                         />
                         <button
                           type="button"
@@ -927,7 +981,7 @@ export default function DailyJournal({ currentAccount }) {
                     />
                   </div>
 
-                  {/* Action buttons – now darker and more visible */}
+                  {/* Action buttons – darker and more visible */}
                   <div className="flex flex-col sm:flex-row gap-4 pt-4">
                     <Button
                       type="submit"
