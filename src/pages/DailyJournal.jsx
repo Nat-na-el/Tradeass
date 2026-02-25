@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Trash2, Plus, Loader2, Check, AlertCircle, FileText, X, Edit, Image, Tag } from "lucide-react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Trash2, Plus, Loader2, Check, AlertCircle, FileText, X, Edit, Image, Tag, Upload } from "lucide-react";
 import { useTheme } from "../Theme-provider";
 import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { db, auth } from "../firebase";
+import { db, auth, storage } from "../firebase";
 import {
   collection,
   addDoc,
@@ -18,6 +18,7 @@ import {
   orderBy,
   serverTimestamp,
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const formatDateInput = (d = new Date()) => new Date(d).toISOString().slice(0, 10);
 const formatNumber = (num) => {
@@ -37,6 +38,60 @@ const COMMON_ASSETS = [
   "BABA", "PDD", "JD", "SHOP", "SQ", "PYPL", "DIS", "BA", "GE", "F"
 ];
 
+// Tag input component for confluences
+const ConfluenceTags = ({ tags, onChange }) => {
+  const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef(null);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      const value = inputValue.trim();
+      if (value && !tags.includes(value)) {
+        onChange([...tags, value]);
+        setInputValue("");
+      }
+    }
+  };
+
+  const removeTag = (tagToRemove) => {
+    onChange(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2 p-2 border rounded-xl min-h-[60px] items-center bg-white dark:bg-gray-800">
+        {tags.map((tag, idx) => (
+          <span
+            key={idx}
+            className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30"
+          >
+            <Tag size={12} />
+            {tag}
+            <button
+              type="button"
+              onClick={() => removeTag(tag)}
+              className="ml-1 hover:text-indigo-900 dark:hover:text-indigo-100"
+            >
+              <X size={14} />
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={tags.length === 0 ? "Type a confluence and press Enter..." : ""}
+          className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-sm p-1"
+        />
+      </div>
+      <p className="text-xs opacity-60">Press Enter or comma to add a tag</p>
+    </div>
+  );
+};
+
 export default function DailyJournal({ currentAccount }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -50,6 +105,7 @@ export default function DailyJournal({ currentAccount }) {
   const [entryToDelete, setEntryToDelete] = useState(null);
   const [editingEntry, setEditingEntry] = useState(null);
   const [user, setUser] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [form, setForm] = useState({
     date: formatDateInput(),
     pair: "",
@@ -62,16 +118,45 @@ export default function DailyJournal({ currentAccount }) {
     pnl: "",
     rr: "",
     lotSize: "0.1",
-    status: "executed",          // new: pending / executed
-    confluences: "",             // new: multi‑line text
-    screenshotUrl: "",           // new: image URL
+    status: "executed",
+    confluences: [],          // now an array
+    screenshotUrl: "",
   });
 
-  const accountLeverage = currentAccount?.leverage || 100; // from account metadata
-
+  const accountLeverage = currentAccount?.leverage || 100;
   const isAccountReady = user && currentAccount;
 
-  // ─── Fetch journal entries (trades) ───────────────────────────────
+  // ─── Image upload handler ──────────────────────────────────────────
+  const handleImageUpload = async (file) => {
+    if (!file || !user || !currentAccount?.id) return;
+    setUploadingImage(true);
+    try {
+      const storageRef = ref(storage, `users/${user.uid}/accounts/${currentAccount.id}/trades/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setForm(prev => ({ ...prev, screenshotUrl: url }));
+    } catch (err) {
+      console.error("Upload failed:", err);
+      setError("Failed to upload image");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // ─── Handle paste (for images) ────────────────────────────────────
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.indexOf("image") !== -1) {
+        const file = item.getAsFile();
+        handleImageUpload(file);
+        break;
+      }
+    }
+  };
+
+  // ─── Fetch journal entries ────────────────────────────────────────
   const refreshEntries = async () => {
     if (!user || !currentAccount?.id) {
       setEntries([]);
@@ -123,8 +208,13 @@ export default function DailyJournal({ currentAccount }) {
     }
   }, [currentAccount, user]);
 
-  // ─── Auto‑calculate PnL and R:R (using account leverage) ──────────
+  // ─── Auto‑calculate PnL and R:R (only if executed and exit given) ─
   useEffect(() => {
+    if (form.status === "pending" || !form.exit) {
+      // Don't calculate for pending trades
+      setForm(prev => ({ ...prev, pnl: "", rr: "" }));
+      return;
+    }
     const entry = Number(form.entry) || 0;
     const exitPrice = Number(form.exit) || 0;
     const sl = Number(form.stopLoss) || 0;
@@ -153,15 +243,15 @@ export default function DailyJournal({ currentAccount }) {
       pnl: calculatedPnL,
       rr: calculatedRR,
     }));
-  }, [form.entry, form.exit, form.stopLoss, form.takeProfit, form.lotSize, form.direction, accountLeverage]);
+  }, [form.entry, form.exit, form.stopLoss, form.takeProfit, form.lotSize, form.direction, form.status, accountLeverage]);
 
-  // ─── Today's entries (executed only, or all?) – we'll show all today's trades
+  // ─── Today's entries ────────────────────────────────────────────────
   const todayEntries = useMemo(() => {
     const today = formatDateInput();
     return entries.filter((e) => e.date === today);
   }, [entries]);
 
-  // ─── Metrics for today (only executed trades count for PnL) ───────
+  // ─── Metrics for today (only executed trades) ───────────────────────
   const metrics = useMemo(() => {
     const executed = todayEntries.filter(e => e.status === "executed");
     if (!executed.length) {
@@ -186,7 +276,7 @@ export default function DailyJournal({ currentAccount }) {
     };
   }, [todayEntries]);
 
-  // ─── Save entry (add or update) ───────────────────────────────────
+  // ─── Save entry ────────────────────────────────────────────────────
   const saveEntry = async (e) => {
     e.preventDefault();
     setError(null);
@@ -197,26 +287,20 @@ export default function DailyJournal({ currentAccount }) {
       return;
     }
 
-    // Split confluences by line and filter empty lines
-    const confluencesList = form.confluences
-      .split("\n")
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
-
     const payload = {
       date: form.date || formatDateInput(),
       pair: form.pair?.toUpperCase() || "",
       direction: form.direction || "Long",
       entry: Number(form.entry) || 0,
-      exit: Number(form.exit) || 0,
+      exit: form.status === "pending" ? 0 : (Number(form.exit) || 0),
       stopLoss: Number(form.stopLoss) || 0,
       takeProfit: Number(form.takeProfit) || 0,
-      pnl: Number(form.pnl) || 0,
-      rr: form.rr || "",
+      pnl: form.status === "pending" ? 0 : (Number(form.pnl) || 0),
+      rr: form.status === "pending" ? "" : form.rr,
       lotSize: Number(form.lotSize) || 0.1,
       notes: form.notes || "",
       status: form.status || "executed",
-      confluences: confluencesList,   // store as array
+      confluences: form.confluences || [],
       screenshotUrl: form.screenshotUrl || "",
     };
 
@@ -261,7 +345,7 @@ export default function DailyJournal({ currentAccount }) {
         rr: "",
         lotSize: "0.1",
         status: "executed",
-        confluences: "",
+        confluences: [],
         screenshotUrl: "",
       });
       await refreshEntries();
@@ -271,7 +355,7 @@ export default function DailyJournal({ currentAccount }) {
     }
   };
 
-  // ─── Delete single entry ──────────────────────────────────────────
+  // ─── Delete entry ──────────────────────────────────────────────────
   const deleteEntry = async (id) => {
     if (!user || !currentAccount?.id) return;
     try {
@@ -288,7 +372,7 @@ export default function DailyJournal({ currentAccount }) {
     setEntryToDelete(null);
   };
 
-  // ─── Clear all today's entries ────────────────────────────────────
+  // ─── Clear today's entries ─────────────────────────────────────────
   const clearTodayEntries = async () => {
     if (!user || !currentAccount?.id) return;
     try {
@@ -330,8 +414,8 @@ export default function DailyJournal({ currentAccount }) {
           : "bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900"}`}
     >
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        {/* Header with fixed Add Entry button */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sticky top-0 z-10 bg-inherit py-2">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
               Daily Journal – {currentAccount.name}
@@ -358,7 +442,7 @@ export default function DailyJournal({ currentAccount }) {
                 rr: "",
                 lotSize: "0.1",
                 status: "executed",
-                confluences: "",
+                confluences: [],
                 screenshotUrl: "",
               });
             }}
@@ -494,7 +578,7 @@ export default function DailyJournal({ currentAccount }) {
                             {entry.date ? formatDateInput(new Date(entry.date)) : "—"}
                           </span>
                           <span>Lot: {entry.lotSize || "—"}</span>
-                          {entry.rr && <span>R:R {entry.rr}</span>}
+                          {entry.status === "executed" && entry.rr && <span>R:R {entry.rr}</span>}
                         </div>
                       </div>
                     </div>
@@ -522,15 +606,19 @@ export default function DailyJournal({ currentAccount }) {
                       </div>
                     )}
 
-                    {/* Screenshot */}
+                    {/* Screenshot thumbnail */}
                     {entry.screenshotUrl && (
                       <a
                         href={entry.screenshotUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 mt-2 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                        className="inline-block mt-2"
                       >
-                        <Image size={14} /> View Chart
+                        <img
+                          src={entry.screenshotUrl}
+                          alt="Chart"
+                          className="h-16 w-16 object-cover rounded-lg border border-gray-300 dark:border-gray-600 hover:opacity-80 transition"
+                        />
                       </a>
                     )}
                   </div>
@@ -573,7 +661,7 @@ export default function DailyJournal({ currentAccount }) {
                             rr: entry.rr || "",
                             lotSize: entry.lotSize?.toString() || "0.1",
                             status: entry.status || "executed",
-                            confluences: Array.isArray(entry.confluences) ? entry.confluences.join("\n") : "",
+                            confluences: Array.isArray(entry.confluences) ? entry.confluences : [],
                             screenshotUrl: entry.screenshotUrl || "",
                           });
                           setModalOpen(true);
@@ -701,14 +789,16 @@ export default function DailyJournal({ currentAccount }) {
                         step="0.00001"
                         value={form.exit}
                         onChange={(e) => setForm({ ...form, exit: e.target.value })}
-                        placeholder="1.09000"
+                        placeholder={form.status === "pending" ? "Pending – no exit" : "1.09000"}
+                        disabled={form.status === "pending"}
+                        className={form.status === "pending" ? "bg-gray-200 dark:bg-gray-700 cursor-not-allowed" : ""}
                       />
                     </div>
                     <div>
                       <Label className="block text-sm font-medium mb-1.5">P&L (auto)</Label>
                       <Input
                         type="text"
-                        value={formatNumber(form.pnl)}
+                        value={form.status === "pending" ? "Pending" : formatNumber(form.pnl)}
                         readOnly
                         placeholder="Auto-calculated"
                         className={`w-full p-3 rounded-xl border bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed font-bold text-sm ${
@@ -747,7 +837,7 @@ export default function DailyJournal({ currentAccount }) {
                       <Label className="block text-sm font-medium mb-1.5">R:R (auto)</Label>
                       <Input
                         type="text"
-                        value={form.rr}
+                        value={form.status === "pending" ? "—" : form.rr}
                         readOnly
                         placeholder="Auto-calculated"
                         className={`w-full p-3 rounded-xl border bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed font-bold text-sm`}
@@ -755,32 +845,63 @@ export default function DailyJournal({ currentAccount }) {
                     </div>
                   </div>
 
-                  {/* Confluences (multi‑line) */}
+                  {/* Confluence Tags */}
                   <div>
-                    <Label className="block text-sm font-medium mb-1.5">
-                      Confluences (one per line, e.g., FVG, Order Block, etc.)
-                    </Label>
-                    <textarea
-                      value={form.confluences}
-                      onChange={(e) => setForm({ ...form, confluences: e.target.value })}
-                      placeholder="FVG
-Order Block
-Liquidity sweep"
-                      className={`w-full p-3 rounded-xl border min-h-[80px] text-sm resize-y focus:ring-2 focus:ring-indigo-500 outline-none ${
-                        isDark ? "bg-gray-800 border-gray-700 text-gray-100" : "bg-white border-gray-300 text-gray-900"
-                      }`}
+                    <Label className="block text-sm font-medium mb-1.5">Confluences</Label>
+                    <ConfluenceTags
+                      tags={form.confluences}
+                      onChange={(newTags) => setForm({ ...form, confluences: newTags })}
                     />
                   </div>
 
-                  {/* Screenshot URL */}
+                  {/* Screenshot upload */}
                   <div>
-                    <Label className="block text-sm font-medium mb-1.5">Screenshot URL (optional)</Label>
-                    <Input
-                      type="url"
-                      value={form.screenshotUrl}
-                      onChange={(e) => setForm({ ...form, screenshotUrl: e.target.value })}
-                      placeholder="https://i.imgur.com/your-image.png"
-                    />
+                    <Label className="block text-sm font-medium mb-1.5">Chart Screenshot</Label>
+                    <div className="flex items-center gap-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => document.getElementById("image-upload").click()}
+                        disabled={uploadingImage}
+                        className="relative"
+                      >
+                        {uploadingImage ? (
+                          <Loader2 className="animate-spin h-5 w-5" />
+                        ) : (
+                          <>
+                            <Upload size={18} className="mr-2" />
+                            Upload Image
+                          </>
+                        )}
+                      </Button>
+                      <input
+                        id="image-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload(file);
+                        }}
+                      />
+                      <span className="text-xs opacity-60">or paste an image</span>
+                    </div>
+                    {form.screenshotUrl && (
+                      <div className="mt-2 relative inline-block">
+                        <img
+                          src={form.screenshotUrl}
+                          alt="Preview"
+                          className="h-20 w-20 object-cover rounded-lg border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, screenshotUrl: "" })}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Notes */}
@@ -796,11 +917,16 @@ Liquidity sweep"
                     />
                   </div>
 
+                  {/* Action buttons */}
                   <div className="flex flex-col sm:flex-row gap-4 pt-4">
                     <Button
                       type="submit"
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 py-6 sm:py-4 text-base"
+                      disabled={uploadingImage}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 py-6 sm:py-4 text-base disabled:opacity-50"
                     >
+                      {uploadingImage ? (
+                        <Loader2 className="animate-spin mr-2 h-5 w-5" />
+                      ) : null}
                       {editingEntry ? "Update Entry" : "Save Entry"}
                     </Button>
                     <Button
