@@ -78,7 +78,7 @@ const MarkdownRenderer = ({ text }) => {
   );
 };
 
-export default function Notebook() {
+export default function Notebook({ currentAccount }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -99,14 +99,25 @@ export default function Notebook() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTag, setFilterTag] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+  const [user, setUser] = useState(null);
 
-  // Fetch notes
+  // ─── Auth listener ─────────────────────────────────────────────────
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((authUser) => {
+      setUser(authUser);
+      if (!authUser) {
+        setNotes([]);
+        setLoading(false);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // ─── Fetch notes when account is ready ────────────────────────────
   const refreshNotes = async () => {
-    const user = auth.currentUser;
-    if (!user) {
+    if (!user || !currentAccount?.id) {
       setNotes([]);
       setLoading(false);
-      setError("Please log in to view your notes");
       return;
     }
 
@@ -115,7 +126,7 @@ export default function Notebook() {
 
     try {
       const q = query(
-        collection(db, "users", user.uid, "notes"),
+        collection(db, "users", user.uid, "accounts", currentAccount.id, "notes"),
         orderBy("createdAt", "desc")
       );
       const snapshot = await getDocs(q);
@@ -133,35 +144,34 @@ export default function Notebook() {
   };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        refreshNotes();
-      } else {
-        setNotes([]);
-        setLoading(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+    if (user && currentAccount) {
+      refreshNotes();
+    } else {
+      setNotes([]);
+      setLoading(false);
+    }
+  }, [currentAccount, user]);
 
-  // Add new note
+  // ─── Add new note ──────────────────────────────────────────────────
   const addNote = async () => {
     if (!newNote.trim()) return;
-    const user = auth.currentUser;
-    if (!user) {
-      setError("Please log in first");
+    if (!user || !currentAccount?.id) {
+      setError("Please log in and select an account");
       return;
     }
 
     try {
-      await addDoc(collection(db, "users", user.uid, "notes"), {
-        content: newNote.trim(),
-        tag: newTag,
-        priority: newPriority,
-        date: new Date().toISOString(),
-        isPinned: false,
-        createdAt: serverTimestamp(),
-      });
+      await addDoc(
+        collection(db, "users", user.uid, "accounts", currentAccount.id, "notes"),
+        {
+          content: newNote.trim(),
+          tag: newTag,
+          priority: newPriority,
+          date: new Date().toISOString(),
+          isPinned: false,
+          createdAt: serverTimestamp(),
+        }
+      );
       setNewNote("");
       setNewTag("other");
       setNewPriority("medium");
@@ -174,7 +184,7 @@ export default function Notebook() {
     }
   };
 
-  // Start editing
+  // ─── Start editing ─────────────────────────────────────────────────
   const startEdit = (note) => {
     setEditingId(note.id);
     setEditContent(note.content || "");
@@ -182,14 +192,21 @@ export default function Notebook() {
     setEditPriority(note.priority || "medium");
   };
 
-  // Save edited note
+  // ─── Save edited note ──────────────────────────────────────────────
   const saveEdit = async () => {
     if (!editContent.trim() || !editingId) return;
-    const user = auth.currentUser;
-    if (!user) return;
+    if (!user || !currentAccount?.id) return;
 
     try {
-      const noteRef = doc(db, "users", user.uid, "notes", editingId);
+      const noteRef = doc(
+        db,
+        "users",
+        user.uid,
+        "accounts",
+        currentAccount.id,
+        "notes",
+        editingId
+      );
       await updateDoc(noteRef, {
         content: editContent.trim(),
         tag: editTag,
@@ -206,13 +223,14 @@ export default function Notebook() {
     }
   };
 
-  // Delete note
+  // ─── Delete note ───────────────────────────────────────────────────
   const deleteNote = async (id) => {
-    const user = auth.currentUser;
-    if (!user) return;
+    if (!user || !currentAccount?.id) return;
 
     try {
-      await deleteDoc(doc(db, "users", user.uid, "notes", id));
+      await deleteDoc(
+        doc(db, "users", user.uid, "accounts", currentAccount.id, "notes", id)
+      );
       setSuccessMsg("Note deleted successfully!");
       setTimeout(() => setSuccessMsg(null), 3000);
       await refreshNotes();
@@ -222,7 +240,7 @@ export default function Notebook() {
     }
   };
 
-  // Filtered & sorted notes
+  // ─── Filtered & sorted notes ───────────────────────────────────────
   const filteredNotes = useMemo(() => {
     let result = notes;
 
@@ -249,6 +267,21 @@ export default function Notebook() {
     return result;
   }, [notes, searchQuery, filterTag, sortBy]);
 
+  // ─── If no account selected ────────────────────────────────────────
+  if (!currentAccount) {
+    return (
+      <div className={`min-h-screen w-full p-8 flex items-center justify-center ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
+        <Card className="p-8 max-w-md text-center bg-white/80 dark:bg-gray-800/60 backdrop-blur-md">
+          <AlertCircle size={48} className="mx-auto text-amber-500 mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">No Account Selected</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Please create or select an account from the sidebar to view your notes.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`min-h-screen w-full p-4 sm:p-6 transition-colors duration-300
@@ -261,7 +294,7 @@ export default function Notebook() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-              Notebook
+              Notebook {currentAccount ? `– ${currentAccount.name}` : ""}
             </h1>
             <p className="text-sm sm:text-base mt-1 opacity-80">
               Capture trading ideas, psychology notes, mistakes & reviews
@@ -427,7 +460,7 @@ export default function Notebook() {
           <div className="text-center py-16 text-rose-400">{error}</div>
         ) : filteredNotes.length === 0 ? (
           <Card className="p-8 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
-            <p className="text-lg sm:text-xl font-medium opacity-70 mb-3">No notes yet</p>
+            <p className="text-lg sm:text-xl font-medium opacity-70 mb-3">No notes yet in {currentAccount.name}</p>
             <p className="text-sm opacity-60 mb-5">Start capturing your trading thoughts above</p>
           </Card>
         ) : (
