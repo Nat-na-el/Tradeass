@@ -18,6 +18,7 @@ import {
 import { useTheme } from "../../Theme-provider";
 import { db, auth } from "../../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
 export default function Sidebar({
   open,
   setOpen,
@@ -33,8 +34,10 @@ export default function Sidebar({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newAccountName, setNewAccountName] = useState("");
   const [newAccountBalance, setNewAccountBalance] = useState("");
+  const [newAccountLeverage, setNewAccountLeverage] = useState("100");
   const [createError, setCreateError] = useState("");
-  const hasAutoCreated = useRef(false); // prevent multiple creations
+  const hasAutoCreated = useRef(false);
+
   // ─── Automatically create a default account if none exist ─────────
   useEffect(() => {
     const createDefaultAccount = async () => {
@@ -46,6 +49,7 @@ export default function Sidebar({
           name: "Main Account",
           starting_balance: 10000,
           current_balance: 10000,
+          leverage: 100,
           createdAt: serverTimestamp(),
           createdBy: user.uid,
         };
@@ -62,15 +66,18 @@ export default function Sidebar({
     };
     createDefaultAccount();
   }, [accounts, onCreateAccount, onSwitchAccount]);
+
   const toggleSidebar = () => {
     setOpen((prev) => !prev);
     setIsAccountDropdownOpen(false);
   };
+
   const toggleAccountDropdown = () => {
     if (open) {
       setIsAccountDropdownOpen(!isAccountDropdownOpen);
     }
   };
+
   // ─── Create new account from modal ────────────────────────────────
   const handleCreateAccount = async () => {
     const user = auth.currentUser;
@@ -78,34 +85,48 @@ export default function Sidebar({
       alert("You must be logged in to create an account.");
       return;
     }
+
     const name = newAccountName.trim();
     if (!name) {
       setCreateError("Account name is required.");
       return;
     }
+
     const balance = parseFloat(newAccountBalance);
     if (isNaN(balance) || balance <= 0) {
       setCreateError("Starting balance must be a positive number.");
       return;
     }
+
+    const leverage = parseFloat(newAccountLeverage);
+    if (isNaN(leverage) || leverage < 1) {
+      setCreateError("Leverage must be a positive number (at least 1).");
+      return;
+    }
+
     try {
       const accountData = {
         name,
         starting_balance: balance,
         current_balance: balance,
+        leverage,
         createdAt: serverTimestamp(),
         createdBy: user.uid,
       };
+
       const docRef = await addDoc(
         collection(db, "users", user.uid, "accounts"),
         accountData
       );
+
       const newAccount = { id: docRef.id, ...accountData };
       onCreateAccount(newAccount);
       onSwitchAccount(docRef.id);
+
       // Reset and close modal
       setNewAccountName("");
       setNewAccountBalance("");
+      setNewAccountLeverage("100");
       setCreateError("");
       setShowCreateModal(false);
       setIsAccountDropdownOpen(false);
@@ -114,6 +135,7 @@ export default function Sidebar({
       setCreateError("Failed to create account. Please try again.");
     }
   };
+
   const navItems = [
     { to: "/", icon: Home, label: "Dashboard" },
     { to: "/journal", icon: BookOpen, label: "Daily Journal" },
@@ -125,6 +147,7 @@ export default function Sidebar({
     { to: "/settings", icon: Settings, label: "Settings" },
     { to: "/backtest", icon: Calculator, label: "Backtest" },
   ];
+
   return (
     <>
       <div
@@ -299,6 +322,18 @@ export default function Sidebar({
                     className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Leverage (e.g., 100)</label>
+                  <input
+                    type="number"
+                    value={newAccountLeverage}
+                    onChange={(e) => setNewAccountLeverage(e.target.value)}
+                    placeholder="100"
+                    min="1"
+                    step="1"
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
                 {createError && (
                   <div className="text-sm text-rose-400">{createError}</div>
                 )}
@@ -309,6 +344,7 @@ export default function Sidebar({
                     setShowCreateModal(false);
                     setNewAccountName("");
                     setNewAccountBalance("");
+                    setNewAccountLeverage("100");
                     setCreateError("");
                   }}
                   className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors"
