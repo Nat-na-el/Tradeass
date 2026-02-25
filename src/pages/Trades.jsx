@@ -63,9 +63,6 @@ export default function Trades({ currentAccount }) {
   const [tradeToDelete, setTradeToDelete] = useState(null);
   const [user, setUser] = useState(null);
 
-  // ─── Determine if account is ready ─────────────────────────────────
-  const isAccountReady = user && currentAccount;
-
   // ─── Auth listener ─────────────────────────────────────────────────
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((authUser) => {
@@ -297,16 +294,37 @@ export default function Trades({ currentAccount }) {
     }
   };
 
-  // ─── Render waiting state if account not ready ─────────────────────
-  if (!user || !currentAccount) {
+  // ─── Handle missing account gracefully ─────────────────────────────
+  if (!currentAccount) {
     return (
       <div className={`min-h-screen w-full p-8 flex items-center justify-center ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
         <Card className="p-8 max-w-md text-center bg-white/80 dark:bg-gray-800/60 backdrop-blur-md">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Preparing your account</h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Please wait while we load your trade history...
+          <AlertCircle size={48} className="mx-auto text-amber-500 mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">No Account Selected</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Please create or select an account from the sidebar to view your trades.
           </p>
+          <Button onClick={() => navigate("/dashboard")} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            Go to Dashboard
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  // ─── Handle not logged in ──────────────────────────────────────────
+  if (!user) {
+    return (
+      <div className={`min-h-screen w-full p-8 flex items-center justify-center ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
+        <Card className="p-8 max-w-md text-center bg-white/80 dark:bg-gray-800/60 backdrop-blur-md">
+          <AlertCircle size={48} className="mx-auto text-amber-500 mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Not Logged In</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Please log in to view your trades.
+          </p>
+          <Button onClick={() => navigate("/login")} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            Log In
+          </Button>
         </Card>
       </div>
     );
@@ -323,10 +341,10 @@ export default function Trades({ currentAccount }) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 lg:mb-8 gap-4">
         <div>
           <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-            {currentAccount ? `${currentAccount.name} – Trade History` : "Trade History"}
+            {currentAccount.name} – Trade History
           </h1>
           <p className="text-sm sm:text-base mt-1 opacity-80">
-            Track and review your executed trades {currentAccount ? `for ${currentAccount.name}` : ""}
+            Track and review your executed trades for {currentAccount.name}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -463,7 +481,7 @@ export default function Trades({ currentAccount }) {
         <Card className="p-12 text-center bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-w-2xl mx-auto">
           <AlertCircle size={72} className="mx-auto text-amber-500 mb-6 opacity-90" />
           <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-            No trades yet in {currentAccount?.name || "this account"}
+            No trades yet in {currentAccount.name}
           </h2>
           <p className="text-lg opacity-80 mb-10 leading-relaxed">
             Start building your performance history. Add a new trade or journal today's session to begin tracking.
