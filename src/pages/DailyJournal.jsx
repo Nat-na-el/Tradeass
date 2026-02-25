@@ -119,10 +119,11 @@ export default function DailyJournal({ currentAccount }) {
     rr: "",
     lotSize: "0.1",
     status: "executed",
-    confluences: [],          // now an array
+    confluences: [],
     screenshotUrl: "",
   });
 
+  const modalContentRef = useRef(null); // to attach paste listener
   const accountLeverage = currentAccount?.leverage || 100;
   const isAccountReady = user && currentAccount;
 
@@ -143,18 +144,31 @@ export default function DailyJournal({ currentAccount }) {
     }
   };
 
-  // ─── Handle paste (for images) ────────────────────────────────────
-  const handlePaste = (e) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type.indexOf("image") !== -1) {
-        const file = item.getAsFile();
-        handleImageUpload(file);
-        break;
+  // ─── Handle paste (for images) on the modal ────────────────────────
+  useEffect(() => {
+    if (!modalOpen) return;
+    const handlePaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.indexOf("image") !== -1) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          handleImageUpload(file);
+          break;
+        }
       }
+    };
+    const currentModal = modalContentRef.current;
+    if (currentModal) {
+      currentModal.addEventListener('paste', handlePaste);
     }
-  };
+    return () => {
+      if (currentModal) {
+        currentModal.removeEventListener('paste', handlePaste);
+      }
+    };
+  }, [modalOpen]);
 
   // ─── Fetch journal entries ────────────────────────────────────────
   const refreshEntries = async () => {
@@ -211,7 +225,6 @@ export default function DailyJournal({ currentAccount }) {
   // ─── Auto‑calculate PnL and R:R (only if executed and exit given) ─
   useEffect(() => {
     if (form.status === "pending" || !form.exit) {
-      // Don't calculate for pending trades
       setForm(prev => ({ ...prev, pnl: "", rr: "" }));
       return;
     }
@@ -447,11 +460,7 @@ export default function DailyJournal({ currentAccount }) {
               });
             }}
             disabled={!isAccountReady}
-            className={`w-full sm:w-auto shadow-md py-5 sm:py-4 text-base ${
-              isAccountReady
-                ? "bg-indigo-600 hover:bg-indigo-700 text-white"
-                : "bg-gray-400 cursor-not-allowed text-gray-200"
-            }`}
+            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white shadow-md py-5 sm:py-4 text-base font-semibold border-2 border-indigo-400 dark:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={18} className="mr-2" /> Add Entry
           </Button>
@@ -536,7 +545,7 @@ export default function DailyJournal({ currentAccount }) {
                 setModalOpen(true);
                 setEditingEntry(null);
               }}
-              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700"
+              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold border-2 border-indigo-400"
             >
               <Plus size={18} className="mr-2" /> Log First Entry
             </Button>
@@ -666,7 +675,7 @@ export default function DailyJournal({ currentAccount }) {
                           });
                           setModalOpen(true);
                         }}
-                        className="h-10 w-10 rounded-lg"
+                        className="h-10 w-10 rounded-lg border-2 hover:bg-indigo-100 dark:hover:bg-indigo-900"
                       >
                         <Edit size={18} />
                       </Button>
@@ -677,7 +686,7 @@ export default function DailyJournal({ currentAccount }) {
                           setEntryToDelete(entry.id);
                           setDeleteModalOpen(true);
                         }}
-                        className="h-10 w-10 rounded-lg"
+                        className="h-10 w-10 rounded-lg border-2 border-rose-300 dark:border-rose-700 hover:bg-rose-100 dark:hover:bg-rose-900"
                       >
                         <Trash2 size={18} />
                       </Button>
@@ -693,6 +702,7 @@ export default function DailyJournal({ currentAccount }) {
         {modalOpen && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4 overflow-y-auto">
             <div
+              ref={modalContentRef}
               className={`w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border backdrop-blur-md
                 ${isDark ? "bg-gray-900/95 border-gray-700/60" : "bg-white/95 border-gray-200/60"}`}
             >
@@ -863,7 +873,7 @@ export default function DailyJournal({ currentAccount }) {
                         variant="outline"
                         onClick={() => document.getElementById("image-upload").click()}
                         disabled={uploadingImage}
-                        className="relative"
+                        className="relative border-2"
                       >
                         {uploadingImage ? (
                           <Loader2 className="animate-spin h-5 w-5" />
@@ -917,12 +927,12 @@ export default function DailyJournal({ currentAccount }) {
                     />
                   </div>
 
-                  {/* Action buttons */}
+                  {/* Action buttons – now darker and more visible */}
                   <div className="flex flex-col sm:flex-row gap-4 pt-4">
                     <Button
                       type="submit"
                       disabled={uploadingImage}
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 py-6 sm:py-4 text-base disabled:opacity-50"
+                      className="flex-1 bg-indigo-700 hover:bg-indigo-800 text-white py-6 sm:py-4 text-base font-bold border-2 border-indigo-500 shadow-lg disabled:opacity-50"
                     >
                       {uploadingImage ? (
                         <Loader2 className="animate-spin mr-2 h-5 w-5" />
@@ -933,7 +943,7 @@ export default function DailyJournal({ currentAccount }) {
                       type="button"
                       variant="outline"
                       onClick={() => setModalOpen(false)}
-                      className="flex-1 py-6 sm:py-4 text-base"
+                      className="flex-1 py-6 sm:py-4 text-base font-semibold border-2 border-gray-400 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700"
                     >
                       Cancel
                     </Button>
