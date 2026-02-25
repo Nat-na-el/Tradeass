@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { format, parseISO } from "date-fns";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -16,9 +16,11 @@ import {
   PlusCircle,
   BookOpen,
   Tag,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
-import { db, auth } from "../firebase";
+import { db, auth, storage } from "../firebase";
 import {
   collection,
   getDocs,
@@ -30,6 +32,7 @@ import {
   serverTimestamp,
   writeBatch,
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const formatNumber = (num) => {
   if (!num && num !== 0) return "0.00";
@@ -37,6 +40,60 @@ const formatNumber = (num) => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+};
+
+// Tag input component for confluences
+const ConfluenceTags = ({ tags, onChange }) => {
+  const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef(null);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      const value = inputValue.trim();
+      if (value && !tags.includes(value)) {
+        onChange([...tags, value]);
+        setInputValue("");
+      }
+    }
+  };
+
+  const removeTag = (tagToRemove) => {
+    onChange(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2 p-2 border rounded-xl min-h-[60px] items-center bg-white dark:bg-gray-800">
+        {tags.map((tag, idx) => (
+          <span
+            key={idx}
+            className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30"
+          >
+            <Tag size={12} />
+            {tag}
+            <button
+              type="button"
+              onClick={() => removeTag(tag)}
+              className="ml-1 hover:text-indigo-900 dark:hover:text-indigo-100"
+            >
+              <X size={14} />
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={tags.length === 0 ? "Type a confluence and press Enter..." : ""}
+          className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-sm p-1"
+        />
+      </div>
+      <p className="text-xs opacity-60">Press Enter or comma to add a tag</p>
+    </div>
+  );
 };
 
 export default function Trades({ currentAccount }) {
@@ -57,6 +114,7 @@ export default function Trades({ currentAccount }) {
   const [selectedTrade, setSelectedTrade] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [editForm, setEditForm] = useState({
     pair: "",
     direction: "",
@@ -75,8 +133,10 @@ export default function Trades({ currentAccount }) {
   const [tradeToDelete, setTradeToDelete] = useState(null);
   const [user, setUser] = useState(null);
 
+  const modalContentRef = useRef(null);
   const isAccountReady = user && currentAccount;
 
+  // ─── Auth listener ─────────────────────────────────────────────────
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((authUser) => {
       setUser(authUser);
@@ -88,6 +148,7 @@ export default function Trades({ currentAccount }) {
     return unsubscribe;
   }, []);
 
+  // ─── Fetch trades when account is ready ────────────────────────────
   const refreshTrades = async () => {
     if (!user || !currentAccount?.id) {
       setTrades([]);
@@ -128,6 +189,50 @@ export default function Trades({ currentAccount }) {
     }
   }, [currentAccount, user]);
 
+  // ─── Image upload handler ──────────────────────────────────────────
+  const handleImageUpload = async (file) => {
+    if (!file || !user || !currentAccount?.id) return;
+    setUploadingImage(true);
+    try {
+      const storageRef = ref(storage, `users/${user.uid}/accounts/${currentAccount.id}/trades/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setEditForm(prev => ({ ...prev, screenshotUrl: url }));
+    } catch (err) {
+      console.error("Upload failed:", err);
+      setMessage({ text: "Failed to upload image", type: "error" });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // ─── Handle paste on edit modal ────────────────────────────────────
+  useEffect(() => {
+    if (!editModalOpen) return;
+    const handlePaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.indexOf("image") !== -1) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          handleImageUpload(file);
+          break;
+        }
+      }
+    };
+    const currentModal = modalContentRef.current;
+    if (currentModal) {
+      currentModal.addEventListener('paste', handlePaste);
+    }
+    return () => {
+      if (currentModal) {
+        currentModal.removeEventListener('paste', handlePaste);
+      }
+    };
+  }, [editModalOpen]);
+
+  // ─── Filtered + Sorted trades ──────────────────────────────────────
   const filteredTrades = useMemo(() => {
     let result = [...trades];
     if (selectedDate) {
@@ -154,6 +259,7 @@ export default function Trades({ currentAccount }) {
     return result;
   }, [trades, selectedDate, searchQuery, sortBy]);
 
+  // ─── Stats ─────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     const executed = filteredTrades.filter(t => t.status !== "pending");
     if (!executed.length) {
@@ -166,11 +272,12 @@ export default function Trades({ currentAccount }) {
     return {
       totalPnL: totalPnL.toFixed(2),
       winRate: total ? Math.round((wins / total) * 100) : 0,
-      totalTrades: filteredTrades.length, // include pending in total count
+      totalTrades: filteredTrades.length,
       avgRR: total ? (totalRR / total).toFixed(2) : 0,
     };
   }, [filteredTrades]);
 
+  // ─── Open edit modal ───────────────────────────────────────────────
   const openEdit = (trade) => {
     setEditingTrade(trade);
     setEditForm({
@@ -190,6 +297,7 @@ export default function Trades({ currentAccount }) {
     setEditModalOpen(true);
   };
 
+  // ─── Save edited trade ─────────────────────────────────────────────
   const saveEdit = async (e) => {
     e.preventDefault();
     if (!editingTrade) return;
@@ -222,6 +330,7 @@ export default function Trades({ currentAccount }) {
     }
   };
 
+  // ─── Delete trade ──────────────────────────────────────────────────
   const deleteTrade = async (id) => {
     if (!user || !currentAccount?.id) return;
     try {
@@ -239,6 +348,7 @@ export default function Trades({ currentAccount }) {
     setTradeToDelete(null);
   };
 
+  // ─── Export CSV ────────────────────────────────────────────────────
   const exportCSV = () => {
     if (!filteredTrades.length) return;
     const headers = [
@@ -278,6 +388,7 @@ export default function Trades({ currentAccount }) {
     link.click();
   };
 
+  // ─── Migrate old flat trades ───────────────────────────────────────
   const migrateOldTrades = async () => {
     if (!user || !currentAccount?.id) {
       setMessage({ text: "No user or account selected", type: "error" });
@@ -309,6 +420,7 @@ export default function Trades({ currentAccount }) {
     }
   };
 
+  // ─── If no account selected ───────────────────────────────────────
   if (!currentAccount) {
     return (
       <div className={`min-h-screen w-full p-8 flex items-center justify-center ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
@@ -345,14 +457,14 @@ export default function Trades({ currentAccount }) {
             <Button
               onClick={exportCSV}
               disabled={!filteredTrades.length || loading}
-              className="bg-gray-700 hover:bg-gray-800 text-white shadow-md disabled:opacity-50"
+              className="bg-gray-700 hover:bg-gray-800 text-white shadow-md disabled:opacity-50 border-2 border-gray-600"
             >
               <Download size={18} className="mr-2" /> Export CSV
             </Button>
             <Button
               onClick={migrateOldTrades}
               variant="outline"
-              className="border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10"
+              className="border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10 border-2"
             >
               Migrate Old Trades
             </Button>
@@ -472,30 +584,28 @@ export default function Trades({ currentAccount }) {
         ) : error ? (
           <div className="text-center py-16 text-rose-400 text-xl font-medium">{error}</div>
         ) : filteredTrades.length === 0 ? (
-          <Card className="p-12 text-center bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-w-2xl mx-auto">
-            <AlertCircle size={72} className="mx-auto text-amber-500 mb-6 opacity-90" />
-            <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-              No trades yet in {currentAccount.name}
+          <Card className="p-8 text-center bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-w-lg mx-auto">
+            <AlertCircle size={48} className="mx-auto text-amber-500 mb-4" />
+            <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-gray-100">
+              No trades yet
             </h2>
-            <p className="text-lg opacity-80 mb-10 leading-relaxed">
+            <p className="text-base opacity-80 mb-6">
               Start building your performance history.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-6">
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button
-                size="lg"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg px-10 py-7 text-xl font-medium"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md px-6 py-5 text-base font-semibold border-2 border-indigo-400"
                 onClick={() => navigate("/trades/new")}
               >
-                <PlusCircle size={24} className="mr-3" />
+                <PlusCircle size={20} className="mr-2" />
                 Add New Trade
               </Button>
               <Button
-                size="lg"
                 variant="outline"
-                className="border-2 border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10 px-10 py-7 text-xl font-medium"
+                className="border-2 border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10 px-6 py-5 text-base font-semibold"
                 onClick={() => navigate("/journal")}
               >
-                <BookOpen size={24} className="mr-3" />
+                <BookOpen size={20} className="mr-2" />
                 Journal Today
               </Button>
             </div>
@@ -607,7 +717,7 @@ export default function Trades({ currentAccount }) {
                         size="icon"
                         variant="outline"
                         onClick={() => setSelectedTrade(trade)}
-                        className="h-10 w-10 rounded-lg"
+                        className="h-10 w-10 rounded-lg border-2 hover:bg-indigo-100 dark:hover:bg-indigo-900"
                       >
                         <Eye size={18} />
                       </Button>
@@ -615,7 +725,7 @@ export default function Trades({ currentAccount }) {
                         size="icon"
                         variant="outline"
                         onClick={() => openEdit(trade)}
-                        className="h-10 w-10 rounded-lg"
+                        className="h-10 w-10 rounded-lg border-2 hover:bg-indigo-100 dark:hover:bg-indigo-900"
                       >
                         <Edit size={18} />
                       </Button>
@@ -626,7 +736,7 @@ export default function Trades({ currentAccount }) {
                           setTradeToDelete(trade.id);
                           setDeleteModalOpen(true);
                         }}
-                        className="h-10 w-10 rounded-lg"
+                        className="h-10 w-10 rounded-lg border-2 border-rose-300 dark:border-rose-700 hover:bg-rose-100 dark:hover:bg-rose-900"
                       >
                         <Trash2 size={18} />
                       </Button>
@@ -638,7 +748,7 @@ export default function Trades({ currentAccount }) {
           </div>
         )}
 
-        {/* View Details Modal */}
+        {/* View Details Modal (unchanged) */}
         {selectedTrade && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4">
             <div
@@ -781,10 +891,11 @@ export default function Trades({ currentAccount }) {
         {editModalOpen && editingTrade && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4">
             <div
+              ref={modalContentRef}
               className={`w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border backdrop-blur-md
                 ${isDark ? "bg-gray-900/95 border-gray-700/60" : "bg-white/95 border-gray-200/60"}`}
             >
-              <div className="p-6">
+              <div className="p-6 max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
                     Edit Trade
@@ -904,6 +1015,8 @@ export default function Trades({ currentAccount }) {
                       />
                     </div>
                   </div>
+
+                  {/* Status */}
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Status</label>
                     <select
@@ -917,6 +1030,67 @@ export default function Trades({ currentAccount }) {
                       <option value="pending">Pending</option>
                     </select>
                   </div>
+
+                  {/* Confluences */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Confluences</label>
+                    <ConfluenceTags
+                      tags={editForm.confluences}
+                      onChange={(newTags) => setEditForm({ ...editForm, confluences: newTags })}
+                    />
+                  </div>
+
+                  {/* Screenshot upload */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Chart Screenshot</label>
+                    <div className="flex items-center gap-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => document.getElementById("edit-image-upload").click()}
+                        disabled={uploadingImage}
+                        className="relative border-2"
+                      >
+                        {uploadingImage ? (
+                          <Loader2 className="animate-spin h-5 w-5" />
+                        ) : (
+                          <>
+                            <Upload size={18} className="mr-2" />
+                            Upload Image
+                          </>
+                        )}
+                      </Button>
+                      <input
+                        id="edit-image-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload(file);
+                        }}
+                      />
+                      <span className="text-xs opacity-60">or paste an image</span>
+                    </div>
+                    {editForm.screenshotUrl && (
+                      <div className="mt-2 relative inline-block">
+                        <img
+                          src={editForm.screenshotUrl}
+                          alt="Preview"
+                          className="h-20 w-20 object-cover rounded-lg border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEditForm({ ...editForm, screenshotUrl: "" })}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Notes */}
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Notes</label>
                     <textarea
@@ -925,20 +1099,27 @@ export default function Trades({ currentAccount }) {
                       className={`w-full p-3 rounded-xl border min-h-[80px] ${
                         isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
                       } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                      placeholder="What did you learn from this trade?"
                     />
                   </div>
+
+                  {/* Action buttons */}
                   <div className="flex gap-4 pt-4">
                     <Button
                       type="submit"
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                      disabled={uploadingImage}
+                      className="flex-1 bg-indigo-700 hover:bg-indigo-800 text-white py-6 text-base font-bold border-2 border-indigo-500 shadow-lg disabled:opacity-50"
                     >
+                      {uploadingImage ? (
+                        <Loader2 className="animate-spin mr-2 h-5 w-5" />
+                      ) : null}
                       Save Changes
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setEditModalOpen(false)}
-                      className="flex-1"
+                      className="flex-1 py-6 text-base font-semibold border-2 border-gray-400 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700"
                     >
                       Cancel
                     </Button>
