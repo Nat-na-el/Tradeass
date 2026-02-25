@@ -1,48 +1,44 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
-import { format, parseISO } from "date-fns";
-import { Card } from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Trash2, Plus, Loader2, Check, AlertCircle, FileText, X, Edit, Image, Tag, Upload } from "lucide-react";
 import { useTheme } from "../Theme-provider";
-import {
-  Trash2,
-  Eye,
-  Download,
-  X,
-  FileText,
-  Edit,
-  Check,
-  AlertCircle,
-  PlusCircle,
-  BookOpen,
-  Tag,
-  Upload,
-  Loader2,
-} from "lucide-react";
 import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { db, auth, storage } from "../firebase";
 import {
   collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
   getDocs,
   query,
   orderBy,
-  updateDoc,
-  doc,
-  deleteDoc,
   serverTimestamp,
-  writeBatch,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
+const formatDateInput = (d = new Date()) => new Date(d).toISOString().slice(0, 10);
 const formatNumber = (num) => {
-  if (!num && num !== 0) return "0.00";
+  if (!num && num !== 0) return "";
   return Number(num).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 };
 
-// Tag input component for confluences (reused from DailyJournal)
+const COMMON_ASSETS = [
+  "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "NZDUSD", "USDCHF",
+  "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "CADJPY", "CHFJPY",
+  "UK100", "US30", "NAS100", "SPX500", "DE40", "JP225", "FRA40", "AUS200",
+  "HSI", "CHINA50", "UK100.cash", "US30.cash", "NAS100.cash",
+  "AAPL", "TSLA", "AMZN", "GOOGL", "MSFT", "NVDA", "META", "NFLX", "AMD", "INTC",
+  "BABA", "PDD", "JD", "SHOP", "SQ", "PYPL", "DIS", "BA", "GE", "F"
+];
+
+// Tag input component for confluences
 const ConfluenceTags = ({ tags, onChange }) => {
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef(null);
@@ -96,98 +92,40 @@ const ConfluenceTags = ({ tags, onChange }) => {
   );
 };
 
-export default function Trades({ currentAccount }) {
+export default function DailyJournal({ currentAccount }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [trades, setTrades] = useState([]);
+  const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [message, setMessage] = useState({ text: "", type: "success" });
-
-  const selectedDate = searchParams.get("date");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("date-desc");
-
-  const [selectedTrade, setSelectedTrade] = useState(null);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editingTrade, setEditingTrade] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState(null);
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [user, setUser] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [editForm, setEditForm] = useState({
+  const [form, setForm] = useState({
+    date: formatDateInput(),
     pair: "",
-    direction: "",
+    direction: "Long",
     entry: "",
     exit: "",
     stopLoss: "",
     takeProfit: "",
-    rr: "",
-    pnl: "",
     notes: "",
+    pnl: "",
+    rr: "",
+    lotSize: "0.1",
     status: "executed",
     confluences: [],
     screenshotUrl: "",
   });
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [tradeToDelete, setTradeToDelete] = useState(null);
-  const [user, setUser] = useState(null);
 
-  const modalContentRef = useRef(null); // for paste listener
+  const modalContentRef = useRef(null); // to attach paste listener
+  const accountLeverage = currentAccount?.leverage || 100;
   const isAccountReady = user && currentAccount;
-
-  // ─── Auth listener ─────────────────────────────────────────────────
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((authUser) => {
-      setUser(authUser);
-      if (!authUser) {
-        setTrades([]);
-        setLoading(false);
-      }
-    });
-    return unsubscribe;
-  }, []);
-
-  // ─── Fetch trades when account is ready ────────────────────────────
-  const refreshTrades = async () => {
-    if (!user || !currentAccount?.id) {
-      setTrades([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const tradesRef = collection(
-        db,
-        "users",
-        user.uid,
-        "accounts",
-        currentAccount.id,
-        "trades"
-      );
-      const q = query(tradesRef, orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const loaded = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setTrades(loaded);
-    } catch (err) {
-      console.error("Trades fetch failed:", err);
-      setError("Could not load trades. Please check your connection.");
-      setTrades([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user && currentAccount) {
-      refreshTrades();
-    } else {
-      setTrades([]);
-      setLoading(false);
-    }
-  }, [currentAccount, user]);
 
   // ─── Image upload handler ──────────────────────────────────────────
   const handleImageUpload = async (file) => {
@@ -197,18 +135,18 @@ export default function Trades({ currentAccount }) {
       const storageRef = ref(storage, `users/${user.uid}/accounts/${currentAccount.id}/trades/${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
-      setEditForm(prev => ({ ...prev, screenshotUrl: url }));
+      setForm(prev => ({ ...prev, screenshotUrl: url }));
     } catch (err) {
       console.error("Upload failed:", err);
-      setMessage({ text: "Failed to upload image", type: "error" });
+      setError("Failed to upload image");
     } finally {
       setUploadingImage(false);
     }
   };
 
-  // ─── Handle paste on edit modal ────────────────────────────────────
+  // ─── Handle paste (for images) on the modal ────────────────────────
   useEffect(() => {
-    if (!editModalOpen) return;
+    if (!modalOpen) return;
     const handlePaste = (e) => {
       const items = e.clipboardData?.items;
       if (!items) return;
@@ -230,194 +168,240 @@ export default function Trades({ currentAccount }) {
         currentModal.removeEventListener('paste', handlePaste);
       }
     };
-  }, [editModalOpen]);
+  }, [modalOpen]);
 
-  // ─── Filtered + Sorted trades ──────────────────────────────────────
-  const filteredTrades = useMemo(() => {
-    let result = [...trades];
-    if (selectedDate) {
-      result = result.filter((t) => t.date?.startsWith(selectedDate));
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (t) =>
-          (t.pair || "").toLowerCase().includes(q) ||
-          (t.notes || "").toLowerCase().includes(q) ||
-          (t.strategy || "").toLowerCase().includes(q) ||
-          (t.confluences?.some(c => c.toLowerCase().includes(q)))
-      );
-    }
-    result.sort((a, b) => {
-      if (sortBy === "date-desc") return new Date(b.date || 0) - new Date(a.date || 0);
-      if (sortBy === "date-asc") return new Date(a.date || 0) - new Date(b.date || 0);
-      if (sortBy === "pnl-desc") return Number(b.pnl || 0) - Number(a.pnl || 0);
-      if (sortBy === "pnl-asc") return Number(a.pnl || 0) - Number(b.pnl || 0);
-      if (sortBy === "pair") return (a.pair || "").localeCompare(b.pair || "");
-      return 0;
-    });
-    return result;
-  }, [trades, selectedDate, searchQuery, sortBy]);
-
-  // ─── Stats ─────────────────────────────────────────────────────────
-  const stats = useMemo(() => {
-    const executed = filteredTrades.filter(t => t.status !== "pending");
-    if (!executed.length) {
-      return { totalPnL: 0, winRate: 0, totalTrades: filteredTrades.length, avgRR: 0 };
-    }
-    const total = executed.length;
-    const wins = executed.filter((t) => Number(t.pnl || 0) > 0).length;
-    const totalPnL = executed.reduce((sum, t) => sum + Number(t.pnl || 0), 0);
-    const totalRR = executed.reduce((sum, t) => sum + Number(t.rr || 0), 0);
-    return {
-      totalPnL: totalPnL.toFixed(2),
-      winRate: total ? Math.round((wins / total) * 100) : 0,
-      totalTrades: filteredTrades.length,
-      avgRR: total ? (totalRR / total).toFixed(2) : 0,
-    };
-  }, [filteredTrades]);
-
-  // ─── Open edit modal ───────────────────────────────────────────────
-  const openEdit = (trade) => {
-    setEditingTrade(trade);
-    setEditForm({
-      pair: trade.pair || "",
-      direction: trade.direction || "Long",
-      entry: trade.entry || "",
-      exit: trade.exit || "",
-      stopLoss: trade.stopLoss || "",
-      takeProfit: trade.takeProfit || "",
-      rr: trade.rr || "",
-      pnl: trade.pnl || "",
-      notes: trade.notes || "",
-      status: trade.status || "executed",
-      confluences: trade.confluences || [],
-      screenshotUrl: trade.screenshotUrl || "",
-    });
-    setEditModalOpen(true);
-  };
-
-  // ─── Save edited trade ─────────────────────────────────────────────
-  const saveEdit = async (e) => {
-    e.preventDefault();
-    if (!editingTrade) return;
+  // ─── Fetch journal entries ────────────────────────────────────────
+  const refreshEntries = async () => {
     if (!user || !currentAccount?.id) {
-      setMessage({ text: "No account or user logged in", type: "error" });
+      setEntries([]);
+      setLoading(false);
       return;
     }
+    setLoading(true);
+    setError(null);
     try {
-      const tradeRef = doc(
+      const entriesRef = collection(
         db,
         "users",
         user.uid,
         "accounts",
         currentAccount.id,
-        "trades",
-        editingTrade.id
+        "trades"
       );
-      await updateDoc(tradeRef, {
-        ...editForm,
-        updatedAt: serverTimestamp(),
-      });
-      setMessage({ text: "Trade updated successfully!", type: "success" });
-      setTimeout(() => setMessage({ text: "", type: "success" }), 4000);
-      setEditModalOpen(false);
-      setEditingTrade(null);
-      await refreshTrades();
+      const q = query(entriesRef, orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      const loaded = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setEntries(loaded);
     } catch (err) {
-      console.error("Update error:", err);
-      setMessage({ text: "Error updating trade: " + err.message, type: "error" });
+      console.error("❌ Journal fetch error:", err);
+      setError("Could not load journal entries. " + (err.message || ""));
+      setEntries([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ─── Delete trade ──────────────────────────────────────────────────
-  const deleteTrade = async (id) => {
+  // ─── Auth listener ─────────────────────────────────────────────────
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((authUser) => {
+      setUser(authUser);
+      if (!authUser) {
+        setEntries([]);
+        setLoading(false);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (user && currentAccount) {
+      refreshEntries();
+    }
+  }, [currentAccount, user]);
+
+  // ─── Auto‑calculate PnL and R:R (only if executed and exit given) ─
+  useEffect(() => {
+    if (form.status === "pending" || !form.exit) {
+      setForm(prev => ({ ...prev, pnl: "", rr: "" }));
+      return;
+    }
+    const entry = Number(form.entry) || 0;
+    const exitPrice = Number(form.exit) || 0;
+    const sl = Number(form.stopLoss) || 0;
+    const tp = Number(form.takeProfit) || 0;
+    const lot = Number(form.lotSize) || 0.1;
+
+    let calculatedPnL = "";
+    if (entry && exitPrice && lot && accountLeverage) {
+      const priceDiff = form.direction === "Long" ? (exitPrice - entry) : (entry - exitPrice);
+      calculatedPnL = (priceDiff * lot * accountLeverage * 100).toFixed(2);
+    }
+
+    let calculatedRR = "";
+    if (entry && sl && tp) {
+      const risk = form.direction === "Long" ? (entry - sl) : (sl - entry);
+      const reward = form.direction === "Long" ? (tp - entry) : (entry - tp);
+      if (risk !== 0) {
+        calculatedRR = (reward / risk).toFixed(2);
+      } else if (reward > 0) {
+        calculatedRR = "∞";
+      }
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      pnl: calculatedPnL,
+      rr: calculatedRR,
+    }));
+  }, [form.entry, form.exit, form.stopLoss, form.takeProfit, form.lotSize, form.direction, form.status, accountLeverage]);
+
+  // ─── Today's entries ────────────────────────────────────────────────
+  const todayEntries = useMemo(() => {
+    const today = formatDateInput();
+    return entries.filter((e) => e.date === today);
+  }, [entries]);
+
+  // ─── Metrics for today (only executed trades) ───────────────────────
+  const metrics = useMemo(() => {
+    const executed = todayEntries.filter(e => e.status === "executed");
+    if (!executed.length) {
+      return { net: 0, wins: 0, losses: 0, winRate: 0, avgPnL: 0 };
+    }
+    const total = executed.length;
+    let net = 0;
+    let wins = 0;
+    executed.forEach((e) => {
+      const pnl = Number(e.pnl || 0);
+      net += pnl;
+      if (pnl > 0) wins++;
+    });
+    const winRate = Math.round((wins / total) * 100);
+    const avgPnL = net / total;
+    return {
+      net: net.toFixed(2),
+      wins,
+      losses: total - wins,
+      winRate,
+      avgPnL: avgPnL.toFixed(2),
+    };
+  }, [todayEntries]);
+
+  // ─── Save entry ────────────────────────────────────────────────────
+  const saveEntry = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+
+    if (!user || !currentAccount?.id) {
+      setError("Please log in and select an account");
+      return;
+    }
+
+    const payload = {
+      date: form.date || formatDateInput(),
+      pair: form.pair?.toUpperCase() || "",
+      direction: form.direction || "Long",
+      entry: Number(form.entry) || 0,
+      exit: form.status === "pending" ? 0 : (Number(form.exit) || 0),
+      stopLoss: Number(form.stopLoss) || 0,
+      takeProfit: Number(form.takeProfit) || 0,
+      pnl: form.status === "pending" ? 0 : (Number(form.pnl) || 0),
+      rr: form.status === "pending" ? "" : form.rr,
+      lotSize: Number(form.lotSize) || 0.1,
+      notes: form.notes || "",
+      status: form.status || "executed",
+      confluences: form.confluences || [],
+      screenshotUrl: form.screenshotUrl || "",
+    };
+
+    try {
+      if (editingEntry) {
+        const entryRef = doc(
+          db,
+          "users",
+          user.uid,
+          "accounts",
+          currentAccount.id,
+          "trades",
+          editingEntry.id
+        );
+        await updateDoc(entryRef, {
+          ...payload,
+          updatedAt: serverTimestamp(),
+        });
+        setSuccessMsg("Entry updated successfully!");
+      } else {
+        await addDoc(
+          collection(db, "users", user.uid, "accounts", currentAccount.id, "trades"),
+          {
+            ...payload,
+            createdAt: serverTimestamp(),
+          }
+        );
+        setSuccessMsg("Entry added successfully!");
+      }
+      setModalOpen(false);
+      setEditingEntry(null);
+      setForm({
+        date: formatDateInput(),
+        pair: "",
+        direction: "Long",
+        entry: "",
+        exit: "",
+        stopLoss: "",
+        takeProfit: "",
+        notes: "",
+        pnl: "",
+        rr: "",
+        lotSize: "0.1",
+        status: "executed",
+        confluences: [],
+        screenshotUrl: "",
+      });
+      await refreshEntries();
+    } catch (err) {
+      console.error("Save error:", err);
+      setError("Failed to save entry: " + err.message);
+    }
+  };
+
+  // ─── Delete entry ──────────────────────────────────────────────────
+  const deleteEntry = async (id) => {
     if (!user || !currentAccount?.id) return;
     try {
       await deleteDoc(
         doc(db, "users", user.uid, "accounts", currentAccount.id, "trades", id)
       );
-      setMessage({ text: "Trade deleted successfully", type: "success" });
-      setTimeout(() => setMessage({ text: "", type: "success" }), 4000);
-      await refreshTrades();
+      setSuccessMsg("Entry deleted successfully");
+      await refreshEntries();
     } catch (err) {
       console.error("Delete failed:", err);
-      setMessage({ text: "Failed to delete trade: " + err.message, type: "error" });
+      setError("Failed to delete entry");
     }
     setDeleteModalOpen(false);
-    setTradeToDelete(null);
+    setEntryToDelete(null);
   };
 
-  // ─── Export CSV ────────────────────────────────────────────────────
-  const exportCSV = () => {
-    if (!filteredTrades.length) return;
-    const headers = [
-      "Date",
-      "Pair",
-      "Direction",
-      "Entry",
-      "Exit",
-      "Stop Loss",
-      "Take Profit",
-      "PnL",
-      "R:R",
-      "Status",
-      "Confluences",
-      "Notes",
-    ];
-    const rows = filteredTrades.map((t) => [
-      t.date || "",
-      t.pair || "",
-      t.direction || "",
-      t.entry || "",
-      t.exit || "",
-      t.stopLoss || "",
-      t.takeProfit || "",
-      t.pnl || 0,
-      t.rr || "",
-      t.status || "executed",
-      (t.confluences || []).join("; "),
-      `"${(t.notes || "").replace(/"/g, '""')}"`,
-    ]);
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `forgex-trades-${currentAccount?.name || "account"}-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-  };
-
-  // ─── Migrate old flat trades ───────────────────────────────────────
-  const migrateOldTrades = async () => {
-    if (!user || !currentAccount?.id) {
-      setMessage({ text: "No user or account selected", type: "error" });
-      return;
-    }
+  // ─── Clear today's entries ─────────────────────────────────────────
+  const clearTodayEntries = async () => {
+    if (!user || !currentAccount?.id) return;
     try {
-      const oldTradesSnap = await getDocs(collection(db, "users", user.uid, "trades"));
-      if (oldTradesSnap.empty) {
-        setMessage({ text: "No old trades found to migrate", type: "info" });
-        return;
-      }
-      const batch = writeBatch(db);
-      oldTradesSnap.forEach((oldDoc) => {
-        const newRef = doc(
-          collection(db, "users", user.uid, "accounts", currentAccount.id, "trades")
-        );
-        batch.set(newRef, oldDoc.data());
-        batch.delete(oldDoc.ref);
-      });
-      await batch.commit();
-      setMessage({
-        text: `Migrated ${oldTradesSnap.size} old trades to ${currentAccount.name}!`,
-        type: "success",
-      });
-      await refreshTrades();
+      const batchPromises = todayEntries.map((e) =>
+        deleteDoc(
+          doc(db, "users", user.uid, "accounts", currentAccount.id, "trades", e.id)
+        )
+      );
+      await Promise.all(batchPromises);
+      setSuccessMsg("Today's entries cleared successfully");
+      await refreshEntries();
     } catch (err) {
-      console.error("Migration failed:", err);
-      setMessage({ text: "Migration failed: " + err.message, type: "error" });
+      console.error("Batch delete failed:", err);
+      setError("Failed to clear entries");
     }
+    setDeleteModalOpen(false);
   };
 
   // ─── If no account selected ───────────────────────────────────────
@@ -428,7 +412,7 @@ export default function Trades({ currentAccount }) {
           <AlertCircle size={48} className="mx-auto text-amber-500 mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">No Account Selected</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Please create or select an account from the sidebar to view your trades.
+            Please create or select an account from the sidebar to start journaling.
           </p>
         </Card>
       </div>
@@ -437,208 +421,162 @@ export default function Trades({ currentAccount }) {
 
   return (
     <div
-      className={`min-h-screen w-full p-4 sm:p-6 lg:p-8 transition-colors duration-300
+      className={`min-h-screen w-full p-4 sm:p-6 transition-colors duration-300
         ${isDark
           ? "bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-gray-100"
           : "bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900"}`}
     >
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
+        {/* Header with fixed Add Entry button */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sticky top-0 z-10 bg-inherit py-2">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-              {currentAccount.name} – Trade History
+              Daily Journal – {currentAccount.name}
             </h1>
             <p className="text-sm sm:text-base mt-1 opacity-80">
-              Track and review your executed and pending trades
+              Log trades with auto PnL (Leverage {accountLeverage}:1)
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={exportCSV}
-              disabled={!filteredTrades.length || loading}
-              className="bg-gray-700 hover:bg-gray-800 text-white shadow-md disabled:opacity-50 border-2 border-gray-600"
-            >
-              <Download size={18} className="mr-2" /> Export CSV
-            </Button>
-            <Button
-              onClick={migrateOldTrades}
-              variant="outline"
-              className="border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10 border-2"
-            >
-              Migrate Old Trades
-            </Button>
-          </div>
+          <Button
+            onClick={() => {
+              if (!isAccountReady) return;
+              setModalOpen(true);
+              setEditingEntry(null);
+              setForm({
+                date: formatDateInput(),
+                pair: "",
+                direction: "Long",
+                entry: "",
+                exit: "",
+                stopLoss: "",
+                takeProfit: "",
+                notes: "",
+                pnl: "",
+                rr: "",
+                lotSize: "0.1",
+                status: "executed",
+                confluences: [],
+                screenshotUrl: "",
+              });
+            }}
+            disabled={!isAccountReady}
+            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white shadow-md py-5 sm:py-4 text-base font-semibold border-2 border-indigo-400 dark:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus size={18} className="mr-2" /> Add Entry
+          </Button>
         </div>
 
         {/* Feedback */}
-        {message.text && (
-          <div
-            className={`p-4 rounded-xl flex items-center gap-3 shadow-sm ${
-              message.type === "success"
-                ? "bg-emerald-100/90 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700"
-                : "bg-rose-100/90 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700"
-            }`}
-          >
-            {message.type === "success" ? <Check size={20} /> : <AlertCircle size={20} />}
-            {message.text}
+        {error && (
+          <div className="p-4 rounded-xl bg-rose-100/80 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 flex items-center gap-3">
+            <AlertCircle size={20} />
+            {error}
+          </div>
+        )}
+        {successMsg && (
+          <div className="p-4 rounded-xl bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 flex items-center gap-3">
+            <Check size={20} />
+            {successMsg}
           </div>
         )}
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <label className="block text-sm font-medium mb-2 opacity-80">Filter by Date</label>
-            <input
-              type="date"
-              value={selectedDate || ""}
-              onChange={(e) => setSearchParams(e.target.value ? { date: e.target.value } : {})}
-              className={`w-full p-3.5 rounded-xl border transition-all ${
-                isDark
-                  ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
-                  : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
-              } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2 opacity-80">Search</label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Pair, notes, confluences..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full p-3.5 pr-10 rounded-xl border transition-all ${
-                  isDark
-                    ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
-                    : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
-                } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
-                >
-                  <X size={18} />
-                </button>
-              )}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2 opacity-80">Sort By</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className={`w-full p-3.5 rounded-xl border transition-all ${
-                isDark
-                  ? "bg-gray-800/70 border-gray-700 text-gray-100 focus:border-indigo-500"
-                  : "bg-white/80 border-gray-300 text-gray-900 focus:border-indigo-500"
-              } focus:ring-2 focus:ring-indigo-500/40 outline-none`}
-            >
-              <option value="date-desc">Newest First</option>
-              <option value="date-asc">Oldest First</option>
-              <option value="pnl-desc">Highest PnL</option>
-              <option value="pnl-asc">Lowest PnL</option>
-              <option value="pair">Pair (A-Z)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6">
-          <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
-            <div className="text-xs font-medium opacity-70 mb-1">Total P&L (executed)</div>
+        {/* Metrics */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card className="p-4 rounded-xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md">
+            <div className="text-xs font-medium opacity-70 mb-1">Net P&L Today</div>
             <div
-              className={`text-2xl lg:text-3xl font-bold ${
-                Number(stats.totalPnL) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+              className={`text-xl sm:text-2xl font-bold ${
+                metrics.net >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
               }`}
             >
-              {Number(stats.totalPnL) >= 0 ? "+" : "-"}${Math.abs(Number(stats.totalPnL)).toFixed(2)}
+              {metrics.net >= 0 ? "+" : "-"}${formatNumber(Math.abs(metrics.net))}
             </div>
           </Card>
-          <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+          <Card className="p-4 rounded-xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md">
             <div className="text-xs font-medium opacity-70 mb-1">Win Rate</div>
-            <div className="text-2xl lg:text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-              {stats.winRate}%
+            <div className="text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+              {metrics.winRate}%
             </div>
           </Card>
-          <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
-            <div className="text-xs font-medium opacity-70 mb-1">Total Trades</div>
-            <div className="text-2xl lg:text-3xl font-bold text-violet-600 dark:text-violet-400">
-              {stats.totalTrades}
+          <Card className="p-4 rounded-xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md">
+            <div className="text-xs font-medium opacity-70 mb-1">Wins / Losses</div>
+            <div className="text-xl sm:text-2xl font-bold text-violet-600 dark:text-violet-400">
+              {metrics.wins} / {metrics.losses}
             </div>
           </Card>
-          <Card className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
-            <div className="text-xs font-medium opacity-70 mb-1">Avg R:R</div>
-            <div className="text-2xl lg:text-3xl font-bold text-cyan-600 dark:text-cyan-400">
-              {stats.avgRR}
+          <Card className="p-4 rounded-xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md">
+            <div className="text-xs font-medium opacity-70 mb-1">Avg P&L</div>
+            <div
+              className={`text-xl sm:text-2xl font-bold ${
+                metrics.avgPnL >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+              }`}
+            >
+              {metrics.avgPnL >= 0 ? "+" : "-"}${formatNumber(Math.abs(metrics.avgPnL))}
             </div>
           </Card>
         </div>
 
-        {/* Trades List */}
+        {/* Entries List */}
         {loading ? (
           <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+            <Loader2 className="animate-spin h-12 w-12 text-indigo-500" />
           </div>
         ) : error ? (
-          <div className="text-center py-16 text-rose-400 text-xl font-medium">{error}</div>
-        ) : filteredTrades.length === 0 ? (
-          <Card className="p-12 text-center bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-w-2xl mx-auto">
-            <AlertCircle size={72} className="mx-auto text-amber-500 mb-6 opacity-90" />
-            <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-              No trades yet in {currentAccount.name}
-            </h2>
-            <p className="text-lg opacity-80 mb-10 leading-relaxed">
-              Start building your performance history.
+          <div className="text-center py-16 text-rose-400">{error}</div>
+        ) : !isAccountReady ? (
+          <Card className="p-6 sm:p-8 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
+            <p className="text-lg sm:text-xl font-medium opacity-70 mb-3">
+              Preparing your account...
             </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-6">
-              <Button
-                size="lg"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg px-10 py-7 text-xl font-medium border-2 border-indigo-400"
-                onClick={() => navigate("/trades/new")}
-              >
-                <PlusCircle size={24} className="mr-3" />
-                Add New Trade
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-2 border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-600/10 px-10 py-7 text-xl font-medium"
-                onClick={() => navigate("/journal")}
-              >
-                <BookOpen size={24} className="mr-3" />
-                Journal Today
-              </Button>
-            </div>
+            <p className="text-sm opacity-60 mb-5">
+              Please wait while we set up your journal.
+            </p>
+          </Card>
+        ) : todayEntries.length === 0 ? (
+          <Card className="p-6 sm:p-8 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
+            <p className="text-lg sm:text-xl font-medium opacity-70 mb-3">
+              No entries logged today
+            </p>
+            <p className="text-sm opacity-60 mb-5">
+              Add your first journal entry to start tracking
+            </p>
+            <Button
+              onClick={() => {
+                setModalOpen(true);
+                setEditingEntry(null);
+              }}
+              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold border-2 border-indigo-400"
+            >
+              <Plus size={18} className="mr-2" /> Log First Entry
+            </Button>
           </Card>
         ) : (
           <div className="space-y-4">
-            {filteredTrades.map((trade) => (
+            {todayEntries.map((entry) => (
               <Card
-                key={trade.id}
-                className="p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md hover:shadow-xl transition-all duration-200 group"
+                key={entry.id}
+                className="p-4 sm:p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md hover:shadow-xl transition-all duration-200 group"
               >
                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-start gap-3">
                       <div
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold shadow-sm ${
-                          trade.status === "pending"
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold shadow-sm flex-shrink-0 ${
+                          entry.status === "pending"
                             ? "bg-gray-300 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-                            : Number(trade.pnl || 0) >= 0
+                            : Number(entry.pnl || 0) >= 0
                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                             : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
                         }`}
                       >
-                        {trade.pair?.slice(0, 2) || "?"}
+                        {entry.pair?.slice(0, 2) || "?"}
                       </div>
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-semibold text-lg">
-                            {trade.pair || "—"} • {trade.direction || "—"}
+                            {entry.pair || "—"} • {entry.direction || "—"}
                           </span>
-                          {trade.status === "pending" && (
+                          {entry.status === "pending" && (
                             <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                               Pending
                             </span>
@@ -646,18 +584,18 @@ export default function Trades({ currentAccount }) {
                         </div>
                         <div className="text-sm opacity-70 flex flex-wrap gap-3 mt-1">
                           <span>
-                            {trade.date ? format(parseISO(trade.date), "dd MMM yyyy • HH:mm") : "—"}
+                            {entry.date ? formatDateInput(new Date(entry.date)) : "—"}
                           </span>
-                          <span>Lot: {trade.lotSize || "—"}</span>
-                          {trade.status === "executed" && trade.rr && <span>R:R {trade.rr}</span>}
+                          <span>Lot: {entry.lotSize || "—"}</span>
+                          {entry.status === "executed" && entry.rr && <span>R:R {entry.rr}</span>}
                         </div>
                       </div>
                     </div>
 
                     {/* Confluences */}
-                    {trade.confluences?.length > 0 && (
+                    {entry.confluences?.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {trade.confluences.map((conf, idx) => (
+                        {entry.confluences.map((conf, idx) => (
                           <span
                             key={idx}
                             className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20"
@@ -670,23 +608,23 @@ export default function Trades({ currentAccount }) {
                     )}
 
                     {/* Notes */}
-                    {trade.notes && (
+                    {entry.notes && (
                       <div className="text-sm opacity-80 line-clamp-2 mt-2">
                         <FileText size={14} className="inline mr-1" />
-                        {trade.notes}
+                        {entry.notes}
                       </div>
                     )}
 
-                    {/* Screenshot */}
-                    {trade.screenshotUrl && (
+                    {/* Screenshot thumbnail */}
+                    {entry.screenshotUrl && (
                       <a
-                        href={trade.screenshotUrl}
+                        href={entry.screenshotUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-block mt-2"
                       >
                         <img
-                          src={trade.screenshotUrl}
+                          src={entry.screenshotUrl}
                           alt="Chart"
                           className="h-16 w-16 object-cover rounded-lg border border-gray-300 dark:border-gray-600 hover:opacity-80 transition"
                         />
@@ -696,21 +634,20 @@ export default function Trades({ currentAccount }) {
 
                   <div className="flex items-center justify-between lg:justify-end w-full lg:w-auto gap-6">
                     <div className="text-right min-w-[100px]">
-                      {trade.status === "pending" ? (
+                      {entry.status === "pending" ? (
                         <div className="text-lg font-semibold text-amber-600 dark:text-amber-400">Pending</div>
                       ) : (
                         <>
                           <div
                             className={`text-xl font-bold ${
-                              Number(trade.pnl || 0) >= 0
+                              Number(entry.pnl || 0) >= 0
                                 ? "text-emerald-700 dark:text-emerald-500"
                                 : "text-rose-700 dark:text-rose-500"
                             }`}
                           >
-                            {Number(trade.pnl || 0) >= 0 ? "+" : ""}$
-                            {Math.abs(Number(trade.pnl || 0)).toFixed(2)}
+                            {Number(entry.pnl || 0) >= 0 ? "+" : "-"}${formatNumber(Math.abs(Number(entry.pnl || 0)))}
                           </div>
-                          {trade.rr && <div className="text-xs opacity-70">R:R {trade.rr}</div>}
+                          {entry.rr && <div className="text-xs opacity-70">R:R {entry.rr}</div>}
                         </>
                       )}
                     </div>
@@ -718,15 +655,26 @@ export default function Trades({ currentAccount }) {
                       <Button
                         size="icon"
                         variant="outline"
-                        onClick={() => setSelectedTrade(trade)}
-                        className="h-10 w-10 rounded-lg border-2 hover:bg-indigo-100 dark:hover:bg-indigo-900"
-                      >
-                        <Eye size={18} />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => openEdit(trade)}
+                        onClick={() => {
+                          setEditingEntry(entry);
+                          setForm({
+                            date: entry.date || formatDateInput(),
+                            pair: entry.pair || "",
+                            direction: entry.direction || "Long",
+                            entry: entry.entry?.toString() || "",
+                            exit: entry.exit?.toString() || "",
+                            stopLoss: entry.stopLoss?.toString() || "",
+                            takeProfit: entry.takeProfit?.toString() || "",
+                            notes: entry.notes || "",
+                            pnl: entry.pnl?.toString() || "",
+                            rr: entry.rr || "",
+                            lotSize: entry.lotSize?.toString() || "0.1",
+                            status: entry.status || "executed",
+                            confluences: Array.isArray(entry.confluences) ? entry.confluences : [],
+                            screenshotUrl: entry.screenshotUrl || "",
+                          });
+                          setModalOpen(true);
+                        }}
                         className="h-10 w-10 rounded-lg border-2 hover:bg-indigo-100 dark:hover:bg-indigo-900"
                       >
                         <Edit size={18} />
@@ -735,7 +683,7 @@ export default function Trades({ currentAccount }) {
                         size="icon"
                         variant="destructive"
                         onClick={() => {
-                          setTradeToDelete(trade.id);
+                          setEntryToDelete(entry.id);
                           setDeleteModalOpen(true);
                         }}
                         className="h-10 w-10 rounded-lg border-2 border-rose-300 dark:border-rose-700 hover:bg-rose-100 dark:hover:bg-rose-900"
@@ -750,180 +698,56 @@ export default function Trades({ currentAccount }) {
           </div>
         )}
 
-        {/* View Details Modal (unchanged) */}
-        {selectedTrade && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4">
+        {/* Add / Edit Entry Modal */}
+        {modalOpen && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4 overflow-y-auto">
             <div
+              ref={modalContentRef}
               className={`w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border backdrop-blur-md
                 ${isDark ? "bg-gray-900/95 border-gray-700/60" : "bg-white/95 border-gray-200/60"}`}
             >
-              <div className="p-6 max-h-[80vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-                    Trade Details
+              <div className="p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-5 sticky top-0 bg-inherit z-10">
+                  <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+                    {editingEntry ? "Edit Entry" : "Add New Entry"}
                   </h2>
-                  <Button variant="ghost" size="icon" onClick={() => setSelectedTrade(null)}>
+                  <Button variant="ghost" size="icon" onClick={() => setModalOpen(false)}>
                     <X size={24} />
                   </Button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
+                <form onSubmit={saveEntry} className="space-y-4 sm:space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <div className="text-sm opacity-70 mb-1">Pair & Direction</div>
-                      <div className="text-xl font-semibold">
-                        {selectedTrade.pair || "—"} • {selectedTrade.direction || "—"}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm opacity-70 mb-1">Date & Time</div>
-                      <div className="text-lg">
-                        {selectedTrade.date
-                          ? format(parseISO(selectedTrade.date), "PPP • p")
-                          : "—"}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-sm opacity-70 mb-1">Entry</div>
-                        <div className="text-lg font-medium">{selectedTrade.entry || "—"}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm opacity-70 mb-1">Exit</div>
-                        <div className="text-lg font-medium">
-                          {selectedTrade.status === "pending" ? "Pending" : (selectedTrade.exit || "—")}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-sm opacity-70 mb-1">Stop Loss</div>
-                        <div className="text-lg">{selectedTrade.stopLoss || "—"}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm opacity-70 mb-1">Take Profit</div>
-                        <div className="text-lg">{selectedTrade.takeProfit || "—"}</div>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm opacity-70 mb-1">Risk:Reward</div>
-                      <div className="text-xl font-bold text-violet-600 dark:text-violet-400">
-                        {selectedTrade.status === "pending" ? "—" : (selectedTrade.rr || "—")}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm opacity-70 mb-1">Status</div>
-                      <div className={`text-lg font-semibold ${
-                        selectedTrade.status === "pending" ? "text-amber-600" : "text-emerald-600"
-                      }`}>
-                        {selectedTrade.status === "pending" ? "⏳ Pending" : "✅ Executed"}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="text-sm opacity-70 mb-1">Profit & Loss</div>
-                      <div
-                        className={`text-3xl font-bold ${
-                          selectedTrade.status === "pending"
-                            ? "text-gray-500"
-                            : Number(selectedTrade.pnl || 0) >= 0
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-rose-600 dark:text-rose-400"
-                        }`}
-                      >
-                        {selectedTrade.status === "pending"
-                          ? "Pending"
-                          : `${Number(selectedTrade.pnl || 0) >= 0 ? "+" : ""}$${Math.abs(Number(selectedTrade.pnl || 0)).toFixed(2)}`
-                        }
-                      </div>
-                    </div>
-                    {selectedTrade.confluences?.length > 0 && (
-                      <div>
-                        <div className="text-sm opacity-70 mb-2">Confluences</div>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedTrade.confluences.map((conf, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30"
-                            >
-                              {conf}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {selectedTrade.notes && (
-                      <div>
-                        <div className="text-sm opacity-70 mb-2 flex items-center gap-2">
-                          <FileText size={16} /> Notes
-                        </div>
-                        <div className="p-4 rounded-xl bg-gray-50/80 dark:bg-gray-800/50 border border-gray-200/50 dark:border-gray-700/50 whitespace-pre-wrap text-sm">
-                          {selectedTrade.notes}
-                        </div>
-                      </div>
-                    )}
-                    {selectedTrade.screenshotUrl && (
-                      <div>
-                        <div className="text-sm opacity-70 mb-2">Chart</div>
-                        <a href={selectedTrade.screenshotUrl} target="_blank" rel="noopener noreferrer">
-                          <img
-                            src={selectedTrade.screenshotUrl}
-                            alt="Chart"
-                            className="max-h-48 rounded-lg border border-gray-300 dark:border-gray-600"
-                          />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="p-5 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-4">
-                <Button variant="outline" onClick={() => openEdit(selectedTrade)}>
-                  <Edit size={16} className="mr-2" /> Edit Trade
-                </Button>
-                <Button variant="outline" onClick={() => setSelectedTrade(null)}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Edit Modal */}
-        {editModalOpen && editingTrade && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4">
-            <div
-              ref={modalContentRef}
-              className={`w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border backdrop-blur-md
-                ${isDark ? "bg-gray-900/95 border-gray-700/60" : "bg-white/95 border-gray-200/60"}`}
-            >
-              <div className="p-6 max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-                    Edit Trade
-                  </h2>
-                  <Button variant="ghost" size="icon" onClick={() => setEditModalOpen(false)}>
-                    <X size={24} />
-                  </Button>
-                </div>
-                <form onSubmit={saveEdit} className="space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div>
-                      <label className="block text-sm font-medium mb-1.5">Pair</label>
-                      <input
-                        value={editForm.pair}
-                        onChange={(e) => setEditForm({ ...editForm, pair: e.target.value })}
-                        className={`w-full p-3 rounded-xl border ${
-                          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                        } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                      <Label className="block text-sm font-medium mb-1.5">Date</Label>
+                      <Input
+                        type="date"
+                        value={form.date}
+                        onChange={(e) => setForm({ ...form, date: e.target.value })}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1.5">Direction</label>
+                      <Label className="block text-sm font-medium mb-1.5">Pair / Asset</Label>
+                      <Input
+                        list="assets-list"
+                        value={form.pair}
+                        onChange={(e) => setForm({ ...form, pair: e.target.value.toUpperCase() })}
+                        placeholder="Type or select..."
+                      />
+                      <datalist id="assets-list">
+                        {COMMON_ASSETS.map((asset) => (
+                          <option key={asset} value={asset} />
+                        ))}
+                      </datalist>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <Label className="block text-sm font-medium mb-1.5">Direction</Label>
                       <select
-                        value={editForm.direction}
-                        onChange={(e) => setEditForm({ ...editForm, direction: e.target.value })}
-                        className={`w-full p-3 rounded-xl border ${
+                        value={form.direction}
+                        onChange={(e) => setForm({ ...form, direction: e.target.value })}
+                        className={`w-full p-3 rounded-xl border text-sm ${
                           isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
                         } focus:ring-2 focus:ring-indigo-500 outline-none`}
                       >
@@ -931,125 +755,123 @@ export default function Trades({ currentAccount }) {
                         <option value="Short">Short</option>
                       </select>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                     <div>
-                      <label className="block text-sm font-medium mb-1.5">Entry</label>
-                      <input
-                        type="number"
-                        step="0.00001"
-                        value={editForm.entry}
-                        onChange={(e) => setEditForm({ ...editForm, entry: e.target.value })}
-                        className={`w-full p-3 rounded-xl border ${
-                          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                        } focus:ring-2 focus:ring-indigo-500 outline-none`}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1.5">Exit</label>
-                      <input
-                        type="number"
-                        step="0.00001"
-                        value={editForm.exit}
-                        onChange={(e) => setEditForm({ ...editForm, exit: e.target.value })}
-                        disabled={editForm.status === "pending"}
-                        className={`w-full p-3 rounded-xl border ${
-                          editForm.status === "pending"
-                            ? "bg-gray-200 dark:bg-gray-700 cursor-not-allowed"
-                            : isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                        } focus:ring-2 focus:ring-indigo-500 outline-none`}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1.5">PnL</label>
-                      <input
+                      <Label className="block text-sm font-medium mb-1.5">Lot Size</Label>
+                      <Input
                         type="number"
                         step="0.01"
-                        value={editForm.pnl}
-                        onChange={(e) => setEditForm({ ...editForm, pnl: e.target.value })}
-                        disabled={editForm.status === "pending"}
-                        className={`w-full p-3 rounded-xl border ${
-                          editForm.status === "pending"
-                            ? "bg-gray-200 dark:bg-gray-700 cursor-not-allowed"
-                            : isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                        } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                        min="0.01"
+                        value={form.lotSize}
+                        onChange={(e) => setForm({ ...form, lotSize: e.target.value })}
+                        placeholder="0.1"
                       />
+                    </div>
+                    <div>
+                      <Label className="block text-sm font-medium mb-1.5">Status</Label>
+                      <select
+                        value={form.status}
+                        onChange={(e) => setForm({ ...form, status: e.target.value })}
+                        className={`w-full p-3 rounded-xl border text-sm ${
+                          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                        } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                      >
+                        <option value="executed">Executed</option>
+                        <option value="pending">Pending</option>
+                      </select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1.5">Stop Loss</label>
-                      <input
+                      <Label className="block text-sm font-medium mb-1.5">Entry Price</Label>
+                      <Input
                         type="number"
                         step="0.00001"
-                        value={editForm.stopLoss}
-                        onChange={(e) => setEditForm({ ...editForm, stopLoss: e.target.value })}
-                        className={`w-full p-3 rounded-xl border ${
-                          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                        } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                        value={form.entry}
+                        onChange={(e) => setForm({ ...form, entry: e.target.value })}
+                        placeholder="1.08500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1.5">Take Profit</label>
-                      <input
+                      <Label className="block text-sm font-medium mb-1.5">Exit Price</Label>
+                      <Input
                         type="number"
                         step="0.00001"
-                        value={editForm.takeProfit}
-                        onChange={(e) => setEditForm({ ...editForm, takeProfit: e.target.value })}
-                        className={`w-full p-3 rounded-xl border ${
-                          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                        } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                        value={form.exit}
+                        onChange={(e) => setForm({ ...form, exit: e.target.value })}
+                        placeholder={form.status === "pending" ? "Pending – no exit" : "1.09000"}
+                        disabled={form.status === "pending"}
+                        className={form.status === "pending" ? "bg-gray-200 dark:bg-gray-700 cursor-not-allowed" : ""}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1.5">R:R</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={editForm.rr}
-                        onChange={(e) => setEditForm({ ...editForm, rr: e.target.value })}
-                        disabled={editForm.status === "pending"}
-                        className={`w-full p-3 rounded-xl border ${
-                          editForm.status === "pending"
-                            ? "bg-gray-200 dark:bg-gray-700 cursor-not-allowed"
-                            : isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                        } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                      <Label className="block text-sm font-medium mb-1.5">P&L (auto)</Label>
+                      <Input
+                        type="text"
+                        value={form.status === "pending" ? "Pending" : formatNumber(form.pnl)}
+                        readOnly
+                        placeholder="Auto-calculated"
+                        className={`w-full p-3 rounded-xl border bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed font-bold text-sm ${
+                          Number(form.pnl) > 0
+                            ? "text-emerald-700 dark:text-emerald-500"
+                            : Number(form.pnl) < 0
+                            ? "text-rose-700 dark:text-rose-500"
+                            : ""
+                        }`}
                       />
                     </div>
                   </div>
 
-                  {/* Status */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Status</label>
-                    <select
-                      value={editForm.status}
-                      onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                      className={`w-full p-3 rounded-xl border ${
-                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
-                    >
-                      <option value="executed">Executed</option>
-                      <option value="pending">Pending</option>
-                    </select>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <Label className="block text-sm font-medium mb-1.5">Stop Loss</Label>
+                      <Input
+                        type="number"
+                        step="0.00001"
+                        value={form.stopLoss}
+                        onChange={(e) => setForm({ ...form, stopLoss: e.target.value })}
+                        placeholder="1.08200"
+                      />
+                    </div>
+                    <div>
+                      <Label className="block text-sm font-medium mb-1.5">Take Profit</Label>
+                      <Input
+                        type="number"
+                        step="0.00001"
+                        value={form.takeProfit}
+                        onChange={(e) => setForm({ ...form, takeProfit: e.target.value })}
+                        placeholder="1.09500"
+                      />
+                    </div>
+                    <div>
+                      <Label className="block text-sm font-medium mb-1.5">R:R (auto)</Label>
+                      <Input
+                        type="text"
+                        value={form.status === "pending" ? "—" : form.rr}
+                        readOnly
+                        placeholder="Auto-calculated"
+                        className={`w-full p-3 rounded-xl border bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed font-bold text-sm`}
+                      />
+                    </div>
                   </div>
 
-                  {/* Confluences */}
+                  {/* Confluence Tags */}
                   <div>
-                    <label className="block text-sm font-medium mb-1.5">Confluences</label>
+                    <Label className="block text-sm font-medium mb-1.5">Confluences</Label>
                     <ConfluenceTags
-                      tags={editForm.confluences}
-                      onChange={(newTags) => setEditForm({ ...editForm, confluences: newTags })}
+                      tags={form.confluences}
+                      onChange={(newTags) => setForm({ ...form, confluences: newTags })}
                     />
                   </div>
 
                   {/* Screenshot upload */}
                   <div>
-                    <label className="block text-sm font-medium mb-1.5">Chart Screenshot</label>
+                    <Label className="block text-sm font-medium mb-1.5">Chart Screenshot</Label>
                     <div className="flex items-center gap-4">
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => document.getElementById("edit-image-upload").click()}
+                        onClick={() => document.getElementById("image-upload").click()}
                         disabled={uploadingImage}
                         className="relative border-2"
                       >
@@ -1063,7 +885,7 @@ export default function Trades({ currentAccount }) {
                         )}
                       </Button>
                       <input
-                        id="edit-image-upload"
+                        id="image-upload"
                         type="file"
                         accept="image/*"
                         className="hidden"
@@ -1074,16 +896,16 @@ export default function Trades({ currentAccount }) {
                       />
                       <span className="text-xs opacity-60">or paste an image</span>
                     </div>
-                    {editForm.screenshotUrl && (
+                    {form.screenshotUrl && (
                       <div className="mt-2 relative inline-block">
                         <img
-                          src={editForm.screenshotUrl}
+                          src={form.screenshotUrl}
                           alt="Preview"
                           className="h-20 w-20 object-cover rounded-lg border"
                         />
                         <button
                           type="button"
-                          onClick={() => setEditForm({ ...editForm, screenshotUrl: "" })}
+                          onClick={() => setForm({ ...form, screenshotUrl: "" })}
                           className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
                         >
                           <X size={14} />
@@ -1094,34 +916,34 @@ export default function Trades({ currentAccount }) {
 
                   {/* Notes */}
                   <div>
-                    <label className="block text-sm font-medium mb-1.5">Notes</label>
+                    <Label className="block text-sm font-medium mb-1.5">Notes / Thoughts</Label>
                     <textarea
-                      value={editForm.notes}
-                      onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                      className={`w-full p-3 rounded-xl border min-h-[80px] ${
-                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
-                      } focus:ring-2 focus:ring-indigo-500 outline-none`}
-                      placeholder="What did you learn from this trade?"
+                      placeholder="What went well? What to improve? Emotional state? Market context?..."
+                      value={form.notes}
+                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                      className={`w-full p-3 rounded-xl border min-h-[100px] text-sm resize-y focus:ring-2 focus:ring-indigo-500 outline-none ${
+                        isDark ? "bg-gray-800 border-gray-700 text-gray-100" : "bg-white border-gray-300 text-gray-900"
+                      }`}
                     />
                   </div>
 
-                  {/* Action buttons – darker and more visible */}
-                  <div className="flex gap-4 pt-4">
+                  {/* Action buttons – now darker and more visible */}
+                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
                     <Button
                       type="submit"
                       disabled={uploadingImage}
-                      className="flex-1 bg-indigo-700 hover:bg-indigo-800 text-white py-6 text-base font-bold border-2 border-indigo-500 shadow-lg disabled:opacity-50"
+                      className="flex-1 bg-indigo-700 hover:bg-indigo-800 text-white py-6 sm:py-4 text-base font-bold border-2 border-indigo-500 shadow-lg disabled:opacity-50"
                     >
                       {uploadingImage ? (
                         <Loader2 className="animate-spin mr-2 h-5 w-5" />
                       ) : null}
-                      Save Changes
+                      {editingEntry ? "Update Entry" : "Save Entry"}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setEditModalOpen(false)}
-                      className="flex-1 py-6 text-base font-semibold border-2 border-gray-400 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700"
+                      onClick={() => setModalOpen(false)}
+                      className="flex-1 py-6 sm:py-4 text-base font-semibold border-2 border-gray-400 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700"
                     >
                       Cancel
                     </Button>
@@ -1138,11 +960,15 @@ export default function Trades({ currentAccount }) {
             isOpen={deleteModalOpen}
             onClose={() => {
               setDeleteModalOpen(false);
-              setTradeToDelete(null);
+              setEntryToDelete(null);
             }}
-            onConfirm={() => deleteTrade(tradeToDelete)}
-            title="Delete Trade"
-            message="Are you sure you want to delete this trade? This action cannot be undone."
+            onConfirm={entryToDelete ? () => deleteEntry(entryToDelete) : clearTodayEntries}
+            title={entryToDelete ? "Delete Entry" : "Clear Today's Entries"}
+            message={
+              entryToDelete
+                ? "Are you sure you want to delete this journal entry? This action cannot be undone."
+                : `Are you sure you want to delete all ${todayEntries.length} entries from today?`
+            }
           />
         )}
       </div>
