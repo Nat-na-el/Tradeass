@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Trash2, Plus, Loader2, Check, AlertCircle, FileText, X, Edit } from "lucide-react";
+import { Trash2, Plus, Loader2, Check, AlertCircle, FileText, X, Edit, Image, Tag } from "lucide-react";
 import { useTheme } from "../Theme-provider";
 import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
 import { Button } from "@/components/ui/button";
@@ -61,32 +61,33 @@ export default function DailyJournal({ currentAccount }) {
     notes: "",
     pnl: "",
     rr: "",
-    leverage: "100",
     lotSize: "0.1",
+    status: "executed",          // new: pending / executed
+    confluences: "",             // new: multi‑line text
+    screenshotUrl: "",           // new: image URL
   });
 
-  // ─── Determine if we are waiting for an account to be selected ──────
+  const accountLeverage = currentAccount?.leverage || 100; // from account metadata
+
   const isAccountReady = user && currentAccount;
 
-  // ─── Fetch journal entries from current account's trades subcollection ───────
+  // ─── Fetch journal entries (trades) ───────────────────────────────
   const refreshEntries = async () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser || !currentAccount?.id) {
+    if (!user || !currentAccount?.id) {
       setEntries([]);
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setError(null);
     try {
       const entriesRef = collection(
         db,
         "users",
-        currentUser.uid,
+        user.uid,
         "accounts",
         currentAccount.id,
-        "trades" // ← changed from "journals" to "trades"
+        "trades"
       );
       const q = query(entriesRef, orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
@@ -104,7 +105,7 @@ export default function DailyJournal({ currentAccount }) {
     }
   };
 
-  // ─── Auth listener and account watcher ─────────────────────────────
+  // ─── Auth listener ─────────────────────────────────────────────────
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((authUser) => {
       setUser(authUser);
@@ -113,29 +114,27 @@ export default function DailyJournal({ currentAccount }) {
         setLoading(false);
       }
     });
-    return () => unsubscribe();
+    return unsubscribe;
   }, []);
 
-  // When currentAccount becomes available, refresh entries
   useEffect(() => {
     if (user && currentAccount) {
       refreshEntries();
     }
   }, [currentAccount, user]);
 
-  // ─── Auto‑calculate PnL and R:R ────────────────────────────────────
+  // ─── Auto‑calculate PnL and R:R (using account leverage) ──────────
   useEffect(() => {
     const entry = Number(form.entry) || 0;
     const exitPrice = Number(form.exit) || 0;
     const sl = Number(form.stopLoss) || 0;
     const tp = Number(form.takeProfit) || 0;
     const lot = Number(form.lotSize) || 0.1;
-    const lev = Number(form.leverage) || 100;
 
     let calculatedPnL = "";
-    if (entry && exitPrice && lot && lev) {
+    if (entry && exitPrice && lot && accountLeverage) {
       const priceDiff = form.direction === "Long" ? (exitPrice - entry) : (entry - exitPrice);
-      calculatedPnL = (priceDiff * lot * lev * 100).toFixed(2);
+      calculatedPnL = (priceDiff * lot * accountLeverage * 100).toFixed(2);
     }
 
     let calculatedRR = "";
@@ -154,23 +153,24 @@ export default function DailyJournal({ currentAccount }) {
       pnl: calculatedPnL,
       rr: calculatedRR,
     }));
-  }, [form.entry, form.exit, form.stopLoss, form.takeProfit, form.lotSize, form.leverage, form.direction]);
+  }, [form.entry, form.exit, form.stopLoss, form.takeProfit, form.lotSize, form.direction, accountLeverage]);
 
-  // ─── Today's entries ────────────────────────────────────────────────
+  // ─── Today's entries (executed only, or all?) – we'll show all today's trades
   const todayEntries = useMemo(() => {
     const today = formatDateInput();
     return entries.filter((e) => e.date === today);
   }, [entries]);
 
-  // ─── Metrics for today ─────────────────────────────────────────────
+  // ─── Metrics for today (only executed trades count for PnL) ───────
   const metrics = useMemo(() => {
-    if (!todayEntries.length) {
+    const executed = todayEntries.filter(e => e.status === "executed");
+    if (!executed.length) {
       return { net: 0, wins: 0, losses: 0, winRate: 0, avgPnL: 0 };
     }
-    const total = todayEntries.length;
+    const total = executed.length;
     let net = 0;
     let wins = 0;
-    todayEntries.forEach((e) => {
+    executed.forEach((e) => {
       const pnl = Number(e.pnl || 0);
       net += pnl;
       if (pnl > 0) wins++;
@@ -186,17 +186,22 @@ export default function DailyJournal({ currentAccount }) {
     };
   }, [todayEntries]);
 
-  // ─── Save entry (add or update) ────────────────────────────────────
+  // ─── Save entry (add or update) ───────────────────────────────────
   const saveEntry = async (e) => {
-    if (e) e.preventDefault();
+    e.preventDefault();
     setError(null);
     setSuccessMsg(null);
 
-    const currentUser = auth.currentUser;
-    if (!currentUser || !currentAccount?.id) {
+    if (!user || !currentAccount?.id) {
       setError("Please log in and select an account");
       return;
     }
+
+    // Split confluences by line and filter empty lines
+    const confluencesList = form.confluences
+      .split("\n")
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
 
     const payload = {
       date: form.date || formatDateInput(),
@@ -208,9 +213,11 @@ export default function DailyJournal({ currentAccount }) {
       takeProfit: Number(form.takeProfit) || 0,
       pnl: Number(form.pnl) || 0,
       rr: form.rr || "",
-      leverage: Number(form.leverage) || 100,
       lotSize: Number(form.lotSize) || 0.1,
       notes: form.notes || "",
+      status: form.status || "executed",
+      confluences: confluencesList,   // store as array
+      screenshotUrl: form.screenshotUrl || "",
     };
 
     try {
@@ -218,17 +225,20 @@ export default function DailyJournal({ currentAccount }) {
         const entryRef = doc(
           db,
           "users",
-          currentUser.uid,
+          user.uid,
           "accounts",
           currentAccount.id,
-          "trades", // ← changed
+          "trades",
           editingEntry.id
         );
-        await updateDoc(entryRef, payload);
+        await updateDoc(entryRef, {
+          ...payload,
+          updatedAt: serverTimestamp(),
+        });
         setSuccessMsg("Entry updated successfully!");
       } else {
         await addDoc(
-          collection(db, "users", currentUser.uid, "accounts", currentAccount.id, "trades"), // ← changed
+          collection(db, "users", user.uid, "accounts", currentAccount.id, "trades"),
           {
             ...payload,
             createdAt: serverTimestamp(),
@@ -249,8 +259,10 @@ export default function DailyJournal({ currentAccount }) {
         notes: "",
         pnl: "",
         rr: "",
-        leverage: "100",
         lotSize: "0.1",
+        status: "executed",
+        confluences: "",
+        screenshotUrl: "",
       });
       await refreshEntries();
     } catch (err) {
@@ -259,13 +271,12 @@ export default function DailyJournal({ currentAccount }) {
     }
   };
 
-  // ─── Delete single entry ───────────────────────────────────────────
+  // ─── Delete single entry ──────────────────────────────────────────
   const deleteEntry = async (id) => {
-    const currentUser = auth.currentUser;
-    if (!currentUser || !currentAccount?.id) return;
+    if (!user || !currentAccount?.id) return;
     try {
       await deleteDoc(
-        doc(db, "users", currentUser.uid, "accounts", currentAccount.id, "trades", id) // ← changed
+        doc(db, "users", user.uid, "accounts", currentAccount.id, "trades", id)
       );
       setSuccessMsg("Entry deleted successfully");
       await refreshEntries();
@@ -277,14 +288,13 @@ export default function DailyJournal({ currentAccount }) {
     setEntryToDelete(null);
   };
 
-  // ─── Clear all today's entries ─────────────────────────────────────
+  // ─── Clear all today's entries ────────────────────────────────────
   const clearTodayEntries = async () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser || !currentAccount?.id) return;
+    if (!user || !currentAccount?.id) return;
     try {
       const batchPromises = todayEntries.map((e) =>
         deleteDoc(
-          doc(db, "users", currentUser.uid, "accounts", currentAccount.id, "trades", e.id) // ← changed
+          doc(db, "users", user.uid, "accounts", currentAccount.id, "trades", e.id)
         )
       );
       await Promise.all(batchPromises);
@@ -297,7 +307,21 @@ export default function DailyJournal({ currentAccount }) {
     setDeleteModalOpen(false);
   };
 
-  // ─── Main render ───────────────────────────────────────────────────
+  // ─── If no account selected ───────────────────────────────────────
+  if (!currentAccount) {
+    return (
+      <div className={`min-h-screen w-full p-8 flex items-center justify-center ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
+        <Card className="p-8 max-w-md text-center bg-white/80 dark:bg-gray-800/60 backdrop-blur-md">
+          <AlertCircle size={48} className="mx-auto text-amber-500 mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">No Account Selected</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Please create or select an account from the sidebar to start journaling.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`min-h-screen w-full p-4 sm:p-6 transition-colors duration-300
@@ -310,10 +334,10 @@ export default function DailyJournal({ currentAccount }) {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-              Daily Journal {currentAccount ? `– ${currentAccount.name}` : ""}
+              Daily Journal – {currentAccount.name}
             </h1>
             <p className="text-sm sm:text-base mt-1 opacity-80">
-              Log trades with automatic PnL & R:R calculation
+              Log trades with auto PnL (Leverage {accountLeverage}:1)
             </p>
           </div>
           <Button
@@ -332,8 +356,10 @@ export default function DailyJournal({ currentAccount }) {
                 notes: "",
                 pnl: "",
                 rr: "",
-                leverage: "100",
                 lotSize: "0.1",
+                status: "executed",
+                confluences: "",
+                screenshotUrl: "",
               });
             }}
             disabled={!isAccountReady}
@@ -346,6 +372,20 @@ export default function DailyJournal({ currentAccount }) {
             <Plus size={18} className="mr-2" /> Add Entry
           </Button>
         </div>
+
+        {/* Feedback */}
+        {error && (
+          <div className="p-4 rounded-xl bg-rose-100/80 dark:bg-rose-900/30 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 flex items-center gap-3">
+            <AlertCircle size={20} />
+            {error}
+          </div>
+        )}
+        {successMsg && (
+          <div className="p-4 rounded-xl bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 flex items-center gap-3">
+            <Check size={20} />
+            {successMsg}
+          </div>
+        )}
 
         {/* Metrics */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -396,16 +436,13 @@ export default function DailyJournal({ currentAccount }) {
               Preparing your account...
             </p>
             <p className="text-sm opacity-60 mb-5">
-              Please wait while we set up your journal. This should only take a moment.
+              Please wait while we set up your journal.
             </p>
-            <Button disabled className="w-full sm:w-auto bg-gray-400 cursor-not-allowed text-gray-200">
-              <Plus size={18} className="mr-2" /> Add Entry
-            </Button>
           </Card>
         ) : todayEntries.length === 0 ? (
           <Card className="p-6 sm:p-8 text-center bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl">
             <p className="text-lg sm:text-xl font-medium opacity-70 mb-3">
-              No entries logged today in {currentAccount?.name || "this account"}
+              No entries logged today
             </p>
             <p className="text-sm opacity-60 mb-5">
               Add your first journal entry to start tracking
@@ -427,12 +464,14 @@ export default function DailyJournal({ currentAccount }) {
                 key={entry.id}
                 className="p-4 sm:p-5 rounded-2xl bg-white/80 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-md hover:shadow-xl transition-all duration-200 group"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-start gap-3">
                       <div
                         className={`w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold shadow-sm flex-shrink-0 ${
-                          Number(entry.pnl || 0) >= 0
+                          entry.status === "pending"
+                            ? "bg-gray-300 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                            : Number(entry.pnl || 0) >= 0
                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                             : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
                         }`}
@@ -440,35 +479,80 @@ export default function DailyJournal({ currentAccount }) {
                         {entry.pair?.slice(0, 2) || "?"}
                       </div>
                       <div className="min-w-0">
-                        <div className="font-semibold text-base sm:text-lg truncate">
-                          {entry.pair || "—"} • {entry.direction || "—"}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-lg">
+                            {entry.pair || "—"} • {entry.direction || "—"}
+                          </span>
+                          {entry.status === "pending" && (
+                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                              Pending
+                            </span>
+                          )}
                         </div>
-                        <div className="text-xs sm:text-sm opacity-70 flex flex-wrap gap-2 mt-1">
+                        <div className="text-sm opacity-70 flex flex-wrap gap-3 mt-1">
+                          <span>
+                            {entry.date ? formatDateInput(new Date(entry.date)) : "—"}
+                          </span>
                           <span>Lot: {entry.lotSize || "—"}</span>
-                          <span>Leverage: {entry.leverage || "—"}:1</span>
                           {entry.rr && <span>R:R {entry.rr}</span>}
                         </div>
                       </div>
                     </div>
+
+                    {/* Confluences */}
+                    {entry.confluences?.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {entry.confluences.map((conf, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20"
+                          >
+                            <Tag size={12} />
+                            {conf}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Notes */}
                     {entry.notes && (
-                      <div className="text-xs sm:text-sm opacity-80 line-clamp-2 mt-1">
+                      <div className="text-sm opacity-80 line-clamp-2 mt-2">
                         <FileText size={14} className="inline mr-1" />
                         {entry.notes}
                       </div>
                     )}
-                  </div>
-                  <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-6">
-                    <div className="text-right min-w-[100px]">
-                      <div
-                        className={`text-xl sm:text-2xl font-bold ${
-                          Number(entry.pnl || 0) >= 0
-                            ? "text-emerald-700 dark:text-emerald-500"
-                            : "text-rose-700 dark:text-rose-500"
-                        }`}
+
+                    {/* Screenshot */}
+                    {entry.screenshotUrl && (
+                      <a
+                        href={entry.screenshotUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-2 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
                       >
-                        {Number(entry.pnl || 0) >= 0 ? "+" : "-"}${formatNumber(Math.abs(Number(entry.pnl || 0)))}
-                      </div>
-                      {entry.rr && <div className="text-xs opacity-70">R:R {entry.rr}</div>}
+                        <Image size={14} /> View Chart
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between lg:justify-end w-full lg:w-auto gap-6">
+                    <div className="text-right min-w-[100px]">
+                      {entry.status === "pending" ? (
+                        <div className="text-lg font-semibold text-amber-600 dark:text-amber-400">Pending</div>
+                      ) : (
+                        <>
+                          <div
+                            className={`text-xl font-bold ${
+                              Number(entry.pnl || 0) >= 0
+                                ? "text-emerald-700 dark:text-emerald-500"
+                                : "text-rose-700 dark:text-rose-500"
+                            }`}
+                          >
+                            {Number(entry.pnl || 0) >= 0 ? "+" : "-"}${formatNumber(Math.abs(Number(entry.pnl || 0)))}
+                          </div>
+                          {entry.rr && <div className="text-xs opacity-70">R:R {entry.rr}</div>}
+                        </>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -487,8 +571,10 @@ export default function DailyJournal({ currentAccount }) {
                             notes: entry.notes || "",
                             pnl: entry.pnl?.toString() || "",
                             rr: entry.rr || "",
-                            leverage: entry.leverage?.toString() || "100",
                             lotSize: entry.lotSize?.toString() || "0.1",
+                            status: entry.status || "executed",
+                            confluences: Array.isArray(entry.confluences) ? entry.confluences.join("\n") : "",
+                            screenshotUrl: entry.screenshotUrl || "",
                           });
                           setModalOpen(true);
                         }}
@@ -515,15 +601,15 @@ export default function DailyJournal({ currentAccount }) {
           </div>
         )}
 
-        {/* Add / Edit Entry Modal (unchanged) */}
+        {/* Add / Edit Entry Modal */}
         {modalOpen && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4 overflow-y-auto">
             <div
-              className={`w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border backdrop-blur-md
+              className={`w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border backdrop-blur-md
                 ${isDark ? "bg-gray-900/95 border-gray-700/60" : "bg-white/95 border-gray-200/60"}`}
             >
-              <div className="p-5 sm:p-6">
-                <div className="flex justify-between items-center mb-5">
+              <div className="p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-5 sticky top-0 bg-inherit z-10">
                   <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
                     {editingEntry ? "Edit Entry" : "Add New Entry"}
                   </h2>
@@ -556,6 +642,7 @@ export default function DailyJournal({ currentAccount }) {
                       </datalist>
                     </div>
                   </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Label className="block text-sm font-medium mb-1.5">Direction</Label>
@@ -571,17 +658,6 @@ export default function DailyJournal({ currentAccount }) {
                       </select>
                     </div>
                     <div>
-                      <Label className="block text-sm font-medium mb-1.5">Leverage</Label>
-                      <Input
-                        type="number"
-                        step="1"
-                        min="1"
-                        value={form.leverage}
-                        onChange={(e) => setForm({ ...form, leverage: e.target.value })}
-                        placeholder="100"
-                      />
-                    </div>
-                    <div>
                       <Label className="block text-sm font-medium mb-1.5">Lot Size</Label>
                       <Input
                         type="number"
@@ -592,7 +668,21 @@ export default function DailyJournal({ currentAccount }) {
                         placeholder="0.1"
                       />
                     </div>
+                    <div>
+                      <Label className="block text-sm font-medium mb-1.5">Status</Label>
+                      <select
+                        value={form.status}
+                        onChange={(e) => setForm({ ...form, status: e.target.value })}
+                        className={`w-full p-3 rounded-xl border text-sm ${
+                          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300"
+                        } focus:ring-2 focus:ring-indigo-500 outline-none`}
+                      >
+                        <option value="executed">Executed</option>
+                        <option value="pending">Pending</option>
+                      </select>
+                    </div>
                   </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Label className="block text-sm font-medium mb-1.5">Entry Price</Label>
@@ -631,6 +721,7 @@ export default function DailyJournal({ currentAccount }) {
                       />
                     </div>
                   </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Label className="block text-sm font-medium mb-1.5">Stop Loss</Label>
@@ -663,6 +754,36 @@ export default function DailyJournal({ currentAccount }) {
                       />
                     </div>
                   </div>
+
+                  {/* Confluences (multi‑line) */}
+                  <div>
+                    <Label className="block text-sm font-medium mb-1.5">
+                      Confluences (one per line, e.g., FVG, Order Block, etc.)
+                    </Label>
+                    <textarea
+                      value={form.confluences}
+                      onChange={(e) => setForm({ ...form, confluences: e.target.value })}
+                      placeholder="FVG
+Order Block
+Liquidity sweep"
+                      className={`w-full p-3 rounded-xl border min-h-[80px] text-sm resize-y focus:ring-2 focus:ring-indigo-500 outline-none ${
+                        isDark ? "bg-gray-800 border-gray-700 text-gray-100" : "bg-white border-gray-300 text-gray-900"
+                      }`}
+                    />
+                  </div>
+
+                  {/* Screenshot URL */}
+                  <div>
+                    <Label className="block text-sm font-medium mb-1.5">Screenshot URL (optional)</Label>
+                    <Input
+                      type="url"
+                      value={form.screenshotUrl}
+                      onChange={(e) => setForm({ ...form, screenshotUrl: e.target.value })}
+                      placeholder="https://i.imgur.com/your-image.png"
+                    />
+                  </div>
+
+                  {/* Notes */}
                   <div>
                     <Label className="block text-sm font-medium mb-1.5">Notes / Thoughts</Label>
                     <textarea
@@ -674,18 +795,7 @@ export default function DailyJournal({ currentAccount }) {
                       }`}
                     />
                   </div>
-                  {error && (
-                    <div className="p-3 bg-red-100/80 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm flex items-center gap-2">
-                      <AlertCircle size={16} />
-                      {error}
-                    </div>
-                  )}
-                  {successMsg && (
-                    <div className="p-3 bg-emerald-100/80 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-700 rounded-lg text-emerald-700 dark:text-emerald-300 text-sm flex items-center gap-2">
-                      <Check size={16} />
-                      {successMsg}
-                    </div>
-                  )}
+
                   <div className="flex flex-col sm:flex-row gap-4 pt-4">
                     <Button
                       type="submit"
