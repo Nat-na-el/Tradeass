@@ -412,7 +412,7 @@ function AppContent() {
     if (!user) return;
     try {
       // Delete subcollections (adjust names if needed)
-      const subCollections = ["trades", "journals", "notes"]; // add your actual subcollections
+      const subCollections = ["trades", "journals", "notes"];
       for (const sub of subCollections) {
         const subSnap = await getDocs(collection(db, "users", user.uid, "accounts", accountId, sub));
         subSnap.forEach(async (d) => await deleteDoc(d.ref));
@@ -505,9 +505,9 @@ function AppContent() {
                 >
                   <Routes>
                     <Route path="/dashboard" element={<Dashboard currentAccount={currentAccount} />} />
-                    {/* Fixed: pass currentAccount to DailyJournal */}
                     <Route path="/journal" element={<DailyJournal currentAccount={currentAccount} />} />
-                    <Route path="/trades" element={<Trades />} />
+                    {/* Fixed: pass currentAccount to Trades */}
+                    <Route path="/trades" element={<Trades currentAccount={currentAccount} />} />
                     <Route path="/notebook" element={<Notebook />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/challenges" element={<Challenges />} />
