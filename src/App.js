@@ -38,7 +38,7 @@ import {
 } from "firebase/firestore";
 
 // ────────────────────────────────────────────────
-// ManageAccountsModal – updated to work with real data
+// ManageAccountsModal – unchanged
 // ────────────────────────────────────────────────
 function ManageAccountsModal({
   accounts,
@@ -157,12 +157,12 @@ function ManageAccountsModal({
 }
 
 // ────────────────────────────────────────────────
-// EditBalancePNL – kept original + minor safety
+// EditBalancePNL – now includes leverage
 // ────────────────────────────────────────────────
 function EditBalancePNL({ onSaved }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState({ name: "", startingBalance: 10000 });
+  const [form, setForm] = useState({ name: "", startingBalance: 10000, leverage: 100 });
   const [isNewAccount, setIsNewAccount] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -173,7 +173,6 @@ function EditBalancePNL({ onSaved }) {
       return;
     }
 
-    // Editing existing
     if (location.state?.accountId) {
       setIsNewAccount(false);
       const loadAccount = async () => {
@@ -184,16 +183,17 @@ function EditBalancePNL({ onSaved }) {
           setForm({
             name: data.name,
             startingBalance: data.starting_balance || 10000,
+            leverage: data.leverage || 100,
           });
         }
       };
       loadAccount();
     } else {
-      // New account
       setIsNewAccount(true);
       setForm({
         name: `Account ${Date.now().toString().slice(-4)}`,
         startingBalance: 10000,
+        leverage: 100,
       });
     }
   }, [location, navigate]);
@@ -216,6 +216,7 @@ function EditBalancePNL({ onSaved }) {
           name: form.name.trim(),
           starting_balance: Number(form.startingBalance),
           current_balance: Number(form.startingBalance),
+          leverage: Number(form.leverage) || 100,
           createdAt: serverTimestamp(),
           createdBy: user.uid,
         });
@@ -226,6 +227,7 @@ function EditBalancePNL({ onSaved }) {
         await updateDoc(accountRef, {
           name: form.name.trim(),
           starting_balance: Number(form.startingBalance),
+          leverage: Number(form.leverage) || 100,
         });
         navigate("/dashboard", { replace: true });
       }
@@ -272,6 +274,21 @@ function EditBalancePNL({ onSaved }) {
               disabled={isSubmitting}
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Leverage (e.g., 100 for 100:1)
+            </label>
+            <input
+              type="number"
+              step="1"
+              min="1"
+              value={form.leverage}
+              onChange={(e) => setForm({ ...form, leverage: Number(e.target.value) })}
+              className="w-full p-3 rounded-lg border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none"
+              required
+              disabled={isSubmitting}
+            />
+          </div>
           <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
@@ -296,7 +313,7 @@ function EditBalancePNL({ onSaved }) {
 }
 
 // ────────────────────────────────────────────────
-// Main AppContent – full original preserved + fixes
+// Main AppContent
 // ────────────────────────────────────────────────
 function AppContent() {
   const [open, setOpen] = useState(true);
@@ -308,11 +325,9 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ─── Auth listener + redirect ────────────────────────────────
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        // Logged in → load accounts
         loadAccounts(user);
       } else {
         setAccounts([]);
@@ -326,7 +341,6 @@ function AppContent() {
     return unsubscribe;
   }, [location.pathname, navigate]);
 
-  // ─── Load accounts + auto default creation ───────────────────
   const loadAccounts = async (user) => {
     setLoading(true);
     try {
@@ -340,12 +354,12 @@ function AppContent() {
         ...doc.data(),
       }));
 
-      // Auto-create default if empty
       if (loaded.length === 0) {
         const defaultData = {
           name: "Main Account",
           starting_balance: 10000,
           current_balance: 10000,
+          leverage: 100,
           createdAt: serverTimestamp(),
           createdBy: user.uid,
         };
@@ -358,7 +372,6 @@ function AppContent() {
 
       setAccounts(loaded);
 
-      // Restore or set default current
       const savedId = localStorage.getItem("currentAccountId");
       let selected = loaded.find(a => a.id === savedId);
       if (!selected && loaded.length > 0) {
@@ -373,7 +386,6 @@ function AppContent() {
     }
   };
 
-  // ─── Account handlers ───────────────────────────────────────────
   const createAccount = () => {
     navigate("/edit-balance-pnl");
   };
@@ -411,19 +423,16 @@ function AppContent() {
     const user = auth.currentUser;
     if (!user) return;
     try {
-      // Delete subcollections (adjust names if needed)
       const subCollections = ["trades", "journals", "notes"];
       for (const sub of subCollections) {
         const subSnap = await getDocs(collection(db, "users", user.uid, "accounts", accountId, sub));
         subSnap.forEach(async (d) => await deleteDoc(d.ref));
       }
 
-      // Reset balance
       await updateDoc(doc(db, "users", user.uid, "accounts", accountId), {
         current_balance: accounts.find(a => a.id === accountId)?.starting_balance || 10000,
       });
 
-      // Refresh UI
       const updated = accounts.map(a =>
         a.id === accountId ? { ...a, current_balance: a.starting_balance || 10000 } : a
       );
@@ -454,7 +463,6 @@ function AppContent() {
     }
   };
 
-  // ─── Render ──────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950">
@@ -506,7 +514,6 @@ function AppContent() {
                   <Routes>
                     <Route path="/dashboard" element={<Dashboard currentAccount={currentAccount} />} />
                     <Route path="/journal" element={<DailyJournal currentAccount={currentAccount} />} />
-                    {/* Fixed: pass currentAccount to Trades */}
                     <Route path="/trades" element={<Trades currentAccount={currentAccount} />} />
                     <Route path="/notebook" element={<Notebook currentAccount={currentAccount} />} />
                     <Route path="/reports" element={<Reports />} />
