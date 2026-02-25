@@ -1,8 +1,8 @@
-
 // src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { getStorage } from "firebase/storage"; // ← ADD THIS
 
 const firebaseConfig = {
   apiKey: "AIzaSyCay5sKLrtUZuQbexMLOT2t0gZcnPMIeak",
@@ -15,14 +15,17 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Auth exports (you already had these)
+// Auth exports
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Firestore – the database
+// Firestore
 export const db = getFirestore(app);
 
-// Enable offline persistence (saves work even if internet drops, syncs later)
+// Storage – for images
+export const storage = getStorage(app); // ← ADD THIS
+
+// Enable offline persistence
 enableIndexedDbPersistence(db)
   .catch((err) => {
     if (err.code === 'failed-precondition') {
