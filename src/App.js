@@ -520,7 +520,7 @@ function AppContent() {
                     <Route path="/challenges" element={<Challenges />} />
                     <Route path="/mentor" element={<MentorMode />} />
                     <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/backtest" element={<Backtest />} />
+                    <Route path="/backtest" element={<Backtest currentAccount={currentAccount} />} />
                     <Route path="/quantitative-analysis" element={<QuantitativeAnalysis />} />
                     <Route path="/edit-balance-pnl" element={<EditBalancePNL />} />
                     <Route path="/trades/new" element={<AddTrade />} />
