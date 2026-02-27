@@ -322,7 +322,7 @@ export default function Notebook({ currentAccount }) {
             <textarea
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
-              placeholder="Write your trading thought, idea, review or lesson here...\n\nSupports **bold**, *italic*, - lists, > quotes"
+              placeholder="Write your trading thought, idea, review or lesson here..."
               className={`w-full p-4 rounded-xl border min-h-[140px] text-base resize-y focus:ring-2 focus:ring-indigo-500 outline-none ${
                 isDark ? "bg-gray-800 border-gray-700 text-gray-100" : "bg-white border-gray-300 text-gray-900"
               }`}
