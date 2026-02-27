@@ -154,7 +154,6 @@ export default function DailyJournal({ currentAccount }) {
     screenshotUrl: "",
   });
 
-  const modalContentRef = useRef(null);
   const accountLeverage = currentAccount?.leverage || 100;
   const isAccountReady = user && currentAccount;
 
@@ -163,7 +162,6 @@ export default function DailyJournal({ currentAccount }) {
     if (!file || !user || !currentAccount?.id) return;
     setUploadingImage(true);
     try {
-      // Compress image
       const compressedFile = await compressImage(file);
       const storageRef = ref(storage, `users/${user.uid}/accounts/${currentAccount.id}/trades/${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, compressedFile);
@@ -178,34 +176,6 @@ export default function DailyJournal({ currentAccount }) {
       setUploadingImage(false);
     }
   };
-
-  // ─── Handle paste (images only) on the modal ───────────────────────
-  useEffect(() => {
-    if (!modalOpen) return;
-    const handlePaste = (e) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (const item of items) {
-        if (item.type.indexOf("image") !== -1) {
-          e.preventDefault();
-          const file = item.getAsFile();
-          if (file) {
-            handleImageUpload(file);
-          }
-          break;
-        }
-      }
-    };
-    const currentModal = modalContentRef.current;
-    if (currentModal) {
-      currentModal.addEventListener('paste', handlePaste);
-    }
-    return () => {
-      if (currentModal) {
-        currentModal.removeEventListener('paste', handlePaste);
-      }
-    };
-  }, [modalOpen]);
 
   // ─── Fetch journal entries ────────────────────────────────────────
   const refreshEntries = async () => {
@@ -259,7 +229,7 @@ export default function DailyJournal({ currentAccount }) {
     }
   }, [currentAccount, user]);
 
-  // ─── Auto‑calculate PnL and R:R (only if executed and exit given) ─
+  // ─── Auto‑calculate PnL and R:R ────────────────────────────────────
   useEffect(() => {
     if (form.status === "pending" || !form.exit) {
       setForm(prev => ({ ...prev, pnl: "", rr: "" }));
@@ -739,7 +709,6 @@ export default function DailyJournal({ currentAccount }) {
         {modalOpen && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4 overflow-y-auto">
             <div
-              ref={modalContentRef}
               className={`w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border backdrop-blur-md
                 ${isDark ? "bg-gray-900/95 border-gray-700/60" : "bg-white/95 border-gray-200/60"}`}
             >
@@ -901,53 +870,49 @@ export default function DailyJournal({ currentAccount }) {
                     />
                   </div>
 
-                  {/* Screenshot upload – both file and URL */}
+                  {/* Screenshot – simplified: URL input only, file upload as fallback */}
                   <div>
                     <Label className="block text-sm font-medium mb-1.5">Chart Screenshot</Label>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => document.getElementById("image-upload").click()}
-                            disabled={uploadingImage}
-                            className="relative border-2 flex-1"
-                          >
-                            {uploadingImage ? (
-                              <Loader2 className="animate-spin h-5 w-5" />
-                            ) : (
-                              <>
-                                <Upload size={18} className="mr-2" />
-                                Upload Image
-                              </>
-                            )}
-                          </Button>
-                          <span className="text-xs opacity-60">or paste</span>
-                        </div>
-                        <input
-                          id="image-upload"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleImageUpload(file);
-                          }}
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        <Link size={18} className="text-gray-400" />
+                        <Input
+                          type="url"
+                          value={form.screenshotUrl}
+                          onChange={(e) => setForm({ ...form, screenshotUrl: e.target.value })}
+                          placeholder="Paste image URL here (e.g., from TradingView)"
+                          className="flex-1"
                         />
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Link size={18} className="text-gray-400" />
-                          <Input
-                            type="url"
-                            value={form.screenshotUrl}
-                            onChange={(e) => setForm({ ...form, screenshotUrl: e.target.value })}
-                            placeholder="https://i.imgur.com/your-image.png"
-                            className="flex-1"
-                          />
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("image-upload").click()}
+                          disabled={uploadingImage}
+                          className="border-2"
+                        >
+                          {uploadingImage ? (
+                            <Loader2 className="animate-spin mr-2 h-5 w-5" />
+                          ) : (
+                            <>
+                              <Upload size={18} className="mr-2" />
+                              Upload Image File
+                            </>
+                          )}
+                        </Button>
+                        <span className="text-xs opacity-60">(optional)</span>
                       </div>
+                      <input
+                        id="image-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload(file);
+                        }}
+                      />
                     </div>
                     {form.screenshotUrl && (
                       <div className="mt-2 relative inline-block">
@@ -955,7 +920,7 @@ export default function DailyJournal({ currentAccount }) {
                           src={form.screenshotUrl}
                           alt="Preview"
                           className="h-20 w-20 object-cover rounded-lg border"
-                          onError={(e) => e.target.style.display = 'none'} // Hide if broken link
+                          onError={(e) => e.target.style.display = 'none'}
                         />
                         <button
                           type="button"
